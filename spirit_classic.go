@@ -69,9 +69,9 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Name:  "name, n",
 							Value: "",
 							Usage: "the name of component to run",
-						}, cli.StringFlag{
+						}, cli.StringSliceFlag{
 							Name:  "address, a",
-							Value: "",
+							Value: new(cli.StringSlice),
 							Usage: "the address of component receiver, format: receiverType|url|configFile",
 						},
 					},
@@ -106,87 +106,99 @@ func (p *ClassicSpirit) commands() []cli.Command {
 
 func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	componentName := c.String("name")
-	receiverAddr := c.String("address")
-	receiverType := ""
-	receiverConfig := ""
-	receiverUrl := ""
-	portName := ""
-	handlerName := ""
+	receiverAddrs := c.StringSlice("address")
 
-	if componentName == "" {
-		fmt.Println("component name is empty.")
+	if receiverAddrs == nil {
+		fmt.Print("receiver address list is nil")
 		return
 	}
 
-	if receiverAddr == "" {
-		fmt.Println("address is empty.")
-		return
-	}
+	componens := map[string]Component{}
+	for _, receiverAddr := range receiverAddrs {
+		receiverType := ""
+		receiverConfig := ""
+		receiverUrl := ""
+		portName := ""
+		handlerName := ""
 
-	addr := strings.Split(receiverAddr, "|")
-
-	if len(addr) == 4 {
-		portName = addr[0]
-		handlerName = addr[1]
-		receiverType = addr[2]
-		receiverUrl = addr[3]
-	} else if len(addr) == 5 {
-		portName = addr[0]
-		handlerName = addr[1]
-		receiverType = addr[2]
-		receiverUrl = addr[3]
-		receiverConfig = addr[4]
-	} else {
-		fmt.Println("address format error. example: port.in|delete|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
-		return
-	}
-
-	if portName == "" {
-		fmt.Println("receiver port name is empty.")
-		return
-	}
-
-	if handlerName == "" {
-		fmt.Println("handler name is empty.")
-		return
-	}
-
-	if receiverType == "" {
-		fmt.Println("receiver type is empty.")
-		return
-	}
-
-	if receiverUrl == "" {
-		fmt.Println("receiver url is empty.")
-		return
-	}
-
-	var component Component
-	if comp, exist := p.components[componentName]; !exist {
-		fmt.Printf("component %s dose not hosting.", componentName)
-		return
-	} else {
-		component = comp
-	}
-
-	if !p.receiverFactory.IsExist(receiverType) {
-		fmt.Printf("the receiver type of %s dose not registered.", receiverType)
-		return
-	}
-
-	if receiver, e := p.receiverFactory.NewReceiver(receiverType, receiverUrl, receiverConfig); e != nil {
-		fmt.Println(e)
-		return
-	} else {
-		component.BindHandler(portName, handlerName).
-			BindReceiver(portName, receiver).
-			SetMessageSenderFactory(p.senderFactory).
-			Build().
-			Run()
-
-		for {
-			time.Sleep(time.Second)
+		if componentName == "" {
+			fmt.Println("component name is empty.")
+			return
 		}
+
+		if receiverAddr == "" {
+			fmt.Println("address is empty.")
+			return
+		}
+
+		addr := strings.Split(receiverAddr, "|")
+
+		if len(addr) == 4 {
+			portName = addr[0]
+			handlerName = addr[1]
+			receiverType = addr[2]
+			receiverUrl = addr[3]
+		} else if len(addr) == 5 {
+			portName = addr[0]
+			handlerName = addr[1]
+			receiverType = addr[2]
+			receiverUrl = addr[3]
+			receiverConfig = addr[4]
+		} else {
+			fmt.Println("address format error. example: port.in|delete|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
+			return
+		}
+
+		if portName == "" {
+			fmt.Println("receiver port name is empty.")
+			return
+		}
+
+		if handlerName == "" {
+			fmt.Println("handler name is empty.")
+			return
+		}
+
+		if receiverType == "" {
+			fmt.Println("receiver type is empty.")
+			return
+		}
+
+		if receiverUrl == "" {
+			fmt.Println("receiver url is empty.")
+			return
+		}
+
+		var component Component
+		if comp, exist := p.components[componentName]; !exist {
+			fmt.Printf("component %s dose not hosting.", componentName)
+			return
+		} else {
+			component = comp
+		}
+
+		if !p.receiverFactory.IsExist(receiverType) {
+			fmt.Printf("the receiver type of %s dose not registered.", receiverType)
+			return
+		}
+
+		if receiver, e := p.receiverFactory.NewReceiver(receiverType, receiverUrl, receiverConfig); e != nil {
+			fmt.Println(e)
+			return
+		} else {
+			component.BindHandler(portName, handlerName).
+				BindReceiver(portName, receiver).
+				SetMessageSenderFactory(p.senderFactory)
+			componens[component.Name()] = component
+		}
+	}
+
+	for _, component := range componens {
+		component.Build().Run()
+	}
+
+	for {
+		time.Sleep(time.Second)
 	}
 }
 
