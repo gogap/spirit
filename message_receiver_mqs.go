@@ -1,8 +1,6 @@
 package spirit
 
 import (
-	"encoding/json"
-	"fmt"
 	"regexp"
 	"sync"
 
@@ -104,30 +102,38 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 			select {
 			case resp := <-responseChan:
 				{
-					fmt.Println(resp)
 					if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
 						e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
 						logs.Error(e)
 						continue
 					}
-					msg := resp.MessageBody
+
+					var msg []byte
+					if bodyBuf, e := resp.DecodeBody(); e != nil {
+						e = ERR_RECEIVER_DECODE_MESSAGE_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
+						logs.Error(e)
+						continue
+					} else {
+						msg = bodyBuf
+					}
+
 					if msg != nil && len(msg) > 0 {
 						compMsg := ComponentMessage{}
-						if e := json.Unmarshal(msg, &compMsg); e != nil {
+						if e := compMsg.UnSerialize(msg); e != nil {
 							e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
 							logs.Error(e)
 							continue
 						}
 						message <- compMsg
 					}
-					return
+					continue
 				}
 			case e := <-errorChan:
 				{
 					e = ERR_RECEIVER_RECV_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
 					logs.Error(e)
 					err <- e
-					return
+					continue
 				}
 			}
 		}
