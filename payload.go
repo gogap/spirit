@@ -19,6 +19,28 @@ type Payload struct {
 	content interface{}       `json:"content"`
 }
 
+func (p *Payload) UnSerialize(data []byte) (err error) {
+	var tmp struct {
+		Code    string            `json:"code"`
+		Message string            `json:"message"`
+		Context ComponentContext  `json:"context,omitempty"`
+		Command ComponentCommands `json:"command,omitempty"`
+		Content interface{}       `json:"content"`
+	}
+
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	p.code = tmp.Code
+	p.message = tmp.Message
+	p.context = tmp.Context
+	p.command = tmp.Command
+	p.content = tmp.Content
+
+	return
+}
+
 func (p *Payload) GetContent() interface{} {
 	return p.content
 }

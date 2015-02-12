@@ -6,7 +6,7 @@ import (
 	"github.com/gogap/errors"
 )
 
-type MessageGraph map[int32]MessageAddress
+type MessageGraph map[string]MessageAddress
 
 type ComponentMessage struct {
 	id                string       `json:"id"`

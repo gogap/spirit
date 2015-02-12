@@ -228,7 +228,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 
 	if payloadFile != "" {
 		payload = new(Payload)
-		if e := json.Unmarshal(bPayload, payload); e != nil {
+		if e := payload.UnSerialize(bPayload); e != nil {
 			fmt.Println("parse payload file failed, please make sure it is json format", e)
 			return
 		}

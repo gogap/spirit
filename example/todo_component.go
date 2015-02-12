@@ -8,13 +8,19 @@ import (
 )
 
 type Todo struct {
+	User       string    `json:"user"`
 	Name       string    `json:"name"`
 	IsDone     bool      `json:"is_done"`
 	CreateTime time.Time `json:"create_time"`
 }
 
 func (p *Todo) NewTask(payload *spirit.Payload) (result interface{}, err error) {
-	result = Todo{Name: "hello spirit task", IsDone: false, CreateTime: time.Now()}
+	user := ""
+	if user, err = payload.GetContextString("user"); err != nil {
+		return
+	}
+
+	result = Todo{User: user, Name: "hello spirit task", IsDone: false, CreateTime: time.Now()}
 	return
 }
 

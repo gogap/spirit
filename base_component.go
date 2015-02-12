@@ -2,6 +2,7 @@ package spirit
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/gogap/errors"
@@ -227,9 +228,9 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 	var address MessageAddress
 	var nextGraphIndex int32 = 0
 
-	if address, exist = message.graph[message.currentGraphIndex+1]; exist {
+	if address, exist = message.graph[strconv.Itoa(int(message.currentGraphIndex)+1)]; exist {
 		nextGraphIndex = message.currentGraphIndex + 1
-	} else if address, exist = message.graph[0]; exist {
+	} else if address, exist = message.graph["0"]; exist {
 		nextGraphIndex = 0
 	} else {
 		err = ERR_MESSAGE_GRAPH_ADDRESS_NOT_FOUND.New(errors.Params{"compName": p.name, "portName": inPortName})
@@ -249,7 +250,7 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 		//at first component, the first componet get the final result
 		if nextGraphIndex == message.currentGraphIndex {
 			return
-		} else if address, exist = message.graph[0]; exist {
+		} else if address, exist = message.graph["0"]; exist {
 			nextGraphIndex = 0
 			return
 		} else {
