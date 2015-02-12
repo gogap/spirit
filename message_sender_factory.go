@@ -15,11 +15,14 @@ type MessageSenderFactory interface {
 
 type DefaultMessageSenderFactory struct {
 	senderDrivers map[string]reflect.Type
+
+	instanceCache map[string]MessageSender
 }
 
 func NewDefaultMessageSenderFactory() MessageSenderFactory {
 	fact := new(DefaultMessageSenderFactory)
 	fact.senderDrivers = make(map[string]reflect.Type)
+	fact.instanceCache = make(map[string]MessageSender)
 	return fact
 }
 
@@ -56,6 +59,10 @@ func (p *DefaultMessageSenderFactory) IsExist(senderType string) bool {
 }
 
 func (p *DefaultMessageSenderFactory) NewSender(senderType string) (sender MessageSender, err error) {
+	if sender, exist := p.instanceCache[senderType]; exist && sender != nil {
+		return sender, nil
+	}
+
 	if senderType, exist := p.senderDrivers[senderType]; !exist {
 		err = ERR_RECEIVER_DRIVER_NOT_EXIST.New(errors.Params{"type": senderType})
 		return
