@@ -12,7 +12,6 @@ import (
 type BaseComponent struct {
 	name          string
 	receivers     map[string][]MessageReceiver
-	senders       map[string]MessageSender
 	handlers      map[string]ComponentHandler
 	inPortHandler map[string]ComponentHandler
 
@@ -22,6 +21,8 @@ type BaseComponent struct {
 
 	messageChans map[string]chan ComponentMessage
 	errChans     map[string]chan error
+
+	senderFactory MessageSenderFactory
 }
 
 func NewBaseComponent(componentName string) *BaseComponent {
@@ -32,7 +33,6 @@ func NewBaseComponent(componentName string) *BaseComponent {
 	return &BaseComponent{
 		name:          componentName,
 		receivers:     make(map[string][]MessageReceiver),
-		senders:       make(map[string]MessageSender),
 		handlers:      make(map[string]ComponentHandler),
 		inPortHandler: make(map[string]ComponentHandler),
 		messageChans:  make(map[string]chan ComponentMessage),
@@ -42,6 +42,14 @@ func NewBaseComponent(componentName string) *BaseComponent {
 
 func (p *BaseComponent) Name() string {
 	return p.name
+}
+
+func (p *BaseComponent) SetMessageSenderFactory(factory MessageSenderFactory) Component {
+	if factory == nil {
+		panic(fmt.Sprintf("message sender factory could not be nil, component name: %s", p.name))
+	}
+	p.senderFactory = factory
+	return p
 }
 
 func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (result interface{}, err error) {
@@ -130,32 +138,16 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 	return p
 }
 
-func (p *BaseComponent) RegisterSender(senders ...MessageSender) Component {
-	if senders == nil || len(senders) == 0 {
-		panic(fmt.Sprintf("[component-%s] senders could not be nil or 0 length", p.name))
-	}
-
-	componentSenders := map[string]MessageSender{}
-
-	for _, sender := range senders {
-		if _, exist := componentSenders[sender.Type()]; !exist {
-			componentSenders[sender.Type()] = sender
-		} else {
-			panic(fmt.Sprintf("[component-%s] duplicate sender type with in port, sender type: %s", p.name, sender.Type()))
-		}
-	}
-
-	p.senders = componentSenders
-
-	return p
-}
-
 func (p *BaseComponent) Build() Component {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
 	if p.isBuilded {
 		panic(fmt.Sprintf("the component of %s already built", p.Name()))
+	}
+
+	if p.senderFactory == nil {
+		panic(fmt.Sprintf("the component of %s did not have sender factory", p.Name()))
 	}
 
 	for inPortName, _ := range p.receivers {
@@ -215,6 +207,7 @@ func (p *BaseComponent) ReceiverLoop() {
 		}
 	}
 }
+
 func (p *BaseComponent) handlerComponentMessage(inPortName string, message ComponentMessage) {
 	var handler ComponentHandler
 	var err error
@@ -265,13 +258,13 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 	message.currentGraphIndex = nextGraphIndex
 
 	var sender MessageSender
-	if sender, exist = p.senders[address.Type]; !exist {
-		err = ERR_SENDER_TYPE_NOT_EXIST.New(errors.Params{"compName": p.name, "type": address.Type})
+	if sender, err = p.senderFactory.NewSender(address.Type); err != nil {
 		logs.Error(err)
-		return
 	}
 
-	err = sender.Send(address.Url, message)
-	logs.Error(err)
+	if err = sender.Send(address.Url, message); err != nil {
+		logs.Error(err)
+	}
+
 	return
 }

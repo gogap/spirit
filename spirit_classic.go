@@ -15,6 +15,7 @@ type ClassicSpirit struct {
 	cliApp *cli.App
 
 	receiverFactory MessageReceiverFactory
+	senderFactory   MessageSenderFactory
 
 	components map[string]Component
 }
@@ -37,7 +38,11 @@ func NewClassicSpirit(name, description, version string) Spirit {
 	receiverFactory := NewDefaultMessageReceiverFactory()
 	receiverFactory.RegisterMessageReceivers(new(MessageReceiverMQS))
 
+	senderFactory := NewDefaultMessageSenderFactory()
+	senderFactory.RegisterMessageSenders(new(MessageSenderMQS))
+
 	newSpirit.receiverFactory = receiverFactory
+	newSpirit.senderFactory = senderFactory
 
 	return newSpirit
 }
@@ -175,6 +180,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	} else {
 		component.BindHandler(portName, handlerName)
 		component.BindReceiver(portName, receiver)
+		component.SetMessageSenderFactory(p.senderFactory)
 		component.Build()
 		component.Run()
 
@@ -251,6 +257,28 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 			fmt.Println(result)
 		}
 	}
+}
+
+func (p *ClassicSpirit) SetMessageReceiverFactory(factory MessageReceiverFactory) {
+	if factory == nil {
+		panic("message receiver factory could not be nil")
+	}
+	p.receiverFactory = factory
+}
+
+func (p *ClassicSpirit) GetMessageReceiverFactory() MessageReceiverFactory {
+	return p.receiverFactory
+}
+
+func (p *ClassicSpirit) SetMessageSenderFactory(factory MessageSenderFactory) {
+	if factory == nil {
+		panic("message sender factory could not be nil")
+	}
+	p.senderFactory = factory
+}
+
+func (p *ClassicSpirit) GetMessageSenderFactory() MessageSenderFactory {
+	return p.senderFactory
 }
 
 func (p *ClassicSpirit) Hosting(components ...Component) Spirit {

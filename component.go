@@ -10,7 +10,8 @@ type Component interface {
 	CallHandler(handlerName string, payload *Payload) (result interface{}, err error)
 
 	BindReceiver(inPortName string, receivers ...MessageReceiver) Component
-	RegisterSender(senders ...MessageSender) Component
+
+	SetMessageSenderFactory(factory MessageSenderFactory) Component
 
 	Build() Component
 	Run()
