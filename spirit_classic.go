@@ -178,11 +178,11 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		fmt.Println(e)
 		return
 	} else {
-		component.BindHandler(portName, handlerName)
-		component.BindReceiver(portName, receiver)
-		component.SetMessageSenderFactory(p.senderFactory)
-		component.Build()
-		component.Run()
+		component.BindHandler(portName, handlerName).
+			BindReceiver(portName, receiver).
+			SetMessageSenderFactory(p.senderFactory).
+			Build().
+			Run()
 
 		for {
 			time.Sleep(time.Second)
