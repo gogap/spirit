@@ -113,6 +113,8 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		return
 	}
 
+	tmpUrlUsed := map[string]string{} //one type:url could only use by one component-port
+
 	componens := map[string]Component{}
 	for _, receiverAddr := range receiverAddrs {
 		receiverType := ""
@@ -175,6 +177,18 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 			return
 		} else {
 			component = comp
+		}
+
+		usedItemValue := component.Name() + ":" + portName
+		usedItemKey := receiverType + "|" + receiverUrl
+
+		if v, exist := tmpUrlUsed[usedItemKey]; exist {
+			if usedItemValue != v {
+				fmt.Printf("one address url only could be used by one component port, the used component is: %s\nurl:%s\n", usedItemValue, receiverUrl)
+				return
+			}
+		} else {
+			tmpUrlUsed[usedItemKey] = v
 		}
 
 		if !p.receiverFactory.IsExist(receiverType) {
