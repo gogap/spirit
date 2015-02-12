@@ -81,9 +81,9 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Value: "",
 							Usage: "component name",
 						}, cli.StringFlag{
-							Name:  "port, p",
+							Name:  "handler",
 							Value: "",
-							Usage: "the name of component port's handler will be call",
+							Usage: "the name of handler to be call",
 						}, cli.StringFlag{
 							Name:  "payload, l",
 							Value: "",
@@ -106,6 +106,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	receiverConfig := ""
 	receiverUrl := ""
 	portName := ""
+	handlerName := ""
 
 	if componentName == "" {
 		fmt.Println("component name is empty.")
@@ -119,32 +120,39 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 
 	addr := strings.Split(receiverAddr, "|")
 
-	if len(addr) == 3 {
+	if len(addr) == 4 {
 		portName = addr[0]
-		receiverType = addr[1]
-		receiverUrl = addr[2]
-	} else if len(addr) == 4 {
+		handlerName = addr[1]
+		receiverType = addr[2]
+		receiverUrl = addr[3]
+	} else if len(addr) == 5 {
 		portName = addr[0]
-		receiverType = addr[1]
-		receiverUrl = addr[2]
-		receiverConfig = addr[3]
+		handlerName = addr[1]
+		receiverType = addr[2]
+		receiverUrl = addr[3]
+		receiverConfig = addr[4]
 	} else {
-		fmt.Println("address format error. example: port.in|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
+		fmt.Println("address format error. example: port.in|delete|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
 		return
 	}
 
 	if portName == "" {
-		fmt.Println("receiver port name is empty")
+		fmt.Println("receiver port name is empty.")
+		return
+	}
+
+	if handlerName == "" {
+		fmt.Println("handler name is empty.")
 		return
 	}
 
 	if receiverType == "" {
-		fmt.Println("receiver type is empty")
+		fmt.Println("receiver type is empty.")
 		return
 	}
 
 	if receiverUrl == "" {
-		fmt.Println("receiver url is empty")
+		fmt.Println("receiver url is empty.")
 		return
 	}
 
@@ -165,6 +173,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		fmt.Println(e)
 		return
 	} else {
+		component.BindHandler(portName, handlerName)
 		component.BindReceiver(portName, receiver)
 		component.Build()
 		component.Run()
@@ -183,7 +192,7 @@ func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {
 
 func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 	componentName := c.String("name")
-	portName := c.String("port")
+	handlerName := c.String("handler")
 	payloadFile := c.String("payload")
 	toJson := c.Bool("json")
 
@@ -192,8 +201,8 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 		return
 	}
 
-	if portName == "" {
-		fmt.Println("port name is empty.")
+	if handlerName == "" {
+		fmt.Println("handler name is empty.")
 		return
 	}
 
@@ -225,7 +234,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 		}
 	}
 
-	if result, e := component.CallHandler(portName, payload); e != nil {
+	if result, e := component.CallHandler(handlerName, payload); e != nil {
 		fmt.Println(e)
 	} else {
 		if toJson {

@@ -13,7 +13,7 @@ var (
 	ERR_MESSAGE_SERIALIZE_FAILED        = errors.TN(SPIRIT_ERR_NS, 4, "component message serialize failed, err: {{.err}}")
 
 	ERR_COMPONENT_HANDLER_RETURN_ERROR = errors.TN(SPIRIT_ERR_NS, 5, "component handler return error, error: {{.err}}")
-	ERR_COMPONENT_HANDLER_NOT_EXIST    = errors.TN(SPIRIT_ERR_NS, 6, "component handler not exist, component name: {{.name}},  port name: {{.portName}}")
+	ERR_COMPONENT_HANDLER_NOT_EXIST    = errors.TN(SPIRIT_ERR_NS, 6, "component handler not exist, component name: {{.name}},  handler name: {{.handlerName}}")
 
 	ERR_SENDER_TYPE_NOT_EXIST    = errors.TN(SPIRIT_ERR_NS, 7, "sender type of {{.type}} does not exist, component name: {{.compName}}")
 	ERR_SENDER_CREDENTIAL_IS_NIL = errors.TN(SPIRIT_ERR_NS, 8, "credential is nil, type: {{.type}}, url: {{.url}}")
@@ -29,5 +29,6 @@ var (
 	ERR_RECEIVER_CREATE_FAILED        = errors.TN(SPIRIT_ERR_NS, 17, "create receiver failed, driver type: {{.type}}, url: {{.url}}")
 	ERR_RECEIVER_DRIVER_NOT_EXIST     = errors.TN(SPIRIT_ERR_NS, 18, "message receiver driver not exist, type: {{.type}}")
 
-	ERR_PORT_NAME_IS_EMPTY = errors.TN(SPIRIT_ERR_NS, 19, "port name is empty, component: {{.name}}")
+	ERR_PORT_NAME_IS_EMPTY    = errors.TN(SPIRIT_ERR_NS, 19, "port name is empty, component: {{.name}}")
+	ERR_HANDLER_NAME_IS_EMPTY = errors.TN(SPIRIT_ERR_NS, 20, "handler name is empty, component: {{.name}}")
 )

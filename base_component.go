@@ -9,10 +9,11 @@ import (
 )
 
 type BaseComponent struct {
-	name      string
-	receivers map[string][]MessageReceiver
-	senders   map[string]MessageSender
-	handlers  map[string]ComponentHandler
+	name          string
+	receivers     map[string][]MessageReceiver
+	senders       map[string]MessageSender
+	handlers      map[string]ComponentHandler
+	inPortHandler map[string]ComponentHandler
 
 	runtimeLocker sync.Mutex
 	isBuilded     bool
@@ -28,13 +29,13 @@ func NewBaseComponent(componentName string) *BaseComponent {
 	}
 
 	return &BaseComponent{
-		name:      componentName,
-		receivers: make(map[string][]MessageReceiver),
-		senders:   make(map[string]MessageSender),
-		handlers:  make(map[string]ComponentHandler),
-
-		messageChans: make(map[string]chan ComponentMessage),
-		errChans:     make(map[string]chan error),
+		name:          componentName,
+		receivers:     make(map[string][]MessageReceiver),
+		senders:       make(map[string]MessageSender),
+		handlers:      make(map[string]ComponentHandler),
+		inPortHandler: make(map[string]ComponentHandler),
+		messageChans:  make(map[string]chan ComponentMessage),
+		errChans:      make(map[string]chan error),
 	}
 }
 
@@ -42,13 +43,13 @@ func (p *BaseComponent) Name() string {
 	return p.name
 }
 
-func (p *BaseComponent) CallHandler(inPortName string, payload *Payload) (result interface{}, err error) {
-	if inPortName == "" {
-		err = ERR_PORT_NAME_IS_EMPTY.New(errors.Params{"name": p.name})
+func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (result interface{}, err error) {
+	if handlerName == "" {
+		err = ERR_HANDLER_NAME_IS_EMPTY.New(errors.Params{"name": p.name})
 		return
 	}
 
-	if handler, exist := p.handlers[inPortName]; exist {
+	if handler, exist := p.handlers[handlerName]; exist {
 		if ret, e := handler(payload); e != nil {
 			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": e})
 			return
@@ -57,25 +58,50 @@ func (p *BaseComponent) CallHandler(inPortName string, payload *Payload) (result
 			return
 		}
 	} else {
-		err = ERR_COMPONENT_HANDLER_NOT_EXIST.New(errors.Params{"name": p.name, "portName": inPortName})
+		err = ERR_COMPONENT_HANDLER_NOT_EXIST.New(errors.Params{"name": p.name, "handlerName": handlerName})
 		return
 	}
 }
 
-func (p *BaseComponent) BindHandler(inPortName string, handler ComponentHandler) Component {
+func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) Component {
+	if name == "" {
+		panic(fmt.Sprintf("[component-%s] handle name could not be empty", p.name))
+	}
+
+	if handler == nil {
+		panic(fmt.Sprintf("[component-%s] handler could not be nil, handler name: %s", p.name, name))
+	}
+
+	if _, exist := p.handlers[name]; exist {
+		panic(fmt.Sprintf("[component-%s] handler of %s, already registered", p.name, name))
+	} else {
+		p.handlers[name] = handler
+	}
+	return p
+}
+
+func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
 	}
 
-	if handler == nil {
-		panic(fmt.Sprintf("[component-%s] handler could not be nil, in port name: %s", p.name, inPortName))
+	if handlerName == "" {
+		panic(fmt.Sprintf("[component-%s] handler name could not be empty, in port name: %s", p.name, inPortName))
 	}
 
-	if _, exist := p.handlers[inPortName]; exist {
-		panic(fmt.Sprintf("[component-%s] in port of %s, already have handler", p.name, inPortName))
-	} else {
-		p.handlers[inPortName] = handler
+	var handler ComponentHandler
+	exist := false
+
+	if handler, exist = p.handlers[handlerName]; !exist {
+		panic(fmt.Sprintf("[component-%s] handler not exist, handler name: %s", p.name, handlerName))
 	}
+
+	if _, exist = p.inPortHandler[inPortName]; exist {
+		panic(fmt.Sprintf("[component-%s] in port of %s, already have handler, handler name: %s", p.name, inPortName, handlerName))
+	} else {
+		p.inPortHandler[inPortName] = handler
+	}
+
 	return p
 }
 
@@ -211,7 +237,7 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 		return
 	}
 
-	if handler, exist = p.handlers[inPortName]; !exist {
+	if handler, exist = p.inPortHandler[inPortName]; !exist {
 		panic(fmt.Sprintf("in port of %s not exist", inPortName))
 	}
 
