@@ -157,7 +157,7 @@ func (p *BaseComponent) Build() Component {
 
 	p.isBuilded = true
 
-	return nil
+	return p
 }
 
 func (p *BaseComponent) Run() {
