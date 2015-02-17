@@ -108,18 +108,9 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 						continue
 					}
 
-					var msg []byte
-					if bodyBuf, e := resp.DecodeBody(); e != nil {
-						e = ERR_RECEIVER_DECODE_MESSAGE_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-						logs.Error(e)
-						continue
-					} else {
-						msg = bodyBuf
-					}
-
-					if msg != nil && len(msg) > 0 {
+					if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
 						compMsg := ComponentMessage{}
-						if e := compMsg.UnSerialize(msg); e != nil {
+						if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
 							e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
 							logs.Error(e)
 							continue
@@ -130,9 +121,10 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 				}
 			case e := <-errorChan:
 				{
-					e = ERR_RECEIVER_RECV_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-					logs.Error(e)
-					err <- e
+					if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(e) {
+						logs.Error(e)
+						err <- e
+					}
 					continue
 				}
 			}
