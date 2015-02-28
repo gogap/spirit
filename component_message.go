@@ -2,20 +2,70 @@ package spirit
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/gogap/errors"
+	"github.com/nu7hatch/gouuid"
+)
+
+const (
+	ERROR_MSG_ADDR           = "-100"
+	ERROR_MSG_ADDR_INT int32 = -100
 )
 
 type MessageGraph map[string]MessageAddress
 
-type ComponentMessage struct {
-	id                string       `json:"id"`
-	graph             MessageGraph `json:"graph"`
-	currentGraphIndex int32        `json:"current_graph_index"`
-	payload           Payload      `json:"payload"`
+func (p MessageGraph) AddAddress(addrs ...MessageAddress) int {
+	lenAddr := 0
+	startIndex := len(p) + 1
+	if addrs != nil {
+		lenAddr = len(addrs)
+		for i, addr := range addrs {
+			p[strconv.Itoa(i+startIndex)] = addr
+		}
+	}
+	return lenAddr
 }
 
-func NewComponentMessage(content interface{}) (message ComponentMessage, err error) {
+func (p MessageGraph) SetErrorAddress(address MessageAddress) {
+	p[ERROR_MSG_ADDR] = address
+}
+
+func (p MessageGraph) ClearErrorAddress() {
+	if _, exist := p[ERROR_MSG_ADDR]; exist {
+		delete(p, ERROR_MSG_ADDR)
+	}
+}
+
+type ComponentMessage struct {
+	id                string
+	graph             MessageGraph
+	currentGraphIndex int32
+	payload           Payload
+}
+
+func NewComponentMessage(graph MessageGraph, payload Payload) (message ComponentMessage, err error) {
+	msgId := ""
+
+	if payload.id == "" {
+		if id, e := uuid.NewV4(); e != nil {
+			err = ERR_UUID_GENERATE_FAILED.New(errors.Params{"err": e})
+			return
+		} else {
+			msgId = id.String()
+		}
+		payload.id = msgId
+	} else {
+		msgId = payload.id
+	}
+
+	message = ComponentMessage{
+		id:                msgId,
+		graph:             graph,
+		currentGraphIndex: 1,
+		payload:           payload,
+	}
+
 	return
 }
 
@@ -25,11 +75,11 @@ func (p *ComponentMessage) Serialize() (data []byte, err error) {
 		"graph":               p.graph,
 		"current_graph_index": p.currentGraphIndex,
 		"payload": map[string]interface{}{
-			"code":    p.payload.code,
-			"message": p.payload.message,
+			"id":      p.id,
 			"context": p.payload.context,
 			"command": p.payload.command,
 			"content": p.payload.content,
+			"error":   p.payload.err,
 		},
 	}
 
@@ -46,11 +96,11 @@ func (p *ComponentMessage) UnSerialize(data []byte) (err error) {
 		Graph             MessageGraph `json:"graph"`
 		CurrentGraphIndex int32        `json:"current_graph_index"`
 		Payload           struct {
-			Code    string            `json:"code"`
-			Message string            `json:"message"`
+			Id      string            `json:"id,omitempty"`
 			Context ComponentContext  `json:"context,omitempty"`
 			Command ComponentCommands `json:"command,omitempty"`
-			Content interface{}       `json:"content"`
+			Content interface{}       `json:"content,omitempty"`
+			Error   Error             `json:"error,omitempty"`
 		} `json:"payload"`
 	}
 
@@ -62,11 +112,16 @@ func (p *ComponentMessage) UnSerialize(data []byte) (err error) {
 	p.graph = tmp.Graph
 	p.currentGraphIndex = tmp.CurrentGraphIndex
 	p.payload = Payload{
-		code:    tmp.Payload.Code,
-		message: tmp.Payload.Message,
+		id:      tmp.Payload.Id,
 		context: tmp.Payload.Context,
 		command: tmp.Payload.Command,
-		content: tmp.Payload.Content}
+		content: tmp.Payload.Content,
+		err:     tmp.Payload.Error,
+	}
 
 	return
+}
+
+func (p *ComponentMessage) Id() string {
+	return p.id
 }

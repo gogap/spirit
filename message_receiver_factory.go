@@ -63,7 +63,9 @@ func (p *DefaultMessageReceiverFactory) NewReceiver(receiverType, url string, co
 		if vOfMessageReceiver := reflect.New(receiverType); vOfMessageReceiver.CanInterface() {
 			iMessageReceiver := vOfMessageReceiver.Interface()
 			if r, ok := iMessageReceiver.(MessageReceiver); ok {
-				r.Init(url, configFile)
+				if err = r.Init(url, configFile); err != nil {
+					return
+				}
 				receiver = r
 				return
 			} else {

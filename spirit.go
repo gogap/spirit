@@ -7,6 +7,9 @@ type Spirit interface {
 	SetMessageSenderFactory(factory MessageSenderFactory)
 	GetMessageSenderFactory() MessageSenderFactory
 
+	GetComponent(name string) Component
+
 	Hosting(components ...Component) Spirit
+	Build() Spirit
 	Run()
 }

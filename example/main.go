@@ -17,5 +17,5 @@ func main() {
 
 	todoSpirit.Hosting(todoComponent)
 
-	todoSpirit.Run()
+	todoSpirit.Build()
 }

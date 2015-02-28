@@ -11,13 +11,20 @@ type MessageSenderMQS struct {
 	clientCache map[string]ali_mqs.AliMQSQueue
 }
 
-func NewMessageSenderMQS(string) MessageSender {
+func NewMessageSenderMQS() MessageSender {
 	return &MessageSenderMQS{clientCache: make(map[string]ali_mqs.AliMQSQueue)}
 
 }
 
 func (p *MessageSenderMQS) Type() string {
 	return "mqs"
+}
+
+func (p *MessageSenderMQS) Init() (err error) {
+	if p.clientCache == nil {
+		p.clientCache = make(map[string]ali_mqs.AliMQSQueue)
+	}
+	return nil
 }
 
 func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error) {
@@ -71,7 +78,7 @@ func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error
 
 		client = ali_mqs.NewMQSQueue(queueName, cli)
 
-		p.clientCache[url] = client
+		p.clientCache[url] = nil
 	}
 
 	msg := ali_mqs.MessageSendRequest{

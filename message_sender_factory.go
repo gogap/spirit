@@ -48,6 +48,7 @@ func (p *DefaultMessageSenderFactory) RegisterMessageSenders(senders ...MessageS
 
 		p.senderDrivers[sender.Type()] = vType
 	}
+
 	return
 }
 
@@ -64,12 +65,15 @@ func (p *DefaultMessageSenderFactory) NewSender(senderType string) (sender Messa
 	}
 
 	if senderType, exist := p.senderDrivers[senderType]; !exist {
-		err = ERR_RECEIVER_DRIVER_NOT_EXIST.New(errors.Params{"type": senderType})
+		err = ERR_SENDER_DRIVER_NOT_EXIST.New(errors.Params{"type": senderType})
 		return
 	} else {
 		if vOfMessageSender := reflect.New(senderType); vOfMessageSender.CanInterface() {
 			iMessageSender := vOfMessageSender.Interface()
 			if r, ok := iMessageSender.(MessageSender); ok {
+				if err = r.Init(); err != nil {
+					return
+				}
 				sender = r
 				return
 			} else {

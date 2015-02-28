@@ -42,6 +42,10 @@ func (p *MessageReceiverMQS) Type() string {
 	return "mqs"
 }
 
+func (p *MessageReceiverMQS) Address() MessageAddress {
+	return MessageAddress{Type: p.Type(), Url: p.url}
+}
+
 func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err error) {
 	credential := ali_mqs.NewAliMQSCredential()
 	if credential == nil {
@@ -102,28 +106,27 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 			select {
 			case resp := <-responseChan:
 				{
-					if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
-						e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-						logs.Error(e)
-						continue
-					}
-
 					if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
 						compMsg := ComponentMessage{}
 						if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
 							e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-							logs.Error(e)
+							err <- e
 							continue
 						}
 						message <- compMsg
 					}
+
+					if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
+						e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
+						err <- e
+					}
+
 					continue
 				}
-			case e := <-errorChan:
+			case respErr := <-errorChan:
 				{
-					if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(e) {
-						logs.Error(e)
-						err <- e
+					if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(respErr) {
+						err <- respErr
 					}
 					continue
 				}

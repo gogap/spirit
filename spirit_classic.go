@@ -18,6 +18,8 @@ type ClassicSpirit struct {
 	senderFactory   MessageSenderFactory
 
 	components map[string]Component
+
+	isBuilt bool
 }
 
 func NewClassicSpirit(name, description, version string) Spirit {
@@ -115,7 +117,6 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 
 	tmpUrlUsed := map[string]string{} //one type:url could only use by one component-port
 
-	componens := map[string]Component{}
 	for _, receiverAddr := range receiverAddrs {
 		receiverType := ""
 		receiverConfig := ""
@@ -202,17 +203,10 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		} else {
 			component.BindHandler(portName, handlerName).
 				BindReceiver(portName, receiver).
-				SetMessageSenderFactory(p.senderFactory)
-			componens[component.Name()] = component
+				SetMessageSenderFactory(p.senderFactory).
+				Build()
+			p.components[component.Name()] = component
 		}
-	}
-
-	for _, component := range componens {
-		component.Build().Run()
-	}
-
-	for {
-		time.Sleep(time.Second)
 	}
 }
 
@@ -321,6 +315,34 @@ func (p *ClassicSpirit) Hosting(components ...Component) Spirit {
 	return p
 }
 
-func (p *ClassicSpirit) Run() {
+func (p *ClassicSpirit) Build() Spirit {
 	p.cliApp.Run(os.Args)
+	p.isBuilt = true
+	return p
+}
+
+func (p *ClassicSpirit) GetComponent(name string) Component {
+	if !p.isBuilt {
+		panic("please build components first")
+	}
+
+	if component, exist := p.components[name]; !exist {
+		panic(fmt.Sprintf("component of %s did not exist.", name))
+	} else {
+		return component
+	}
+}
+
+func (p *ClassicSpirit) Run() {
+	if !p.isBuilt {
+		panic("please build components first")
+	}
+
+	for _, component := range p.components {
+		component.Run()
+	}
+
+	for {
+		time.Sleep(time.Second)
+	}
 }

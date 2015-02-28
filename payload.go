@@ -4,41 +4,59 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-
-	//"github.com/gogap/errors"
 )
 
 type ComponentCommands map[string][]interface{}
 type ComponentContext map[string]interface{}
 
+type Error struct {
+	Id        string `json:"id,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Code      uint64 `json:"code,omitempty"`
+	AddressId int32  `json:"address_id,omitempty"`
+	Message   string `json:"message,omitempty"`
+}
+
 type Payload struct {
-	code    string            `json:"code"`
-	message string            `json:"message"`
-	context ComponentContext  `json:"context"`
-	command ComponentCommands `json:"command"`
-	content interface{}       `json:"content"`
+	id      string
+	context ComponentContext
+	command ComponentCommands
+	content interface{}
+	err     Error
 }
 
 func (p *Payload) UnSerialize(data []byte) (err error) {
 	var tmp struct {
-		Code    string            `json:"code"`
-		Message string            `json:"message"`
+		Id      string            `json:"id,omitempty"`
 		Context ComponentContext  `json:"context,omitempty"`
 		Command ComponentCommands `json:"command,omitempty"`
-		Content interface{}       `json:"content"`
+		Content interface{}       `json:"content,omitempty"`
+		Error   Error             `json:"error,omitempty"`
 	}
 
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return err
 	}
 
-	p.code = tmp.Code
-	p.message = tmp.Message
+	p.id = tmp.Id
 	p.context = tmp.Context
 	p.command = tmp.Command
 	p.content = tmp.Content
+	p.err = tmp.Error
 
 	return
+}
+
+func (p *Payload) Id() string {
+	return p.id
+}
+
+func (p *Payload) IsCorrect() bool {
+	return p.err.Code == 0
+}
+
+func (p *Payload) Error() Error {
+	return p.err
 }
 
 func (p *Payload) GetContent() interface{} {

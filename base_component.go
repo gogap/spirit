@@ -16,7 +16,7 @@ type BaseComponent struct {
 	inPortHandler map[string]ComponentHandler
 
 	runtimeLocker sync.Mutex
-	isBuilded     bool
+	isBuilt       bool
 	isRunning     bool
 
 	messageChans map[string]chan ComponentMessage
@@ -25,7 +25,7 @@ type BaseComponent struct {
 	senderFactory MessageSenderFactory
 }
 
-func NewBaseComponent(componentName string) *BaseComponent {
+func NewBaseComponent(componentName string) Component {
 	if componentName == "" {
 		panic("component name could not be empty")
 	}
@@ -114,6 +114,15 @@ func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
 	return p
 }
 
+func (p *BaseComponent) GetReceivers(inPortName string) []MessageReceiver {
+	if inPortName == "" {
+		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
+	}
+
+	receivers, _ := p.receivers[inPortName]
+	return receivers
+}
+
 func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageReceiver) Component {
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
@@ -142,12 +151,12 @@ func (p *BaseComponent) Build() Component {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
-	if p.isBuilded {
-		panic(fmt.Sprintf("the component of %s already built", p.Name()))
+	if p.isBuilt {
+		panic(fmt.Sprintf("the component of %s already built", p.name))
 	}
 
 	if p.senderFactory == nil {
-		panic(fmt.Sprintf("the component of %s did not have sender factory", p.Name()))
+		panic(fmt.Sprintf("the component of %s did not have sender factory", p.name))
 	}
 
 	for inPortName, _ := range p.receivers {
@@ -155,7 +164,7 @@ func (p *BaseComponent) Build() Component {
 		p.messageChans[inPortName] = make(chan ComponentMessage)
 	}
 
-	p.isBuilded = true
+	p.isBuilt = true
 
 	return p
 }
@@ -164,12 +173,12 @@ func (p *BaseComponent) Run() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
-	if !p.isBuilded {
-		panic(fmt.Sprintf("the component of %s should be build first", p.Name()))
+	if !p.isBuilt {
+		panic(fmt.Sprintf("the component of %s should be build first", p.name))
 	}
 
 	if p.isRunning == true {
-		panic(fmt.Sprintf("the component of %s already running", p.Name()))
+		panic(fmt.Sprintf("the component of %s already running", p.name))
 	}
 
 	for inPortName, typedReceivers := range p.receivers {
@@ -177,17 +186,18 @@ func (p *BaseComponent) Run() {
 		var messageChan chan ComponentMessage
 		exist := false
 		if errChan, exist = p.errChans[inPortName]; !exist {
-			panic(fmt.Sprintf("error chan of component: %s, not exist", p.Name()))
+			panic(fmt.Sprintf("error chan of component: %s, not exist", p.name))
 		}
 
 		if messageChan, exist = p.messageChans[inPortName]; !exist {
-			panic(fmt.Sprintf("error chan of component: %s, not exist", p.Name()))
+			panic(fmt.Sprintf("error chan of component: %s, not exist", p.name))
 		}
 
 		for _, receiver := range typedReceivers {
 			go receiver.Receive(messageChan, errChan)
 		}
 	}
+	p.ReceiverLoop()
 	return
 }
 
@@ -196,19 +206,28 @@ func (p *BaseComponent) ReceiverLoop() {
 	for inPortName, _ := range p.receivers {
 		loopInPortNames = append(loopInPortNames, inPortName)
 	}
-	for {
-		for _, inPortName := range loopInPortNames {
-			select {
-			case compMsg := <-p.messageChans[inPortName]:
-				{
-					p.handlerComponentMessage(inPortName, compMsg)
+
+	for _, inPortName := range loopInPortNames {
+		go func() {
+			for {
+				respChan, _ := p.messageChans[inPortName]
+				errChan, _ := p.errChans[inPortName]
+				select {
+				case compMsg := <-respChan:
+					{
+						p.handleComponentMessage(inPortName, compMsg)
+					}
+				case respErr := <-errChan:
+					{
+						logs.Error(respErr)
+					}
 				}
 			}
-		}
+		}()
 	}
 }
 
-func (p *BaseComponent) handlerComponentMessage(inPortName string, message ComponentMessage) {
+func (p *BaseComponent) handleComponentMessage(inPortName string, message ComponentMessage) {
 	var handler ComponentHandler
 	var err error
 	var exist bool
@@ -218,41 +237,40 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 		return
 	}
 
-	var address MessageAddress
-	var nextGraphIndex int32 = 0
-
-	if address, exist = message.graph[strconv.Itoa(int(message.currentGraphIndex)+1)]; exist {
-		nextGraphIndex = message.currentGraphIndex + 1
-	} else if address, exist = message.graph["0"]; exist {
-		nextGraphIndex = 0
-	} else {
-		err = ERR_MESSAGE_GRAPH_ADDRESS_NOT_FOUND.New(errors.Params{"compName": p.name, "portName": inPortName})
-		logs.Error(err)
-		return
-	}
-
 	if handler, exist = p.inPortHandler[inPortName]; !exist {
 		panic(fmt.Sprintf("in port of %s not exist", inPortName))
 	}
 
+	var address MessageAddress
+	var nextGraphIndex int32 = 0
 	var content interface{}
+
 	if content, err = handler(&message.payload); err != nil {
-		err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err})
+		if !errors.IsErrCode(err) {
+			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err})
+		}
+
 		logs.Error(err)
 
-		//at first component, the first componet get the final result
-		if nextGraphIndex == message.currentGraphIndex {
-			return
-		} else if address, exist = message.graph["0"]; exist {
-			nextGraphIndex = 0
-			return
+		if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
+			errCode := err.(errors.ErrCode)
+			message.payload.err.AddressId = message.currentGraphIndex
+			message.payload.err.Id = errCode.Id()
+			message.payload.err.Namespace = errCode.Namespace()
+			message.payload.err.Code = errCode.Code()
+			message.payload.err.Message = errCode.Error()
+
+			nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
 		} else {
-			err = ERR_MESSAGE_GRAPH_ADDRESS_NOT_FOUND.New(errors.Params{"compName": p.name, "portName": inPortName})
-			logs.Error(err)
 			return
 		}
 	} else {
 		message.payload.SetContent(content)
+		if address, exist = message.graph[strconv.Itoa(int(message.currentGraphIndex)+1)]; exist {
+			nextGraphIndex = message.currentGraphIndex + 1 //forword the next component
+		} else {
+			return
+		}
 	}
 
 	message.currentGraphIndex = nextGraphIndex
@@ -260,10 +278,12 @@ func (p *BaseComponent) handlerComponentMessage(inPortName string, message Compo
 	var sender MessageSender
 	if sender, err = p.senderFactory.NewSender(address.Type); err != nil {
 		logs.Error(err)
+		return
 	}
 
 	if err = sender.Send(address.Url, message); err != nil {
 		logs.Error(err)
+		return
 	}
 
 	return
