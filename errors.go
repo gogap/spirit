@@ -37,4 +37,6 @@ var (
 	ERR_HANDLER_NAME_IS_EMPTY = errors.TN(SPIRIT_ERR_NS, 24, "handler name is empty, component: {{.name}}")
 
 	ERR_UUID_GENERATE_FAILED = errors.TN(SPIRIT_ERR_NS, 26, "uuid generate failed, err: {{.err}}")
+
+	ERR_PAYLOAD_GO_BAD = errors.TN(SPIRIT_ERR_NS, 27, "payload go bad, err: {{.err}}")
 )

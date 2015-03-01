@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"github.com/gogap/errors"
 )
 
 type ComponentCommands map[string][]interface{}
@@ -57,6 +59,21 @@ func (p *Payload) IsCorrect() bool {
 
 func (p *Payload) Error() Error {
 	return p.err
+}
+
+func (p *Payload) GoBad(e error) {
+	if errCode, ok := e.(errors.ErrCode); ok {
+		p.err.Id = errCode.Id()
+		p.err.Namespace = errCode.Namespace()
+		p.err.Code = errCode.Code()
+		p.err.Message = errCode.Error()
+	} else {
+		err := ERR_PAYLOAD_GO_BAD.New(errors.Params{"err": e})
+		p.err.Id = err.Id()
+		p.err.Namespace = err.Namespace()
+		p.err.Code = err.Code()
+		p.err.Message = err.Error()
+	}
 }
 
 func (p *Payload) GetContent() interface{} {
