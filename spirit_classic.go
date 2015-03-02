@@ -119,6 +119,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 
 	tmpUrlUsed := map[string]string{} //one type:url could only use by one component-port
 
+	var component Component
 	for _, receiverAddr := range receiverAddrs {
 		receiverType := ""
 		receiverConfig := ""
@@ -174,7 +175,6 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 			return
 		}
 
-		var component Component
 		if comp, exist := p.components[componentName]; !exist {
 			fmt.Printf("component %s does not hosting.\n", componentName)
 			return
@@ -204,12 +204,11 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 			return
 		} else {
 			component.BindHandler(portName, handlerName).
-				BindReceiver(portName, receiver).
-				SetMessageSenderFactory(p.senderFactory).
-				Build()
-			p.components[component.Name()] = component
+				BindReceiver(portName, receiver)
 		}
 	}
+	component.SetMessageSenderFactory(p.senderFactory).Build()
+	p.components[component.Name()] = component
 }
 
 func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {

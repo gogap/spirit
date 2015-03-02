@@ -9,6 +9,10 @@ import (
 	"github.com/gogap/logs"
 )
 
+var (
+	MESSAGE_CHAN_SIZE = 1000
+)
+
 type BaseComponent struct {
 	name          string
 	receivers     map[string][]MessageReceiver
@@ -160,8 +164,8 @@ func (p *BaseComponent) Build() Component {
 	}
 
 	for inPortName, _ := range p.receivers {
-		p.errChans[inPortName] = make(chan error)
-		p.messageChans[inPortName] = make(chan ComponentMessage)
+		p.errChans[inPortName] = make(chan error, MESSAGE_CHAN_SIZE)
+		p.messageChans[inPortName] = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
 	}
 
 	p.isBuilt = true
@@ -208,14 +212,14 @@ func (p *BaseComponent) ReceiverLoop() {
 	}
 
 	for _, inPortName := range loopInPortNames {
-		go func() {
+		respChan, _ := p.messageChans[inPortName]
+		errChan, _ := p.errChans[inPortName]
+		go func(portName string, respChan chan ComponentMessage, errChan chan error) {
 			for {
-				respChan, _ := p.messageChans[inPortName]
-				errChan, _ := p.errChans[inPortName]
 				select {
 				case compMsg := <-respChan:
 					{
-						p.handleComponentMessage(inPortName, compMsg)
+						p.handleComponentMessage(portName, compMsg)
 					}
 				case respErr := <-errChan:
 					{
@@ -223,7 +227,7 @@ func (p *BaseComponent) ReceiverLoop() {
 					}
 				}
 			}
-		}()
+		}(inPortName, respChan, errChan)
 	}
 }
 
@@ -247,7 +251,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 
 	if content, err = handler(message.payload); err != nil {
 		if !errors.IsErrCode(err) {
-			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err})
+			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
 		}
 
 		logs.Error(err)

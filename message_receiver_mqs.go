@@ -93,8 +93,8 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 	p.isReceiving = true
 
 	recvLoop := func(queue ali_mqs.AliMQSQueue, message chan ComponentMessage, err chan error) {
-		responseChan := make(chan ali_mqs.MessageReceiveResponse)
-		errorChan := make(chan error)
+		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
+		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
 		defer close(responseChan)
 		defer close(errorChan)
