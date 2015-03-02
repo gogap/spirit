@@ -19,7 +19,8 @@ type ClassicSpirit struct {
 
 	components map[string]Component
 
-	isBuilt bool
+	isBuilt      bool
+	isRunCommand bool
 }
 
 func NewClassicSpirit(name, description, version string) Spirit {
@@ -107,6 +108,7 @@ func (p *ClassicSpirit) commands() []cli.Command {
 }
 
 func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
+	p.isRunCommand = true
 	componentName := c.String("name")
 	receiverAddrs := c.StringSlice("address")
 
@@ -174,7 +176,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 
 		var component Component
 		if comp, exist := p.components[componentName]; !exist {
-			fmt.Printf("component %s dose not hosting.", componentName)
+			fmt.Printf("component %s does not hosting.\n", componentName)
 			return
 		} else {
 			component = comp
@@ -193,7 +195,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 
 		if !p.receiverFactory.IsExist(receiverType) {
-			fmt.Printf("the receiver type of %s dose not registered.", receiverType)
+			fmt.Printf("the receiver type of %s does not registered.", receiverType)
 			return
 		}
 
@@ -234,7 +236,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 
 	var component Component
 	if comp, exist := p.components[componentName]; !exist {
-		fmt.Printf("component %s dose not hosting.", componentName)
+		fmt.Printf("component %s does not hosting.\n", componentName)
 		return
 	} else {
 		component = comp
@@ -250,10 +252,9 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 		}
 	}
 
-	var payload *Payload
+	payload := Payload{}
 
 	if payloadFile != "" {
-		payload = new(Payload)
 		if e := payload.UnSerialize(bPayload); e != nil {
 			fmt.Println("parse payload file failed, please make sure it is json format", e)
 			return
@@ -334,15 +335,18 @@ func (p *ClassicSpirit) GetComponent(name string) Component {
 }
 
 func (p *ClassicSpirit) Run() {
-	if !p.isBuilt {
-		panic("please build components first")
-	}
+	if p.isRunCommand {
+		if !p.isBuilt {
+			fmt.Println("spirit should build first")
+			return
+		}
 
-	for _, component := range p.components {
-		component.Run()
-	}
+		for _, component := range p.components {
+			component.Run()
+		}
 
-	for {
-		time.Sleep(time.Second)
+		for {
+			time.Sleep(time.Second)
+		}
 	}
 }

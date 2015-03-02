@@ -9,27 +9,25 @@ import (
 
 type Todo struct {
 	User       string    `json:"user"`
-	Name       string    `json:"name"`
+	Task       string    `json:"task"`
 	IsDone     bool      `json:"is_done"`
 	CreateTime time.Time `json:"create_time"`
 }
 
-func (p *Todo) NewTask(payload *spirit.Payload) (result interface{}, err error) {
-	user := ""
-	if user, err = payload.GetContextString("user"); err != nil {
-		return
-	}
+func (p *Todo) NewTask(payload spirit.Payload) (result interface{}, err error) {
+	reqTodo := Todo{}
+	payload.FillContentToObject(&reqTodo)
 
-	result = Todo{User: user, Name: "hello spirit task", IsDone: false, CreateTime: time.Now()}
+	result = Todo{User: reqTodo.User, Task: "hello spirit task", IsDone: false, CreateTime: time.Now()}
 	return
 }
 
-func (p *Todo) DeleteTask(payload *spirit.Payload) (result interface{}, err error) {
+func (p *Todo) DeleteTask(payload spirit.Payload) (result interface{}, err error) {
 	err = fmt.Errorf("task of %s not exist", "hello")
 	return
 }
 
-func (p *Todo) DoneTask(payload *spirit.Payload) (result interface{}, err error) {
-	result = Todo{Name: "hello spirit task", IsDone: true, CreateTime: time.Now()}
+func (p *Todo) DoneTask(payload spirit.Payload) (result interface{}, err error) {
+	result = Todo{User: "gogap", Task: "hello spirit task", IsDone: true, CreateTime: time.Now()}
 	return
 }

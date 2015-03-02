@@ -52,7 +52,7 @@ func (p *BaseComponent) SetMessageSenderFactory(factory MessageSenderFactory) Co
 	return p
 }
 
-func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (result interface{}, err error) {
+func (p *BaseComponent) CallHandler(handlerName string, payload Payload) (result interface{}, err error) {
 	if handlerName == "" {
 		err = ERR_HANDLER_NAME_IS_EMPTY.New(errors.Params{"name": p.name})
 		return
@@ -245,7 +245,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	var nextGraphIndex int32 = 0
 	var content interface{}
 
-	if content, err = handler(&message.payload); err != nil {
+	if content, err = handler(message.payload); err != nil {
 		if !errors.IsErrCode(err) {
 			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err})
 		}

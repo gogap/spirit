@@ -80,6 +80,22 @@ func (p *Payload) GetContent() interface{} {
 	return p.content
 }
 
+func (p *Payload) FillContentToObject(v interface{}) (err error) {
+	if p.content == nil {
+		err = errors.New("content is nil")
+		return
+	}
+
+	if data, e := json.Marshal(p.content); e != nil {
+		return e
+	} else {
+		if e := json.Unmarshal(data, v); e != nil {
+			return e
+		}
+		return
+	}
+}
+
 func (p *Payload) SetContent(content interface{}) {
 	p.content = content
 }
