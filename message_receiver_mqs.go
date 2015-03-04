@@ -84,7 +84,7 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 	return
 }
 
-func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan error) {
+func (p *MessageReceiverMQS) Receive(compMsgChan chan ComponentMessage, compErrChan chan error) {
 	p.recvLocker.Lock()
 	defer p.recvLocker.Unlock()
 	if p.isReceiving == true {
@@ -92,7 +92,7 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 	}
 	p.isReceiving = true
 
-	recvLoop := func(queue ali_mqs.AliMQSQueue, message chan ComponentMessage, err chan error) {
+	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error) {
 		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
 		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
@@ -106,32 +106,38 @@ func (p *MessageReceiverMQS) Receive(message chan ComponentMessage, err chan err
 			select {
 			case resp := <-responseChan:
 				{
-					if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
-						compMsg := ComponentMessage{}
-						if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
-							e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-							err <- e
-							continue
+					go func(receiverType string,
+						url string,
+						queue ali_mqs.AliMQSQueue,
+						compMsgChan chan ComponentMessage,
+						compErrChan chan error,
+						resp ali_mqs.MessageReceiveResponse) {
+
+						if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
+							compMsg := ComponentMessage{}
+							if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
+								e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": receiverType, "url": url, "err": e})
+								compErrChan <- e
+							}
+							compMsgChan <- compMsg
 						}
-						message <- compMsg
-					}
 
-					if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
-						e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": p.Type(), "url": p.url, "err": e})
-						err <- e
-					}
-
-					continue
+						if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
+							e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": receiverType, "url": url, "err": e})
+							compErrChan <- e
+						}
+					}(receiverType, url, queue, compMsgChan, compErrChan, resp)
 				}
 			case respErr := <-errorChan:
 				{
-					if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(respErr) {
-						err <- respErr
-					}
-					continue
+					go func(err error) {
+						if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(err) {
+							compErrChan <- err
+						}
+					}(respErr)
 				}
 			}
 		}
 	}
-	recvLoop(p.queue, message, err)
+	recvLoop(p.Type(), p.url, p.queue, compMsgChan, compErrChan)
 }
