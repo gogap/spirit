@@ -14,7 +14,7 @@ type Todo struct {
 	CreateTime time.Time `json:"create_time"`
 }
 
-func (p *Todo) NewTask(payload spirit.Payload) (result interface{}, err error) {
+func (p *Todo) NewTask(payload *spirit.Payload) (result interface{}, err error) {
 	reqTodo := Todo{}
 	payload.FillContentToObject(&reqTodo)
 
@@ -22,12 +22,12 @@ func (p *Todo) NewTask(payload spirit.Payload) (result interface{}, err error) {
 	return
 }
 
-func (p *Todo) DeleteTask(payload spirit.Payload) (result interface{}, err error) {
+func (p *Todo) DeleteTask(payload *spirit.Payload) (result interface{}, err error) {
 	err = fmt.Errorf("task of %s not exist", "hello")
 	return
 }
 
-func (p *Todo) DoneTask(payload spirit.Payload) (result interface{}, err error) {
+func (p *Todo) DoneTask(payload *spirit.Payload) (result interface{}, err error) {
 	result = Todo{User: "gogap", Task: "hello spirit task", IsDone: true, CreateTime: time.Now()}
 	return
 }
