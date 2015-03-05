@@ -27,6 +27,29 @@ type Payload struct {
 	err     Error
 }
 
+func (p *Payload) CopyFrom(payload *Payload) {
+	p.context = payload.context
+	p.command = payload.command
+	p.content = payload.content
+	p.err = payload.err
+}
+
+func (p *Payload) Serialize() (data []byte, err error) {
+	jsonMap := map[string]interface{}{
+		"id":      p.id,
+		"context": p.context,
+		"command": p.command,
+		"content": p.content,
+		"error":   p.err,
+	}
+
+	if data, err = json.Marshal(&jsonMap); err != nil {
+		err = ERR_PAYLOAD_SERIALIZE_FAILED.New(errors.Params{"err": err})
+		return
+	}
+	return
+}
+
 func (p *Payload) UnSerialize(data []byte) (err error) {
 	var tmp struct {
 		Id      string            `json:"id,omitempty"`

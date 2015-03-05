@@ -38,5 +38,6 @@ var (
 
 	ERR_UUID_GENERATE_FAILED = errors.TN(SPIRIT_ERR_NS, 26, "uuid generate failed, err: {{.err}}")
 
-	ERR_PAYLOAD_GO_BAD = errors.TN(SPIRIT_ERR_NS, 27, "payload go bad, err: {{.err}}")
+	ERR_PAYLOAD_GO_BAD           = errors.TN(SPIRIT_ERR_NS, 27, "payload go bad, err: {{.err}}")
+	ERR_PAYLOAD_SERIALIZE_FAILED = errors.TN(SPIRIT_ERR_NS, 28, "payload serialize failed, err: {{.err}}")
 )
