@@ -260,7 +260,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 		}
 	}
 
-	if result, e := component.CallHandler(handlerName, payload); e != nil {
+	if result, e := component.CallHandler(handlerName, &payload); e != nil {
 		fmt.Println(e)
 	} else {
 		if toJson {
