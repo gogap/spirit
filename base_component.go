@@ -93,6 +93,32 @@ func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) C
 	return p
 }
 
+func (p *BaseComponent) ListHandlers() (handlers map[string]ComponentHandler, err error) {
+	handlers = make(map[string]ComponentHandler)
+	for name, handler := range p.handlers {
+		handlers[name] = handler
+	}
+	return
+}
+
+func (p *BaseComponent) GetHandlers(handlerNames ...string) (handlers map[string]ComponentHandler, err error) {
+	if handlerNames == nil {
+		return
+	}
+
+	ret := make(map[string]ComponentHandler)
+	for _, name := range handlerNames {
+		if h, exist := p.handlers[name]; !exist {
+			err = ERR_COMPONENT_HANDLER_NOT_EXIST.New(errors.Params{"name": p.name, "handlerName": name})
+			return
+		} else {
+			ret[name] = h
+		}
+	}
+	handlers = ret
+	return
+}
+
 func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))

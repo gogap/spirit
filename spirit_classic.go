@@ -62,6 +62,12 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					Name:   "list",
 					Usage:  "list the hosting components",
 					Action: p.cmdListComponent,
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "func, f",
+							Usage: "show the component functions",
+						},
+					},
 				},
 				{
 					Name:   "run",
@@ -212,8 +218,19 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 }
 
 func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {
+	showDetails := c.Bool("func")
+
 	for _, component := range p.components {
 		fmt.Println(component.Name())
+		if showDetails {
+			if handlers, e := component.ListHandlers(); e != nil {
+				fmt.Println(component.Name()+":", e.Error())
+			} else {
+				for name, _ := range handlers {
+					fmt.Println("\t", name)
+				}
+			}
+		}
 	}
 }
 
