@@ -279,16 +279,18 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 
 	message.currentGraphIndex = nextGraphIndex
 
-	var sender MessageSender
-	if sender, err = p.senderFactory.NewSender(address.Type); err != nil {
-		logs.Error(err)
-		return
-	}
+	go func(addrType, url string, msg ComponentMessage) {
+		var sender MessageSender
+		if sender, err = p.senderFactory.NewSender(addrType); err != nil {
+			logs.Error(err)
+			return
+		}
 
-	if err = sender.Send(address.Url, message); err != nil {
-		logs.Error(err)
-		return
-	}
+		if err = sender.Send(url, msg); err != nil {
+			logs.Error(err)
+			return
+		}
+	}(address.Type, address.Url, message)
 
 	return
 }

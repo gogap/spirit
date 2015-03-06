@@ -59,17 +59,9 @@ func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error
 			queueName = regMatched[0][4]
 		}
 
-		credential := ali_mqs.NewAliMQSCredential()
-
-		if credential == nil {
-			err = ERR_SENDER_CREDENTIAL_IS_NIL.New(errors.Params{"type": p.Type(), "url": url})
-			return
-		}
-
 		cli := ali_mqs.NewAliMQSClient(hostId,
 			accessKeyId,
-			accessKeySecret,
-			credential)
+			accessKeySecret)
 
 		if cli == nil {
 			err = ERR_SENDER_MQS_CLIENT_IS_NIL.New(errors.Params{"type": p.Type(), "url": url})

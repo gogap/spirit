@@ -47,11 +47,6 @@ func (p *MessageReceiverMQS) Address() MessageAddress {
 }
 
 func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err error) {
-	credential := ali_mqs.NewAliMQSCredential()
-	if credential == nil {
-		err = ERR_RECEIVER_CREDENTIAL_IS_NIL.New(errors.Params{"type": p.Type(), "url": p.url})
-		return
-	}
 
 	hostId := ""
 	accessKeyId := ""
@@ -71,8 +66,7 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 
 	client := ali_mqs.NewAliMQSClient(hostId,
 		accessKeyId,
-		accessKeySecret,
-		credential)
+		accessKeySecret)
 
 	if client == nil {
 		err = ERR_RECEIVER_MQS_CLIENT_IS_NIL.New(errors.Params{"type": p.Type(), "url": p.url})
