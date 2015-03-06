@@ -2,6 +2,7 @@ package spirit
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -260,8 +261,9 @@ func (p *BaseComponent) ReceiverLoop() {
 func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload *Payload) (content interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			errStr := fmt.Sprintln(r)
-			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"err": errStr})
+			buf := make([]byte, 1<<16)
+			runtime.Stack(buf, false)
+			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"err": buf})
 		}
 	}()
 
