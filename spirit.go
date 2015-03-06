@@ -9,6 +9,8 @@ type Spirit interface {
 
 	GetComponent(name string) Component
 
+	RegisterHeartBeater(beater ...HeartBeater) Spirit
+
 	Hosting(components ...Component) Spirit
 	Build() Spirit
 	Run()

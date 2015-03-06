@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gogap/cli"
@@ -17,7 +18,11 @@ type ClassicSpirit struct {
 	receiverFactory MessageReceiverFactory
 	senderFactory   MessageSenderFactory
 
-	components map[string]Component
+	components       map[string]Component
+	runningComponent Component
+
+	heartBeaters       map[string]HeartBeater
+	heartBeatSleepTime time.Duration
 
 	isBuilt      bool
 	isRunCommand bool
@@ -37,6 +42,7 @@ func NewClassicSpirit(name, description, version string) Spirit {
 
 	newSpirit.cliApp = app
 	newSpirit.components = make(map[string]Component, 0)
+	newSpirit.heartBeaters = make(map[string]HeartBeater, 0)
 
 	receiverFactory := NewDefaultMessageReceiverFactory()
 	receiverFactory.RegisterMessageReceivers(new(MessageReceiverMQS))
@@ -82,6 +88,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Name:  "address, a",
 							Value: new(cli.StringSlice),
 							Usage: "the address of component receiver, format: receiverType|url|configFile",
+						}, cli.IntFlag{
+							Name:  "heartbeat, b",
+							Value: 5000,
+							Usage: "the heartbeat sleep time, default = 5000 (Millisecond)",
 						},
 					},
 				},
@@ -117,9 +127,12 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.isRunCommand = true
 	componentName := c.String("name")
 	receiverAddrs := c.StringSlice("address")
+	heartBeatSleepTime := c.Int("heartbeat")
+
+	p.heartBeatSleepTime = time.Millisecond * time.Duration(heartBeatSleepTime)
 
 	if receiverAddrs == nil {
-		fmt.Print("receiver address list is nil")
+		fmt.Println("[spirit] receiver address list is nil")
 		return
 	}
 
@@ -134,12 +147,12 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		handlerName := ""
 
 		if componentName == "" {
-			fmt.Println("component name is empty.")
+			fmt.Println("[spirit] component name is empty.")
 			return
 		}
 
 		if receiverAddr == "" {
-			fmt.Println("address is empty.")
+			fmt.Println("[spirit] address is empty.")
 			return
 		}
 
@@ -157,32 +170,32 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 			receiverUrl = addr[3]
 			receiverConfig = addr[4]
 		} else {
-			fmt.Println("address format error. example: port.in|delete|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
+			fmt.Println("[spirit] address format error. example: port.in|delete|mqs|http://xxxx.com/queue?param=1|/etc/a.conf")
 			return
 		}
 
 		if portName == "" {
-			fmt.Println("receiver port name is empty.")
+			fmt.Println("[spirit] receiver port name is empty.")
 			return
 		}
 
 		if handlerName == "" {
-			fmt.Println("handler name is empty.")
+			fmt.Println("[spirit] handler name is empty.")
 			return
 		}
 
 		if receiverType == "" {
-			fmt.Println("receiver type is empty.")
+			fmt.Println("[spirit] receiver type is empty.")
 			return
 		}
 
 		if receiverUrl == "" {
-			fmt.Println("receiver url is empty.")
+			fmt.Println("[spirit] receiver url is empty.")
 			return
 		}
 
 		if comp, exist := p.components[componentName]; !exist {
-			fmt.Printf("component %s does not hosting.\n", componentName)
+			fmt.Printf("[spirit] component %s does not hosting.\n", componentName)
 			return
 		} else {
 			component = comp
@@ -193,7 +206,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 
 		if v, exist := tmpUrlUsed[usedItemKey]; exist {
 			if usedItemValue != v {
-				fmt.Printf("one address url only could be used by one component port, the used component is: %s\nurl:%s\n", usedItemValue, receiverUrl)
+				fmt.Printf("[spirit] one address url only could be used by one component port, the used component is: %s\nurl:%s\n", usedItemValue, receiverUrl)
 				return
 			}
 		} else {
@@ -201,7 +214,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 
 		if !p.receiverFactory.IsExist(receiverType) {
-			fmt.Printf("the receiver type of %s does not registered.", receiverType)
+			fmt.Printf("[spirit] the receiver type of %s does not registered.", receiverType)
 			return
 		}
 
@@ -214,7 +227,8 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 	}
 	component.SetMessageSenderFactory(p.senderFactory).Build()
-	p.components[component.Name()] = component
+
+	p.runningComponent = component
 }
 
 func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {
@@ -224,7 +238,7 @@ func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {
 		fmt.Println(component.Name())
 		if showDetails {
 			if handlers, e := component.ListHandlers(); e != nil {
-				fmt.Println(component.Name()+":", e.Error())
+				fmt.Println("[spirit] "+component.Name()+":", e.Error())
 			} else {
 				for name, _ := range handlers {
 					fmt.Println("\t", name)
@@ -241,18 +255,18 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 	toJson := c.Bool("json")
 
 	if componentName == "" {
-		fmt.Println("component name is empty.")
+		fmt.Println("[spirit] component name is empty.")
 		return
 	}
 
 	if handlerName == "" {
-		fmt.Println("handler name is empty.")
+		fmt.Println("[spirit] handler name is empty.")
 		return
 	}
 
 	var component Component
 	if comp, exist := p.components[componentName]; !exist {
-		fmt.Printf("component %s does not hosting.\n", componentName)
+		fmt.Printf("[spirit] component %s does not hosting.\n", componentName)
 		return
 	} else {
 		component = comp
@@ -261,7 +275,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 	var bPayload []byte
 	if payloadFile != "" {
 		if data, e := ioutil.ReadFile(payloadFile); e != nil {
-			fmt.Println("reade payload file error.", e)
+			fmt.Println("[spirit] reade payload file error.", e)
 			return
 		} else {
 			bPayload = data
@@ -272,7 +286,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 
 	if payloadFile != "" {
 		if e := payload.UnSerialize(bPayload); e != nil {
-			fmt.Println("parse payload file failed, please make sure it is json format", e)
+			fmt.Println("[spirit] parse payload file failed, please make sure it is json format", e)
 			return
 		}
 	}
@@ -283,7 +297,7 @@ func (p *ClassicSpirit) cmdCallHandler(c *cli.Context) {
 		if toJson {
 			if result != nil {
 				if b, e := json.MarshalIndent(result, "", " "); e != nil {
-					fmt.Println("format result to json failed.", e)
+					fmt.Println("[spirit] format result to json failed.", e)
 				} else {
 					fmt.Println(string(b))
 				}
@@ -332,6 +346,20 @@ func (p *ClassicSpirit) Hosting(components ...Component) Spirit {
 	return p
 }
 
+func (p *ClassicSpirit) RegisterHeartBeater(beaters ...HeartBeater) Spirit {
+	if beaters == nil || len(beaters) == 0 {
+		return p
+	}
+
+	for _, beater := range beaters {
+		if _, exist := p.heartBeaters[beater.Name()]; exist {
+			panic(fmt.Sprintf("heart beater %s already exist", beater.Name()))
+		}
+		p.heartBeaters[beater.Name()] = beater
+	}
+	return p
+}
+
 func (p *ClassicSpirit) Build() Spirit {
 	p.cliApp.Run(os.Args)
 	p.isBuilt = true
@@ -350,15 +378,45 @@ func (p *ClassicSpirit) GetComponent(name string) Component {
 	}
 }
 
+func (p *ClassicSpirit) getHeartBeatMessage() (message HeartBeatMessage) {
+	hostName := ""
+	if name, e := os.Hostname(); e != nil {
+		panic(e)
+	} else {
+		hostName = name
+	}
+
+	message.Component = p.runningComponent.Name()
+	message.HostName = hostName
+	message.StartTime = time.Now()
+	message.PID = syscall.Getpid()
+
+	return
+}
+
 func (p *ClassicSpirit) Run() {
 	if p.isRunCommand {
 		if !p.isBuilt {
-			fmt.Println("spirit should build first")
+			fmt.Println("[spirit] spirit should build first")
 			return
 		}
 
-		for _, component := range p.components {
-			component.Run()
+		p.runningComponent.Run()
+
+		fmt.Printf("[spirit] component %s running\n", p.runningComponent.Name())
+
+		heartBeatMessage := p.getHeartBeatMessage()
+
+		for _, heartBeater := range p.heartBeaters {
+			fmt.Printf("[spirit] heart beater %s running\n", heartBeater.Name())
+			go func(beater HeartBeater, msg HeartBeatMessage, sleepTime time.Duration) {
+				for {
+					msg.CurrentTime = time.Now()
+					msg.HeartBeatCount += 1
+					beater.HeartBeat(msg)
+					time.Sleep(sleepTime)
+				}
+			}(heartBeater, heartBeatMessage, p.heartBeatSleepTime)
 		}
 
 		for {

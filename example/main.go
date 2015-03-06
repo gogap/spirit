@@ -15,5 +15,7 @@ func main() {
 	todoComponent.RegisterHandler("delete_task", todo.DeleteTask)
 	todoComponent.RegisterHandler("done_task", todo.DoneTask)
 
+	todoSpirit.RegisterHeartBeater(new(ConsoleHeartBeater))
+
 	todoSpirit.Hosting(todoComponent).Build().Run()
 }
