@@ -257,18 +257,21 @@ func (p *BaseComponent) ReceiverLoop() {
 	}
 }
 
-func (p *BaseComponent) handleComponentMessage(inPortName string, message ComponentMessage) {
-	var handler ComponentHandler
-	var err error
-	var exist bool
-
+func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload *Payload) (content interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			errStr := fmt.Sprintln(r)
 			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"err": errStr})
-			logs.Error(err)
 		}
 	}()
+
+	return handler(payload)
+}
+
+func (p *BaseComponent) handleComponentMessage(inPortName string, message ComponentMessage) {
+	var handler ComponentHandler
+	var err error
+	var exist bool
 
 	if message.graph == nil {
 		logs.Error(ERR_MESSAGE_GRAPH_IS_NIL.New())
@@ -283,7 +286,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	var nextGraphIndex int32 = 0
 	var content interface{}
 
-	if content, err = handler(&message.payload); err != nil {
+	if content, err = p.callHandlerWithRecover(handler, &message.payload); err != nil {
 		if !errors.IsErrCode(err) {
 			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
 		}
