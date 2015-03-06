@@ -262,6 +262,14 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	var err error
 	var exist bool
 
+	defer func() {
+		if r := recover(); r != nil {
+			errStr := fmt.Sprintln(r)
+			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"err": errStr})
+			logs.Error(err)
+		}
+	}()
+
 	if message.graph == nil {
 		logs.Error(ERR_MESSAGE_GRAPH_IS_NIL.New())
 		return
