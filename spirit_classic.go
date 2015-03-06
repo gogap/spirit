@@ -408,6 +408,9 @@ func (p *ClassicSpirit) Run() {
 		heartBeatMessage := p.getHeartBeatMessage()
 
 		for _, heartBeater := range p.heartBeaters {
+			if e := heartBeater.Start(); e != nil {
+				panic(e)
+			}
 			fmt.Printf("[spirit] heart beater %s running\n", heartBeater.Name())
 			go func(beater HeartBeater, msg HeartBeatMessage, sleepTime time.Duration) {
 				for {

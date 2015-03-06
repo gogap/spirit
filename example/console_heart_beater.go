@@ -8,6 +8,10 @@ import (
 type ConsoleHeartBeater struct {
 }
 
+func (p *ConsoleHeartBeater) Start() error {
+	return nil
+}
+
 func (p *ConsoleHeartBeater) Name() string {
 	return "console heart beater"
 }
