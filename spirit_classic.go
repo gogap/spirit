@@ -21,8 +21,8 @@ type ClassicSpirit struct {
 	components       map[string]Component
 	runningComponent Component
 
-	heartBeaters       map[string]HeartBeater
-	heartBeatSleepTime time.Duration
+	heartbeaters       map[string]Heartbeater
+	heartbeatSleepTime time.Duration
 
 	isBuilt      bool
 	isRunCommand bool
@@ -42,7 +42,7 @@ func NewClassicSpirit(name, description, version string) Spirit {
 
 	newSpirit.cliApp = app
 	newSpirit.components = make(map[string]Component, 0)
-	newSpirit.heartBeaters = make(map[string]HeartBeater, 0)
+	newSpirit.heartbeaters = make(map[string]Heartbeater, 0)
 
 	receiverFactory := NewDefaultMessageReceiverFactory()
 	receiverFactory.RegisterMessageReceivers(new(MessageReceiverMQS))
@@ -127,9 +127,9 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.isRunCommand = true
 	componentName := c.String("name")
 	receiverAddrs := c.StringSlice("address")
-	heartBeatSleepTime := c.Int("heartbeat")
+	heartbeatSleepTime := c.Int("heartbeat")
 
-	p.heartBeatSleepTime = time.Millisecond * time.Duration(heartBeatSleepTime)
+	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
 	if receiverAddrs == nil {
 		fmt.Println("[spirit] receiver address list is nil")
@@ -346,16 +346,16 @@ func (p *ClassicSpirit) Hosting(components ...Component) Spirit {
 	return p
 }
 
-func (p *ClassicSpirit) RegisterHeartBeater(beaters ...HeartBeater) Spirit {
+func (p *ClassicSpirit) RegisterHeartbeater(beaters ...Heartbeater) Spirit {
 	if beaters == nil || len(beaters) == 0 {
 		return p
 	}
 
 	for _, beater := range beaters {
-		if _, exist := p.heartBeaters[beater.Name()]; exist {
+		if _, exist := p.heartbeaters[beater.Name()]; exist {
 			panic(fmt.Sprintf("heart beater %s already exist", beater.Name()))
 		}
-		p.heartBeaters[beater.Name()] = beater
+		p.heartbeaters[beater.Name()] = beater
 	}
 	return p
 }
@@ -378,7 +378,7 @@ func (p *ClassicSpirit) GetComponent(name string) Component {
 	}
 }
 
-func (p *ClassicSpirit) getHeartBeatMessage() (message HeartBeatMessage) {
+func (p *ClassicSpirit) getHeartbeatMessage() (message HeartbeatMessage) {
 	hostName := ""
 	if name, e := os.Hostname(); e != nil {
 		panic(e)
@@ -405,21 +405,21 @@ func (p *ClassicSpirit) Run() {
 
 		fmt.Printf("[spirit] component %s running\n", p.runningComponent.Name())
 
-		heartBeatMessage := p.getHeartBeatMessage()
+		heartbeatMessage := p.getHeartbeatMessage()
 
-		for _, heartBeater := range p.heartBeaters {
-			if e := heartBeater.Start(); e != nil {
+		for _, heartbeater := range p.heartbeaters {
+			if e := heartbeater.Start(); e != nil {
 				panic(e)
 			}
-			fmt.Printf("[spirit] heart beater %s running\n", heartBeater.Name())
-			go func(beater HeartBeater, msg HeartBeatMessage, sleepTime time.Duration) {
+			fmt.Printf("[spirit] heartbeater %s running\n", heartbeater.Name())
+			go func(beater Heartbeater, msg HeartbeatMessage, sleepTime time.Duration) {
 				for {
 					msg.CurrentTime = time.Now()
-					msg.HeartBeatCount += 1
-					beater.HeartBeat(msg)
+					msg.HeartbeatCount += 1
+					beater.Heartbeat(msg)
 					time.Sleep(sleepTime)
 				}
-			}(heartBeater, heartBeatMessage, p.heartBeatSleepTime)
+			}(heartbeater, heartbeatMessage, p.heartbeatSleepTime)
 		}
 
 		for {

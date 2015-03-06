@@ -5,16 +5,16 @@ import (
 	"github.com/gogap/spirit"
 )
 
-type ConsoleHeartBeater struct {
+type ConsoleHeartbeater struct {
 }
 
-func (p *ConsoleHeartBeater) Start() error {
+func (p *ConsoleHeartbeater) Start() error {
 	return nil
 }
 
-func (p *ConsoleHeartBeater) Name() string {
+func (p *ConsoleHeartbeater) Name() string {
 	return "console heart beater"
 }
-func (p *ConsoleHeartBeater) HeartBeat(heartBeatMessage spirit.HeartBeatMessage) {
-	fmt.Println("heart beat message", heartBeatMessage)
+func (p *ConsoleHeartbeater) Heartbeat(heartbeatMessage spirit.HeartbeatMessage) {
+	fmt.Println("heart beat message", heartbeatMessage)
 }

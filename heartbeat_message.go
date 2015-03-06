@@ -4,11 +4,11 @@ import (
 	"time"
 )
 
-type HeartBeatMessage struct {
+type HeartbeatMessage struct {
 	PID            int
 	HostName       string
 	Component      string
 	StartTime      time.Time
 	CurrentTime    time.Time
-	HeartBeatCount int64
+	HeartbeatCount int64
 }
