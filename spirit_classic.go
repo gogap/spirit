@@ -90,8 +90,8 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Usage: "the address of component receiver, format: receiverType|url|configFile",
 						}, cli.IntFlag{
 							Name:  "heartbeat, b",
-							Value: 5000,
-							Usage: "the heartbeat sleep time, default = 5000 (Millisecond)",
+							Value: 0,
+							Usage: "the heartbeat sleep time, default = 0 (Millisecond), disabled",
 						},
 					},
 				},
@@ -421,21 +421,23 @@ func (p *ClassicSpirit) Run() {
 
 		fmt.Printf("[spirit] component %s running\n", p.runningComponent.Name())
 
-		heartbeatMessage := p.getHeartbeatMessage()
+		if p.heartbeatSleepTime > 0 {
+			heartbeatMessage := p.getHeartbeatMessage()
 
-		for _, heartbeater := range p.heartbeaters {
-			if e := heartbeater.Start(); e != nil {
-				panic(e)
-			}
-			fmt.Printf("[spirit] heartbeater %s running\n", heartbeater.Name())
-			go func(beater Heartbeater, msg HeartbeatMessage, sleepTime time.Duration) {
-				for {
-					msg.CurrentTime = time.Now()
-					msg.HeartbeatCount += 1
-					beater.Heartbeat(msg)
-					time.Sleep(sleepTime)
+			for _, heartbeater := range p.heartbeaters {
+				if e := heartbeater.Start(); e != nil {
+					panic(e)
 				}
-			}(heartbeater, heartbeatMessage, p.heartbeatSleepTime)
+				fmt.Printf("[spirit] heartbeater %s running\n", heartbeater.Name())
+				go func(beater Heartbeater, msg HeartbeatMessage, sleepTime time.Duration) {
+					for {
+						msg.CurrentTime = time.Now()
+						msg.HeartbeatCount += 1
+						beater.Heartbeat(msg)
+						time.Sleep(sleepTime)
+					}
+				}(heartbeater, heartbeatMessage, p.heartbeatSleepTime)
+			}
 		}
 
 		for {
