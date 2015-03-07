@@ -1,6 +1,7 @@
 {
 	"ali_jiankong":{
 		"uid":"",
+		"metric_name":"component_heartbeat",
 		"timeout":3000
 	}
 }

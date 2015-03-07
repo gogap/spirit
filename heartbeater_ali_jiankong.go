@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gogap/ali_jiankong"
@@ -26,8 +27,9 @@ func (p *AliJiankong) Start(configFile string) (err error) {
 
 	var tmp struct {
 		AliJIankongConfig struct {
-			UID     string `json:"uid"`
-			timeout int64  `json:"timeout"`
+			UID        string `json:"uid"`
+			MetricName string `json:"metric_name"`
+			Timeout    int64  `json:"timeout"`
 		} `json:"ali_jiankong"`
 	}
 
@@ -39,16 +41,22 @@ func (p *AliJiankong) Start(configFile string) (err error) {
 		return
 	}
 
+	tmp.AliJIankongConfig.UID = strings.TrimSpace(tmp.AliJIankongConfig.UID)
 	if tmp.AliJIankongConfig.UID == "" {
 		err = ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST.New()
 		return
 	}
 
-	if tmp.AliJIankongConfig.timeout == 0 {
-		tmp.AliJIankongConfig.timeout = 1000
+	tmp.AliJIankongConfig.MetricName = strings.TrimSpace(tmp.AliJIankongConfig.MetricName)
+	if tmp.AliJIankongConfig.MetricName == "" {
+		tmp.AliJIankongConfig.MetricName = "component_heartbeat"
 	}
 
-	p.client = ali_jiankong.NewAliJianKong(tmp.AliJIankongConfig.UID, time.Duration(tmp.AliJIankongConfig.timeout)*time.Microsecond)
+	if tmp.AliJIankongConfig.Timeout == 0 {
+		tmp.AliJIankongConfig.Timeout = 1000
+	}
+
+	p.client = ali_jiankong.NewAliJianKong(tmp.AliJIankongConfig.UID, time.Duration(tmp.AliJIankongConfig.Timeout)*time.Microsecond)
 
 	return
 }
@@ -63,6 +71,7 @@ func (p *AliJiankong) Heartbeat(heartbeatMessage HeartbeatMessage) {
 			"host_name":      heartbeatMessage.HostName,
 			"start_time":     heartbeatMessage.StartTime.Format("2006-01-02 15:04:05"),
 		},
+		DimensionsOrder: []string{"component_name", "process_id", "host_name", "start_time"},
 	}
 
 	if err := p.client.Report(item); err != nil {
