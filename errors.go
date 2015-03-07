@@ -42,4 +42,11 @@ var (
 	ERR_PAYLOAD_SERIALIZE_FAILED = errors.TN(SPIRIT_ERR_NS, 28, "payload serialize failed, err: {{.err}}")
 
 	ERR_COMPONENT_HANDLER_PANIC = errors.TN(SPIRIT_ERR_NS, 29, "component handler panic,component: {{.name}}, err: {{.err}}")
+
+	ERR_HEARTBEAT_CONFIG_FILE_IS_EMPTY = errors.TN(SPIRIT_ERR_NS, 30, "heartbeat config file is empty, heartbeat name: {{.name}}")
+
+	ERR_READE_FILE_ERROR     = errors.TN(SPIRIT_ERR_NS, 31, "read file error,file: {{.file}} err: {{.err}}")
+	ERR_UNMARSHAL_DATA_ERROR = errors.TN(SPIRIT_ERR_NS, 32, "unmarshal data error, err: {{.err}}")
+
+	ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 33, "heartbeat of ali jiankong's uid does not exist")
 )
