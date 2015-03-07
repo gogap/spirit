@@ -346,7 +346,7 @@ func (p *ClassicSpirit) Hosting(components ...Component) Spirit {
 	return p
 }
 
-func (p *ClassicSpirit) RegisterHeartbeater(beaters ...Heartbeater) Spirit {
+func (p *ClassicSpirit) RegisterHeartbeaters(beaters ...Heartbeater) Spirit {
 	if beaters == nil || len(beaters) == 0 {
 		return p
 	}
