@@ -41,5 +41,5 @@ var (
 	ERR_PAYLOAD_GO_BAD           = errors.TN(SPIRIT_ERR_NS, 27, "payload go bad, err: {{.err}}")
 	ERR_PAYLOAD_SERIALIZE_FAILED = errors.TN(SPIRIT_ERR_NS, 28, "payload serialize failed, err: {{.err}}")
 
-	ERR_COMPONENT_HANDLER_PANIC = errors.TN(SPIRIT_ERR_NS, 29, "component handler panic, err: {{.err}}")
+	ERR_COMPONENT_HANDLER_PANIC = errors.TN(SPIRIT_ERR_NS, 29, "component handler panic,component: {{.name}}, err: {{.err}}")
 )

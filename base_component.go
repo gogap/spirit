@@ -261,9 +261,9 @@ func (p *BaseComponent) ReceiverLoop() {
 func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload *Payload) (content interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			buf := make([]byte, 1<<16)
+			buf := make([]byte, 1024)
 			runtime.Stack(buf, false)
-			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"err": string(buf)})
+			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"name": p.name, "err": string(buf)})
 		}
 	}()
 
