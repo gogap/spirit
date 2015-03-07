@@ -360,6 +360,22 @@ func (p *ClassicSpirit) RegisterHeartbeaters(beaters ...Heartbeater) Spirit {
 	return p
 }
 
+func (p *ClassicSpirit) RemoveHeartBeaters(names ...string) Spirit {
+	if names == nil || len(names) == 0 {
+		return p
+	}
+
+	if p.heartbeaters == nil {
+		return p
+	}
+
+	for _, name := range names {
+		delete(p.heartbeaters, name)
+	}
+
+	return p
+}
+
 func (p *ClassicSpirit) Build() Spirit {
 	p.cliApp.Run(os.Args)
 	p.isBuilt = true
