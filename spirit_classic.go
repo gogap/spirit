@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -25,9 +26,12 @@ type ClassicSpirit struct {
 	heartbeatSleepTime time.Duration
 	heartbeatersToRun  map[string]bool
 	heartbeaterConfig  string
+	alias              string
 
 	isBuilt      bool
 	isRunCommand bool
+
+	lockfile *LockFile
 }
 
 func NewClassicSpirit(name, description, version string) Spirit {
@@ -105,6 +109,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Name:  "heartbeat-config, hbc",
 							Value: "",
 							Usage: "the config file of heartbeat",
+						}, cli.StringFlag{
+							Name:  "alias",
+							Value: "",
+							Usage: "if the alias did not empty, it will be singleton process by alias",
 						},
 					},
 				},
@@ -144,6 +152,8 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	heartbeatersToRun := c.StringSlice("heartbeat")
 	heartbeatSleepTime := c.Int("heartbeat-sleeptime")
 	heartbeaterConfig := c.String("heartbeat-config")
+
+	p.alias = c.String("alias")
 
 	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
@@ -444,6 +454,13 @@ func (p *ClassicSpirit) Run() {
 			return
 		}
 
+		//if alias did not empty ,it will enter singleton mode
+		if e := p.lock(); e != nil {
+			fmt.Printf("[spirit] component %s - %s already running, pid: %d\n", p.runningComponent.Name(), p.alias, p.getPID())
+			return
+		}
+
+		//start heartbeaters
 		if p.heartbeatSleepTime > 0 {
 			heartbeatMessage := p.getHeartbeatMessage()
 			for name, _ := range p.heartbeatersToRun {
@@ -470,8 +487,63 @@ func (p *ClassicSpirit) Run() {
 		p.runningComponent.Run()
 		fmt.Printf("[spirit] component %s running\n", p.runningComponent.Name())
 
-		for {
-			time.Sleep(time.Second)
+		p.waitSignal()
+	}
+}
+
+func (p *ClassicSpirit) waitSignal() {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	for {
+		select {
+		case killSignal := <-interrupt:
+			if killSignal == os.Interrupt {
+				fmt.Printf("[spirit] component %s was interruped by system signal\n", p.runningComponent.Name())
+				return
+			}
+			fmt.Printf("[spirit] component %s was killed\n", p.runningComponent.Name())
+			return
 		}
 	}
+}
+
+func (p *ClassicSpirit) getPID() (pid int) {
+	if p.lockfile == nil {
+		return
+	}
+
+	if lockfile, err := OpenLockFile(p.getLockeFileName(), 0640); err != nil {
+		return
+	} else if content, e := lockfile.ReadContent(); e != nil {
+		return
+	} else {
+		pid = content.PID
+	}
+
+	return
+}
+
+func (p *ClassicSpirit) getLockeFileName() string {
+	return fmt.Sprintf("./.lock_%s_%s_%s", p.cliApp.Name, p.runningComponent.Name(), p.alias)
+
+}
+
+func (p *ClassicSpirit) lock() (err error) {
+	if p.alias == "" ||
+		p.runningComponent == nil ||
+		p.runningComponent.Name() == "" {
+		return
+	}
+
+	if p.lockfile, err = CreateLockFile(p.getLockeFileName(), 0640); err != nil {
+		return
+	}
+
+	if err = p.lockfile.WriteContent(nil); err != nil {
+		fmt.Println("[spirit] lock componet failed, error:", err)
+		return
+	}
+
+	return
 }
