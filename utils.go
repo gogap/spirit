@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -12,8 +13,8 @@ const (
 )
 
 func GetComponentHome(spiritName string) string {
-	tmpDir := os.TempDir()
-	return fmt.Sprintf("%s%s/%s", tmpDir, SPIRIT, spiritName)
+	tmpDir := strings.Trim(os.TempDir(), "/")
+	return fmt.Sprintf("%s/%s/%s", tmpDir, SPIRIT, spiritName)
 }
 
 func MakeComponentHome(spiritName string) (dir string, err error) {
