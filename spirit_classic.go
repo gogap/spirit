@@ -6,11 +6,16 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gogap/cli"
+)
+
+const (
+	EXT_SPIRIT = ".spirit"
 )
 
 type ClassicSpirit struct {
@@ -138,6 +143,40 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Usage: "format the result into json",
 						},
 					},
+				},
+			},
+		},
+		{
+			Name:      "ps",
+			ShortName: "",
+			Usage:     "show running process which spirit have alias",
+			Action:    p.showProcess,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "all",
+					Usage: "show process which have alias, running and exited",
+				},
+			},
+		}, {
+			Name:      "start",
+			ShortName: "",
+			Usage:     "start the process create by command of component run and have alias",
+			Action:    p.startProcess,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "alias",
+					Usage: "component of spirit with alias have been ran",
+				},
+			},
+		}, {
+			Name:      "stop",
+			ShortName: "",
+			Usage:     "stop the process create by command of component run and have alias",
+			Action:    p.stopProcess,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "alias",
+					Usage: "running component of spirit with alias",
 				},
 			},
 		},
@@ -508,6 +547,141 @@ func (p *ClassicSpirit) waitSignal() {
 	}
 }
 
+func (p *ClassicSpirit) showProcess(c *cli.Context) {
+	showAll := c.Bool("all")
+
+	contents := []LockFileContent{}
+
+	home := GetComponentHome(p.cliApp.Name)
+
+	if !IsFileOrDir(home, true) {
+		return
+	}
+
+	if f, e := os.Open(home); e != nil {
+		return
+	} else if names, e := f.Readdirnames(-1); e == nil {
+		for _, name := range names {
+			if filepath.Ext(name) == EXT_SPIRIT {
+				if lockfile, e := OpenLockFile(home+"/"+name, 0640); e != nil {
+					return
+				} else if content, e := lockfile.ReadContent(); e != nil {
+					fmt.Println("[spirit] error lockfile: ", home+"/"+name)
+					return
+				} else {
+					if IsProcessAlive(content.PID) || showAll {
+						contents = append(contents, content)
+					}
+				}
+			}
+		}
+	}
+
+	if data, e := json.MarshalIndent(contents, " ", "  "); e != nil {
+		fmt.Printf("[spirit] format contents to json failed, error:", e)
+		return
+	} else {
+		fmt.Println(string(data))
+	}
+}
+
+func (p *ClassicSpirit) startProcess(c *cli.Context) {
+	alias := c.String("alias")
+	alias = strings.TrimSpace(alias)
+
+	if alias == "" {
+		return
+	}
+
+	home := GetComponentHome(p.cliApp.Name)
+
+	if !IsFileOrDir(home, true) {
+		return
+	}
+
+	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		return
+	} else if content, e := lockfile.ReadContent(); e != nil {
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfile, lockfilePath, e)
+		return
+	} else {
+		if IsProcessAlive(content.PID) {
+			fmt.Printf("[spirit] spirit of %s already running, pid: %d\n", alias, content.PID)
+			return
+		}
+
+		newProcessArgs := []string{}
+
+		if argsI, exist := content.Context["args"]; !exist {
+			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+			return
+		} else if args, ok := argsI.([]interface{}); ok {
+			for i := 0; i < len(args); i++ {
+				if strArg, ok := args[i].(string); ok {
+					newProcessArgs = append(newProcessArgs, strArg)
+				} else {
+					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+					return
+				}
+			}
+		}
+
+		absPath := ""
+		if path, e := filepath.Abs(os.Args[0]); e != nil {
+			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", alias, e)
+			return
+		} else {
+			absPath = path
+		}
+
+		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
+			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", alias, e)
+			return
+		} else {
+			fmt.Printf("[spirit] start spirit of %s success, pid: %d\n", alias, pid)
+			return
+		}
+	}
+}
+
+func (p *ClassicSpirit) stopProcess(c *cli.Context) {
+	alias := c.String("alias")
+	alias = strings.TrimSpace(alias)
+
+	if alias == "" {
+		return
+	}
+
+	home := GetComponentHome(p.cliApp.Name)
+
+	if !IsFileOrDir(home, true) {
+		return
+	}
+
+	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		return
+	} else if content, e := lockfile.ReadContent(); e != nil {
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfile, lockfilePath, e)
+		return
+	} else {
+		if !IsProcessAlive(content.PID) {
+			fmt.Printf("[spirit] spirit of %s already exited\n", alias)
+			return
+		}
+
+		if e := KillProcess(content.PID); e != nil {
+			fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", alias, content.PID, e)
+			return
+		}
+		fmt.Printf("[spirit] stop spirit of %s success, pid: %d\n", alias, content.PID)
+		return
+	}
+}
+
 func (p *ClassicSpirit) getPID() (pid int) {
 	if p.lockfile == nil {
 		return
@@ -525,8 +699,8 @@ func (p *ClassicSpirit) getPID() (pid int) {
 }
 
 func (p *ClassicSpirit) getLockeFileName() string {
-	return fmt.Sprintf("./.lock_%s_%s_%s", p.cliApp.Name, p.runningComponent.Name(), p.alias)
-
+	home := GetComponentHome(p.cliApp.Name)
+	return home + "/" + p.alias + ".spirit"
 }
 
 func (p *ClassicSpirit) lock() (err error) {
@@ -536,11 +710,17 @@ func (p *ClassicSpirit) lock() (err error) {
 		return
 	}
 
+	if _, err = MakeComponentHome(p.cliApp.Name); err != nil {
+		fmt.Printf("[spirit] make componet home dir failed, error:", err)
+		return
+	}
+
 	if p.lockfile, err = CreateLockFile(p.getLockeFileName(), 0640); err != nil {
 		return
 	}
 
-	if err = p.lockfile.WriteContent(nil); err != nil {
+	context := map[string]interface{}{"args": os.Args[1:]}
+	if err = p.lockfile.WriteContent(context); err != nil {
 		fmt.Println("[spirit] lock componet failed, error:", err)
 		return
 	}
