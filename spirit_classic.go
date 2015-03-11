@@ -486,7 +486,7 @@ func (p *ClassicSpirit) getHeartbeatMessage() (message HeartbeatMessage) {
 	return
 }
 
-func (p *ClassicSpirit) Run() {
+func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 	if p.isRunCommand {
 		if !p.isBuilt {
 			fmt.Println("[spirit] spirit should build first")
@@ -497,6 +497,15 @@ func (p *ClassicSpirit) Run() {
 		if e := p.lock(); e != nil {
 			fmt.Printf("[spirit] component %s - %s already running, pid: %d\n", p.runningComponent.Name(), p.alias, p.getPID())
 			return
+		}
+
+		//run inital funcs
+		if initalFuncs != nil {
+			for _, initFunc := range initalFuncs {
+				if e := initFunc(); e != nil {
+					panic(e)
+				}
+			}
 		}
 
 		//start heartbeaters

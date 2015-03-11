@@ -17,5 +17,10 @@ func main() {
 
 	todoSpirit.RegisterHeartbeaters(new(ConsoleHeartbeater))
 
-	todoSpirit.Hosting(todoComponent).Build().Run()
+	todoSpirit.Hosting(todoComponent).Build().Run(inital)
+}
+
+func inital() (err error) {
+	//todo something inital before run
+	return
 }

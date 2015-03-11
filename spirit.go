@@ -1,5 +1,7 @@
 package spirit
 
+type InitalFunc func() (err error)
+
 type Spirit interface {
 	SetMessageReceiverFactory(factory MessageReceiverFactory)
 	GetMessageReceiverFactory() MessageReceiverFactory
@@ -14,5 +16,5 @@ type Spirit interface {
 
 	Hosting(components ...Component) Spirit
 	Build() Spirit
-	Run()
+	Run(initalFuncs ...InitalFunc)
 }
