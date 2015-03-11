@@ -246,7 +246,7 @@ func (p *BaseComponent) ReceiverLoop() {
 				select {
 				case compMsg := <-respChan:
 					{
-						p.handleComponentMessage(portName, compMsg)
+						go p.handleComponentMessage(portName, compMsg)
 					}
 				case respErr := <-errChan:
 					{
