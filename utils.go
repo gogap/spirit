@@ -13,7 +13,7 @@ const (
 )
 
 func GetComponentHome(spiritName string) string {
-	tmpDir := strings.Trim(os.TempDir(), "/")
+	tmpDir := strings.TrimRight(os.TempDir(), "/")
 	return fmt.Sprintf("%s/%s/%s", tmpDir, SPIRIT, spiritName)
 }
 

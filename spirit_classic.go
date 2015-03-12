@@ -526,6 +526,10 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 		}
 
 		if p.isCreatAliasdSpirtContextOnly {
+			if p.alias == "" {
+				fmt.Printf("[spirit] please input alias first\n")
+				return
+			}
 			fmt.Printf("[spirit] the context of spirit component %s alias named %s was created\n", p.runningComponent.Name(), p.alias)
 			return
 		}
@@ -603,10 +607,10 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 	} else if names, e := f.Readdirnames(-1); e == nil {
 		for _, name := range names {
 			if filepath.Ext(name) == EXT_SPIRIT {
-				if lockfile, e := OpenLockFile(home+"/"+name, 0640); e != nil {
-					return
+				if lockfile, e := OpenLockFile(p.getLockeFileName(), 0640); e != nil {
+					fmt.Println("[spirit] open spirit context file failed, error:", e)
 				} else if content, e := lockfile.ReadContent(); e != nil {
-					fmt.Println("[spirit] error lockfile: ", home+"/"+name)
+					fmt.Println("[spirit] error context: ", p.getLockeFileName())
 					return
 				} else {
 					if IsProcessAlive(content.PID) || showAll {
@@ -627,10 +631,10 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 
 func (p *ClassicSpirit) startProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	alias := c.String("alias")
-	alias = strings.TrimSpace(alias)
+	p.alias = c.String("alias")
+	p.alias = strings.TrimSpace(p.alias)
 
-	if alias == "" {
+	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
 		return
 	}
@@ -641,30 +645,30 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 		return
 	}
 
-	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	lockfilePath := p.getLockeFileName()
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
-		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
 	} else if content, e := lockfile.ReadContent(); e != nil {
-		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", p.alias, lockfilePath, e)
 		return
 	} else {
 		if IsProcessAlive(content.PID) {
-			fmt.Printf("[spirit] spirit of %s already running, pid: %d\n", alias, content.PID)
+			fmt.Printf("[spirit] spirit of %s already running, pid: %d\n", p.alias, content.PID)
 			return
 		}
 
 		newProcessArgs := []string{}
 
 		if argsI, exist := content.Context["args"]; !exist {
-			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
 			return
 		} else if args, ok := argsI.([]interface{}); ok {
 			for i := 0; i < len(args); i++ {
 				if strArg, ok := args[i].(string); ok {
 					newProcessArgs = append(newProcessArgs, strArg)
 				} else {
-					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
 					return
 				}
 			}
@@ -672,17 +676,17 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 
 		absPath := ""
 		if path, e := filepath.Abs(os.Args[0]); e != nil {
-			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", alias, e)
+			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
 			absPath = path
 		}
 
 		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
-			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", alias, e)
+			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
-			fmt.Printf("[spirit] start spirit of %s success, pid: %d\n", alias, pid)
+			fmt.Printf("[spirit] start spirit of %s success, pid: %d\n", p.alias, pid)
 			return
 		}
 	}
@@ -690,10 +694,10 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 
 func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	alias := c.String("alias")
-	alias = strings.TrimSpace(alias)
+	p.alias = c.String("alias")
+	p.alias = strings.TrimSpace(p.alias)
 
-	if alias == "" {
+	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
 		return
 	}
@@ -704,34 +708,34 @@ func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 		return
 	}
 
-	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	lockfilePath := p.getLockeFileName()
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
-		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
 	} else if content, e := lockfile.ReadContent(); e != nil {
-		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", p.alias, lockfilePath, e)
 		return
 	} else {
 		if !IsProcessAlive(content.PID) {
-			fmt.Printf("[spirit] spirit of %s already exited\n", alias)
+			fmt.Printf("[spirit] spirit of %s already exited\n", p.alias)
 			return
 		}
 
 		if e := KillProcess(content.PID); e != nil {
-			fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", alias, content.PID, e)
+			fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", p.alias, content.PID, e)
 			return
 		}
-		fmt.Printf("[spirit] stop spirit of %s success, pid: %d\n", alias, content.PID)
+		fmt.Printf("[spirit] stop spirit of %s success, pid: %d\n", p.alias, content.PID)
 		return
 	}
 }
 
 func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	alias := c.String("alias")
-	alias = strings.TrimSpace(alias)
+	p.alias = c.String("alias")
+	p.alias = strings.TrimSpace(p.alias)
 
-	if alias == "" {
+	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
 		return
 	}
@@ -742,35 +746,31 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 		return
 	}
 
-	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	lockfilePath := p.getLockeFileName()
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
-		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
 	} else if content, e := lockfile.ReadContent(); e != nil {
-		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", p.alias, lockfilePath, e)
 		return
 	} else {
-		if !IsProcessAlive(content.PID) {
-			fmt.Printf("[spirit] spirit of %s already exited\n", alias)
-			return
-		}
-
-		if e := KillProcess(content.PID); e != nil {
-			fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", alias, content.PID, e)
-			return
+		if IsProcessAlive(content.PID) {
+			if e := KillProcess(content.PID); e != nil {
+				fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", p.alias, content.PID, e)
+				return
+			}
 		}
 
 		newProcessArgs := []string{}
-
 		if argsI, exist := content.Context["args"]; !exist {
-			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
 			return
 		} else if args, ok := argsI.([]interface{}); ok {
 			for i := 0; i < len(args); i++ {
 				if strArg, ok := args[i].(string); ok {
 					newProcessArgs = append(newProcessArgs, strArg)
 				} else {
-					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
 					return
 				}
 			}
@@ -778,21 +778,21 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 
 		absPath := ""
 		if path, e := filepath.Abs(os.Args[0]); e != nil {
-			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", alias, e)
+			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
 			absPath = path
 		}
 
 		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
-			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", alias, e)
+			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
-			fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", alias, pid)
+			fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", p.alias, pid)
 			return
 		}
 
-		fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", alias, content.PID)
+		fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", p.alias, content.PID)
 		return
 	}
 }
@@ -815,7 +815,7 @@ func (p *ClassicSpirit) getPID() (pid int) {
 
 func (p *ClassicSpirit) getLockeFileName() string {
 	home := GetComponentHome(p.cliApp.Name)
-	return home + "/" + p.alias + ".spirit"
+	return home + "/" + p.alias + EXT_SPIRIT
 }
 
 func (p *ClassicSpirit) lock() (err error) {
