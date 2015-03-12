@@ -33,8 +33,10 @@ type ClassicSpirit struct {
 	heartbeaterConfig  string
 	alias              string
 
-	isBuilt      bool
-	isRunCommand bool
+	isBuilt                       bool
+	isRunCommand                  bool
+	isBuildCheckOnly              bool
+	isCreatAliasdSpirtContextOnly bool
 
 	lockfile *LockFile
 }
@@ -118,6 +120,12 @@ func (p *ClassicSpirit) commands() []cli.Command {
 							Name:  "alias",
 							Value: "",
 							Usage: "if the alias did not empty, it will be singleton process by alias",
+						}, cli.BoolFlag{
+							Name:  "build-check, bc",
+							Usage: "build check only, it won't really run",
+						}, cli.BoolFlag{
+							Name:  "create-only, co",
+							Usage: "create aliasd component of spirit only",
 						},
 					},
 				},
@@ -153,7 +161,7 @@ func (p *ClassicSpirit) commands() []cli.Command {
 			Action:    p.showProcess,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "all",
+					Name:  "all, a",
 					Usage: "show process which have alias, running and exited",
 				},
 			},
@@ -164,7 +172,7 @@ func (p *ClassicSpirit) commands() []cli.Command {
 			Action:    p.startProcess,
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "alias",
+					Name:  "alias, a",
 					Usage: "component of spirit with alias have been ran",
 				},
 			},
@@ -175,8 +183,19 @@ func (p *ClassicSpirit) commands() []cli.Command {
 			Action:    p.stopProcess,
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "alias",
+					Name:  "alias, a",
 					Usage: "running component of spirit with alias",
+				},
+			},
+		}, {
+			Name:      "restart",
+			ShortName: "",
+			Usage:     "restart the process create by command of component run and have alias",
+			Action:    p.restartProcess,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "alias, a",
+					Usage: "restart the running component of spirit with alias",
 				},
 			},
 		},
@@ -193,6 +212,8 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	heartbeaterConfig := c.String("heartbeat-config")
 
 	p.alias = c.String("alias")
+	p.isBuildCheckOnly = c.Bool("build-check")
+	p.isCreatAliasdSpirtContextOnly = c.Bool("create-only")
 
 	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
@@ -493,9 +514,19 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 			return
 		}
 
+		if p.isBuildCheckOnly {
+			fmt.Println("[spirit] it seems all correct")
+			return
+		}
+
 		//if alias did not empty ,it will enter singleton mode
-		if e := p.lock(); e != nil {
+		if e := p.lock(); e != nil && p.alias != "" {
 			fmt.Printf("[spirit] component %s - %s already running, pid: %d\n", p.runningComponent.Name(), p.alias, p.getPID())
+			return
+		}
+
+		if p.isCreatAliasdSpirtContextOnly {
+			fmt.Printf("[spirit] the context of spirit component %s alias named %s was created\n", p.runningComponent.Name(), p.alias)
 			return
 		}
 
@@ -595,10 +626,12 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 }
 
 func (p *ClassicSpirit) startProcess(c *cli.Context) {
+	//TODO improve process logic, it was dirty implament currently
 	alias := c.String("alias")
 	alias = strings.TrimSpace(alias)
 
 	if alias == "" {
+		fmt.Println("[spirit] please input alias name first")
 		return
 	}
 
@@ -613,7 +646,7 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
 		return
 	} else if content, e := lockfile.ReadContent(); e != nil {
-		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfile, lockfilePath, e)
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
 		return
 	} else {
 		if IsProcessAlive(content.PID) {
@@ -656,10 +689,12 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 }
 
 func (p *ClassicSpirit) stopProcess(c *cli.Context) {
+	//TODO improve process logic, it was dirty implament currently
 	alias := c.String("alias")
 	alias = strings.TrimSpace(alias)
 
 	if alias == "" {
+		fmt.Println("[spirit] please input alias name first")
 		return
 	}
 
@@ -674,7 +709,7 @@ func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
 		return
 	} else if content, e := lockfile.ReadContent(); e != nil {
-		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfile, lockfilePath, e)
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
 		return
 	} else {
 		if !IsProcessAlive(content.PID) {
@@ -687,6 +722,77 @@ func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 			return
 		}
 		fmt.Printf("[spirit] stop spirit of %s success, pid: %d\n", alias, content.PID)
+		return
+	}
+}
+
+func (p *ClassicSpirit) restartProcess(c *cli.Context) {
+	//TODO improve process logic, it was dirty implament currently
+	alias := c.String("alias")
+	alias = strings.TrimSpace(alias)
+
+	if alias == "" {
+		fmt.Println("[spirit] please input alias name first")
+		return
+	}
+
+	home := GetComponentHome(p.cliApp.Name)
+
+	if !IsFileOrDir(home, true) {
+		return
+	}
+
+	lockfilePath := home + "/" + alias + EXT_SPIRIT
+	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
+		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", alias, e)
+		return
+	} else if content, e := lockfile.ReadContent(); e != nil {
+		fmt.Printf("[spirit] read spirit of %s context failed, path: %s, error: %s\n", alias, lockfilePath, e)
+		return
+	} else {
+		if !IsProcessAlive(content.PID) {
+			fmt.Printf("[spirit] spirit of %s already exited\n", alias)
+			return
+		}
+
+		if e := KillProcess(content.PID); e != nil {
+			fmt.Printf("[spirit] stop spirit of %s failed, pid: %d, error: %s\n", alias, content.PID, e)
+			return
+		}
+
+		newProcessArgs := []string{}
+
+		if argsI, exist := content.Context["args"]; !exist {
+			fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+			return
+		} else if args, ok := argsI.([]interface{}); ok {
+			for i := 0; i < len(args); i++ {
+				if strArg, ok := args[i].(string); ok {
+					newProcessArgs = append(newProcessArgs, strArg)
+				} else {
+					fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", alias)
+					return
+				}
+			}
+		}
+
+		absPath := ""
+		if path, e := filepath.Abs(os.Args[0]); e != nil {
+			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", alias, e)
+			return
+		} else {
+			absPath = path
+		}
+
+		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
+			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", alias, e)
+			return
+		} else {
+			fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", alias, pid)
+			return
+		}
+
+		fmt.Printf("[spirit] restart spirit of %s success, pid: %d\n", alias, content.PID)
 		return
 	}
 }
@@ -728,7 +834,18 @@ func (p *ClassicSpirit) lock() (err error) {
 		return
 	}
 
-	context := map[string]interface{}{"args": os.Args[1:]}
+	args := []string{}
+
+	for i := 1; i < len(os.Args); i++ {
+		if os.Args[i] != "--co" &&
+			os.Args[i] != "--creat-only" &&
+			os.Args[i] != "-creat-only" &&
+			os.Args[i] != "-co" {
+			args = append(args, os.Args[i])
+		}
+	}
+
+	context := map[string]interface{}{"args": args}
 	if err = p.lockfile.WriteContent(context); err != nil {
 		fmt.Println("[spirit] lock componet failed, error:", err)
 		return
