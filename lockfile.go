@@ -94,7 +94,12 @@ func (p *LockFile) WriteContent(context map[string]interface{}) (err error) {
 		return
 	}
 
-	if err = p.Truncate(int64(len(contentData) * 2)); err != nil {
+	var fi os.FileInfo
+	if fi, err = p.Stat(); err != nil {
+		return
+	}
+
+	if err = p.Truncate(fi.Size()); err != nil {
 		return
 	}
 
