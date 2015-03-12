@@ -24,8 +24,9 @@ type ClassicSpirit struct {
 	receiverFactory MessageReceiverFactory
 	senderFactory   MessageSenderFactory
 
-	components       map[string]Component
-	runningComponent Component
+	components           map[string]Component
+	runningComponent     Component
+	runningComponentConf string
 
 	heartbeaters       map[string]Heartbeater
 	heartbeatSleepTime time.Duration
@@ -126,6 +127,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 						}, cli.BoolFlag{
 							Name:  "create-only, co",
 							Usage: "create aliasd component of spirit only",
+						}, cli.StringFlag{
+							Name:  "config",
+							Value: "",
+							Usage: "the config file path for inital func to use",
 						},
 					},
 				},
@@ -214,6 +219,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.alias = c.String("alias")
 	p.isBuildCheckOnly = c.Bool("build-check")
 	p.isCreatAliasdSpirtContextOnly = c.Bool("create-only")
+	p.runningComponentConf = c.String("config")
 
 	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
@@ -537,7 +543,7 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 		//run inital funcs
 		if initalFuncs != nil {
 			for _, initFunc := range initalFuncs {
-				if e := initFunc(); e != nil {
+				if e := initFunc(p.runningComponentConf); e != nil {
 					panic(e)
 				}
 			}
@@ -610,7 +616,7 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 				if lockfile, e := OpenLockFile(home+"/"+name, 0640); e != nil {
 					fmt.Println("[spirit] open spirit context file failed, error:", e)
 				} else if content, e := lockfile.ReadContent(); e != nil {
-					fmt.Println("[spirit] error context: ", p.getLockeFileName())
+					fmt.Println("[spirit] error context: ", home+"/"+name)
 				} else {
 					if IsProcessAlive(content.PID) || showAll {
 						contents = append(contents, content)

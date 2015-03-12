@@ -1,6 +1,6 @@
 package spirit
 
-type InitalFunc func() (err error)
+type InitalFunc func(configFile string) (err error)
 
 type Spirit interface {
 	SetMessageReceiverFactory(factory MessageReceiverFactory)
