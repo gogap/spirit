@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogap/cli"
+	"github.com/codegangsta/cli"
 )
 
 const (
