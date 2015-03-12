@@ -2,6 +2,7 @@
 	"ali_jiankong":{
 		"uid":"",
 		"metric_name":"component_heartbeat",
+		"report_period":60000,
 		"timeout":3000
 	}
 }

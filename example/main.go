@@ -20,7 +20,7 @@ func main() {
 	todoSpirit.Hosting(todoComponent).Build().Run(inital)
 }
 
-func inital() (err error) {
+func inital(configFile string) (err error) {
 	//todo something inital before run
 	return
 }
