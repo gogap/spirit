@@ -606,12 +606,11 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 		return
 	} else if names, e := f.Readdirnames(-1); e == nil {
 		for _, name := range names {
-			if filepath.Ext(name) == EXT_SPIRIT {
+			if filepath.Ext(name) == EXT_SPIRIT && name != EXT_SPIRIT {
 				if lockfile, e := OpenLockFile(p.getLockeFileName(), 0640); e != nil {
 					fmt.Println("[spirit] open spirit context file failed, error:", e)
 				} else if content, e := lockfile.ReadContent(); e != nil {
 					fmt.Println("[spirit] error context: ", p.getLockeFileName())
-					return
 				} else {
 					if IsProcessAlive(content.PID) || showAll {
 						contents = append(contents, content)
