@@ -258,6 +258,9 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				cli.StringFlag{
 					Name:  "alias, a",
 					Usage: "Component of spirit with alias own been ran",
+				}, cli.BoolFlag{
+					Name:  "std",
+					Usage: "use the current std to the process",
 				},
 			},
 		}, {
@@ -280,6 +283,9 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				cli.StringFlag{
 					Name:  "alias, a",
 					Usage: "Restart the running component of spirit with alias",
+				}, cli.BoolFlag{
+					Name:  "std",
+					Usage: "use the current std to the process",
 				},
 			},
 		},
@@ -736,6 +742,8 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 		return
 	}
 
+	useSTD := c.Bool("std")
+
 	home := GetComponentHome(p.cliApp.Name)
 
 	if !IsFileOrDir(home, true) {
@@ -779,7 +787,7 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 			absPath = path
 		}
 
-		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
+		if pid, e := StartProcess(absPath, newProcessArgs, useSTD); e != nil {
 			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
@@ -837,6 +845,8 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 		return
 	}
 
+	useSTD := c.Bool("std")
+
 	home := GetComponentHome(p.cliApp.Name)
 
 	if !IsFileOrDir(home, true) {
@@ -881,7 +891,7 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 			absPath = path
 		}
 
-		if pid, e := StartProcess(absPath, newProcessArgs); e != nil {
+		if pid, e := StartProcess(absPath, newProcessArgs, useSTD); e != nil {
 			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {

@@ -42,8 +42,14 @@ func IsFileOrDir(filename string, decideDir bool) bool {
 	return !isDir
 }
 
-func StartProcess(execFileName string, args []string) (pid int, err error) {
+func StartProcess(execFileName string, args []string, std bool) (pid int, err error) {
 	cmd := exec.Command(execFileName, args...)
+
+	if std {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	if err = cmd.Start(); err == nil {
 		pid = cmd.Process.Pid
