@@ -33,6 +33,7 @@ type ClassicSpirit struct {
 	heartbeatersToRun  map[string]bool
 	heartbeaterConfig  string
 	alias              string
+	envs               []string
 
 	isBuilt                       bool
 	isRunCommand                  bool
@@ -197,6 +198,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					Name:  "config",
 					Value: "",
 					Usage: "the config file path for inital func to use",
+				}, cli.StringSliceFlag{
+					Name:  "env, e",
+					Value: new(cli.StringSlice),
+					Usage: "set env to the process",
 				},
 			},
 		},
@@ -294,6 +299,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.isBuildCheckOnly = c.Bool("build-check")
 	p.isCreatAliasdSpirtContextOnly = c.Bool("create-only")
 	p.runningComponentConf = c.String("config")
+	p.envs = c.StringSlice("env")
 
 	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
@@ -603,6 +609,18 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 		if e := p.lock(); e != nil && p.alias != "" {
 			fmt.Printf("[spirit] component %s - %s already running, pid: %d\n", p.runningComponent.Name(), p.alias, p.getPID())
 			return
+		}
+
+		if p.envs != nil {
+			for _, env := range p.envs {
+				kv := strings.Split(env, "=")
+				if len(kv) != 2 {
+					fmt.Printf("[spirit] component %s - %s env %s error\n", p.runningComponent.Name(), p.alias, env)
+					return
+				} else {
+					os.Setenv(kv[0], kv[1])
+				}
+			}
 		}
 
 		if p.isCreatAliasdSpirtContextOnly {

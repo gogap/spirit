@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gogap/spirit"
+
+	"os"
 )
 
 func main() {
@@ -22,5 +25,9 @@ func main() {
 
 func inital(configFile string) (err error) {
 	//todo something inital before run
+	env := os.Getenv("DEBUG_LEVEL")
+
+	fmt.Println("DEBUG_LEVEL:", env)
+
 	return
 }
