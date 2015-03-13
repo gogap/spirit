@@ -261,6 +261,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				}, cli.BoolFlag{
 					Name:  "std",
 					Usage: "use the current std to the process",
+				}, cli.StringSliceFlag{
+					Name:  "env, e",
+					Value: new(cli.StringSlice),
+					Usage: "set env to the process",
 				},
 			},
 		}, {
@@ -286,6 +290,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				}, cli.BoolFlag{
 					Name:  "std",
 					Usage: "use the current std to the process",
+				}, cli.StringSliceFlag{
+					Name:  "env, e",
+					Value: new(cli.StringSlice),
+					Usage: "set env to the process",
 				},
 			},
 		},
@@ -743,6 +751,14 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 	}
 
 	useSTD := c.Bool("std")
+	extEnvs := c.StringSlice("env")
+
+	for _, env := range extEnvs {
+		if v := strings.Split(env, "="); len(v) != 2 {
+			fmt.Println("[spirit] env params format error, e.g.: ENV_KEY='value'")
+			return
+		}
+	}
 
 	home := GetComponentHome(p.cliApp.Name)
 
@@ -779,6 +795,23 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 			}
 		}
 
+		originEnvs := []string{}
+		if envI, exist := content.Context["envs"]; exist && envI != nil {
+			if envs, ok := envI.([]interface{}); ok {
+				for i := 0; i < len(envs); i++ {
+					if env, ok := envs[i].(string); ok {
+						originEnvs = append(originEnvs, env)
+					} else {
+						fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
+						return
+					}
+				}
+			} else {
+				fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
+				return
+			}
+		}
+
 		absPath := ""
 		if path, e := filepath.Abs(os.Args[0]); e != nil {
 			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", p.alias, e)
@@ -787,7 +820,7 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 			absPath = path
 		}
 
-		if pid, e := StartProcess(absPath, newProcessArgs, useSTD); e != nil {
+		if pid, e := StartProcess(absPath, newProcessArgs, originEnvs, useSTD, extEnvs...); e != nil {
 			fmt.Printf("[spirit] start spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
@@ -846,6 +879,14 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 	}
 
 	useSTD := c.Bool("std")
+	extEnvs := c.StringSlice("env")
+
+	for _, env := range extEnvs {
+		if v := strings.Split(env, "="); len(v) != 2 {
+			fmt.Println("[spirit] env params format error, e.g.: ENV_KEY='value'")
+			return
+		}
+	}
 
 	home := GetComponentHome(p.cliApp.Name)
 
@@ -883,6 +924,23 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 			}
 		}
 
+		originEnvs := []string{}
+		if envI, exist := content.Context["envs"]; exist && envI != nil {
+			if envs, ok := envI.([]interface{}); ok {
+				for i := 0; i < len(envs); i++ {
+					if env, ok := envs[i].(string); ok {
+						originEnvs = append(originEnvs, env)
+					} else {
+						fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
+						return
+					}
+				}
+			} else {
+				fmt.Printf("[spirit] spirit of %s's context damage please use command of component run to recreate instance\n", p.alias)
+				return
+			}
+		}
+
 		absPath := ""
 		if path, e := filepath.Abs(os.Args[0]); e != nil {
 			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", p.alias, e)
@@ -891,7 +949,7 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 			absPath = path
 		}
 
-		if pid, e := StartProcess(absPath, newProcessArgs, useSTD); e != nil {
+		if pid, e := StartProcess(absPath, newProcessArgs, originEnvs, useSTD, extEnvs...); e != nil {
 			fmt.Printf("[spirit] restart spirit of %s failed, error: %s\n", p.alias, e)
 			return
 		} else {
@@ -944,15 +1002,20 @@ func (p *ClassicSpirit) lock() (err error) {
 	args := []string{}
 
 	for i := 1; i < len(os.Args); i++ {
-		if os.Args[i] != "--co" &&
-			os.Args[i] != "--creat-only" &&
-			os.Args[i] != "-creat-only" &&
-			os.Args[i] != "-co" {
+		arg := strings.Trim(os.Args[i], "-")
+		if arg != "co" &&
+			arg != "creat-only" &&
+			arg != "e" &&
+			arg != "env" {
 			args = append(args, os.Args[i])
+		}
+
+		if arg == "e" || arg == "env" {
+			i++
 		}
 	}
 
-	context := map[string]interface{}{"args": args}
+	context := map[string]interface{}{"args": args, "envs": p.envs}
 	if err = p.lockfile.WriteContent(context); err != nil {
 		fmt.Println("[spirit] lock componet failed, error:", err)
 		return

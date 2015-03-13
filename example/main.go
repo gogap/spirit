@@ -29,5 +29,9 @@ func inital(configFile string) (err error) {
 
 	fmt.Println("DEBUG_LEVEL:", env)
 
+	env2 := os.Getenv("DEBUG_LEVEL2")
+
+	fmt.Println("DEBUG_LEVEL2:", env2)
+
 	return
 }

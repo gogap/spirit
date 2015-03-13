@@ -80,6 +80,11 @@ func (p *LockFile) ReadContent() (content LockFileContent, err error) {
 }
 
 func (p *LockFile) WriteContent(context map[string]interface{}) (err error) {
+	var fileData []byte
+	if fileData, err = ioutil.ReadAll(p); err != nil {
+		return
+	}
+
 	if _, err = p.Seek(0, os.SEEK_SET); err != nil {
 		return
 	}
@@ -94,12 +99,7 @@ func (p *LockFile) WriteContent(context map[string]interface{}) (err error) {
 		return
 	}
 
-	var fi os.FileInfo
-	if fi, err = p.Stat(); err != nil {
-		return
-	}
-
-	if err = p.Truncate(fi.Size()); err != nil {
+	if err = p.Truncate(int64(len(fileData))); err != nil {
 		return
 	}
 

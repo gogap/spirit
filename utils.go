@@ -42,13 +42,35 @@ func IsFileOrDir(filename string, decideDir bool) bool {
 	return !isDir
 }
 
-func StartProcess(execFileName string, args []string, std bool) (pid int, err error) {
+func StartProcess(execFileName string, args []string, envs []string, std bool, extEnvs ...string) (pid int, err error) {
+
 	cmd := exec.Command(execFileName, args...)
 
 	if std {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+
+		newEnvsMap := map[string]string{}
+
+		if envs != nil {
+			for _, env := range envs {
+				kv := strings.Split(env, "=")
+				newEnvsMap[kv[0]] = kv[1]
+			}
+		}
+
+		if extEnvs != nil {
+			for _, env := range extEnvs {
+				kv := strings.Split(env, "=")
+				newEnvsMap[kv[0]] = kv[1]
+			}
+		}
+
+		for k, v := range newEnvsMap {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+
 	}
 
 	if err = cmd.Start(); err == nil {
