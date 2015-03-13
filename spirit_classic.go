@@ -78,8 +78,8 @@ func (p *ClassicSpirit) commands() []cli.Command {
 	return []cli.Command{
 		{
 			Name:      "component",
-			ShortName: "c",
-			Usage:     "options for component",
+			ShortName: "",
+			Usage:     "( *** this command obsolete next version) options for component",
 			Subcommands: []cli.Command{
 				{
 					Name:   "list",
@@ -158,49 +158,123 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					},
 				},
 			},
+		}, {
+			Name:   "run",
+			Usage:  "Run the component",
+			Action: p.cmdRunComponent,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Value: "",
+					Usage: "the name of component to run",
+				}, cli.StringSliceFlag{
+					Name:  "address, a",
+					Value: new(cli.StringSlice),
+					Usage: "the address of component receiver, format: receiverType|url|configFile",
+				}, cli.StringSliceFlag{
+					Name:  "heartbeat, hb",
+					Value: new(cli.StringSlice),
+					Usage: "run the register heatbeater while heartbeat-timeout greater than 0",
+				}, cli.IntFlag{
+					Name:  "heartbeat-sleeptime, hbs",
+					Value: 0,
+					Usage: "the heartbeat sleep time, default = 0 (Millisecond), disabled",
+				}, cli.StringFlag{
+					Name:  "heartbeat-config, hbc",
+					Value: "",
+					Usage: "the config file of heartbeat",
+				}, cli.StringFlag{
+					Name:  "alias",
+					Value: "",
+					Usage: "if the alias did not empty, it will be singleton process by alias",
+				}, cli.BoolFlag{
+					Name:  "build-check, bc",
+					Usage: "build check only, it won't really run",
+				}, cli.BoolFlag{
+					Name:  "create-only, co",
+					Usage: "create aliasd component of spirit only",
+				}, cli.StringFlag{
+					Name:  "config",
+					Value: "",
+					Usage: "the config file path for inital func to use",
+				},
+			},
+		},
+		{
+			Name:   "components",
+			Usage:  "List the hosting components",
+			Action: p.cmdListComponent,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "func, f",
+					Usage: "Show the component functions",
+				},
+			},
+		}, {
+			Name:   "call",
+			Usage:  "Call the resgistered function of component",
+			Action: p.cmdCallHandler,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Value: "",
+					Usage: "Component name",
+				}, cli.StringFlag{
+					Name:  "handler",
+					Value: "",
+					Usage: "The name of handler to be call",
+				}, cli.StringFlag{
+					Name:  "payload, l",
+					Value: "",
+					Usage: "The json data file path of spirit.Payload struct",
+				}, cli.BoolFlag{
+					Name:  "json, j",
+					Usage: "Format the result into json",
+				},
+			},
 		},
 		{
 			Name:      "ps",
 			ShortName: "",
-			Usage:     "show running process which spirit have alias",
+			Usage:     "Show spirit process which own alias",
 			Action:    p.showProcess,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "all, a",
-					Usage: "show process which have alias, running and exited",
+					Usage: "Show all process, running and exited",
 				},
 			},
 		}, {
 			Name:      "start",
 			ShortName: "",
-			Usage:     "start the process create by command of component run and have alias",
+			Usage:     "Start the process created by run command and own alias",
 			Action:    p.startProcess,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "alias, a",
-					Usage: "component of spirit with alias have been ran",
+					Usage: "Component of spirit with alias own been ran",
 				},
 			},
 		}, {
 			Name:      "stop",
 			ShortName: "",
-			Usage:     "stop the process create by command of component run and have alias",
+			Usage:     "Stop the running process created by run command and own alias",
 			Action:    p.stopProcess,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "alias, a",
-					Usage: "running component of spirit with alias",
+					Usage: "Running component of spirit with alias",
 				},
 			},
 		}, {
 			Name:      "restart",
 			ShortName: "",
-			Usage:     "restart the process create by command of component run and have alias",
+			Usage:     "Restart the running process created by run command and own alias",
 			Action:    p.restartProcess,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "alias, a",
-					Usage: "restart the running component of spirit with alias",
+					Usage: "Restart the running component of spirit with alias",
 				},
 			},
 		},
