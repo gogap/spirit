@@ -12,10 +12,14 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/gogap/env_strings"
 )
 
 const (
 	EXT_SPIRIT = ".spirit"
+
+	ENV_NAME = "SPIRIT_ENV"
+	ENV_EXT  = ".env"
 )
 
 type ClassicSpirit struct {
@@ -39,6 +43,7 @@ type ClassicSpirit struct {
 	isRunCommand                  bool
 	isBuildCheckOnly              bool
 	isCreatAliasdSpirtContextOnly bool
+	isRunCheckedCorrect           bool
 
 	lockfile *LockFile
 }
@@ -303,7 +308,38 @@ func (p *ClassicSpirit) commands() []cli.Command {
 func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.isRunCommand = true
 	componentName := c.String("name")
-	receiverAddrs := c.StringSlice("address")
+	p.envs = c.StringSlice("env")
+
+	if p.envs != nil {
+		for _, env := range p.envs {
+			kv := strings.Split(env, "=")
+			if len(kv) != 2 {
+				fmt.Printf("[spirit] component %s - %s env %s error\n", p.runningComponent.Name(), p.alias, env)
+				return
+			} else {
+				os.Setenv(kv[0], kv[1])
+			}
+		}
+	}
+
+	receiverAddrs := []string{}
+
+	if tmpAddrs := c.StringSlice("address"); tmpAddrs != nil {
+		envStrings := env_strings.NewEnvStrings(ENV_NAME, ENV_EXT)
+		for _, addr := range tmpAddrs {
+			if recvAddr, e := envStrings.Execute(addr); e != nil {
+				fmt.Printf("[spirit] could not execute address with env config of %s, original addr: %s, error: %s \n", ENV_NAME, addr, e)
+				return
+			} else {
+				receiverAddrs = append(receiverAddrs, recvAddr)
+			}
+		}
+	}
+
+	if len(receiverAddrs) == 0 {
+		fmt.Println("[spirit] receiver address list not set")
+		return
+	}
 
 	heartbeatersToRun := c.StringSlice("heartbeat")
 	heartbeatSleepTime := c.Int("heartbeat-sleeptime")
@@ -313,7 +349,6 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	p.isBuildCheckOnly = c.Bool("build-check")
 	p.isCreatAliasdSpirtContextOnly = c.Bool("create-only")
 	p.runningComponentConf = c.String("config")
-	p.envs = c.StringSlice("env")
 
 	p.heartbeatSleepTime = time.Millisecond * time.Duration(heartbeatSleepTime)
 
@@ -327,11 +362,6 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	}
 
 	p.heartbeaterConfig = heartbeaterConfig
-
-	if receiverAddrs == nil {
-		fmt.Println("[spirit] receiver address list is nil")
-		return
-	}
 
 	tmpUrlUsed := map[string]string{} //one type:url could only use by one component-port
 
@@ -426,6 +456,8 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 	component.SetMessageSenderFactory(p.senderFactory).Build()
 
 	p.runningComponent = component
+
+	p.isRunCheckedCorrect = true
 }
 
 func (p *ClassicSpirit) cmdListComponent(c *cli.Context) {
@@ -608,7 +640,7 @@ func (p *ClassicSpirit) getHeartbeatMessage() (message HeartbeatMessage) {
 }
 
 func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
-	if p.isRunCommand {
+	if p.isRunCommand && p.isRunCheckedCorrect {
 		if !p.isBuilt {
 			fmt.Println("[spirit] spirit should build first")
 			return
@@ -623,18 +655,6 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 		if e := p.lock(); e != nil && p.alias != "" {
 			fmt.Printf("[spirit] component %s - %s already running, pid: %d\n", p.runningComponent.Name(), p.alias, p.getPID())
 			return
-		}
-
-		if p.envs != nil {
-			for _, env := range p.envs {
-				kv := strings.Split(env, "=")
-				if len(kv) != 2 {
-					fmt.Printf("[spirit] component %s - %s env %s error\n", p.runningComponent.Name(), p.alias, env)
-					return
-				} else {
-					os.Setenv(kv[0], kv[1])
-				}
-			}
 		}
 
 		if p.isCreatAliasdSpirtContextOnly {
@@ -733,7 +753,7 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 	}
 
 	if data, e := json.MarshalIndent(contents, " ", "  "); e != nil {
-		fmt.Printf("[spirit] format contents to json failed, error:", e)
+		fmt.Printf("[spirit] format contents to json failed, error:\n", e)
 		return
 	} else {
 		fmt.Println(string(data))
@@ -991,7 +1011,7 @@ func (p *ClassicSpirit) lock() (err error) {
 	}
 
 	if _, err = MakeComponentHome(p.cliApp.Name); err != nil {
-		fmt.Printf("[spirit] make componet home dir failed, error:", err)
+		fmt.Printf("[spirit] make componet home dir failed, error: %s\n", err)
 		return
 	}
 
