@@ -260,10 +260,7 @@ func (p *ClassicSpirit) commands() []cli.Command {
 			Usage:     "Start the process created by run command and own alias",
 			Action:    p.startProcess,
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "alias, a",
-					Usage: "Component of spirit with alias own been ran",
-				}, cli.BoolFlag{
+				cli.BoolFlag{
 					Name:  "std",
 					Usage: "use the current std to the process",
 				}, cli.StringSliceFlag{
@@ -762,8 +759,13 @@ func (p *ClassicSpirit) showProcess(c *cli.Context) {
 
 func (p *ClassicSpirit) startProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	p.alias = c.String("alias")
-	p.alias = strings.TrimSpace(p.alias)
+
+	if args := c.Args(); args == nil || len(args) == 0 {
+		fmt.Println("[spirit] please input alias name first")
+		return
+	} else {
+		p.alias = strings.TrimSpace(args[0])
+	}
 
 	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
@@ -787,6 +789,12 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 	}
 
 	lockfilePath := p.getLockeFileName()
+
+	if _, err := os.Stat(lockfilePath); os.IsNotExist(err) {
+		fmt.Printf("[spirit] component of spirit %s not created before\n", p.alias)
+		return
+	}
+
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
 		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
@@ -852,8 +860,12 @@ func (p *ClassicSpirit) startProcess(c *cli.Context) {
 
 func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	p.alias = c.String("alias")
-	p.alias = strings.TrimSpace(p.alias)
+	if args := c.Args(); args == nil || len(args) == 0 {
+		fmt.Println("[spirit] please input alias name first")
+		return
+	} else {
+		p.alias = strings.TrimSpace(args[0])
+	}
 
 	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
@@ -867,6 +879,12 @@ func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 	}
 
 	lockfilePath := p.getLockeFileName()
+
+	if _, err := os.Stat(lockfilePath); os.IsNotExist(err) {
+		fmt.Printf("[spirit] component of spirit %s not created before\n", p.alias)
+		return
+	}
+
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
 		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
@@ -890,8 +908,12 @@ func (p *ClassicSpirit) stopProcess(c *cli.Context) {
 
 func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 	//TODO improve process logic, it was dirty implament currently
-	p.alias = c.String("alias")
-	p.alias = strings.TrimSpace(p.alias)
+	if args := c.Args(); args == nil || len(args) == 0 {
+		fmt.Println("[spirit] please input alias name first")
+		return
+	} else {
+		p.alias = strings.TrimSpace(args[0])
+	}
 
 	if p.alias == "" {
 		fmt.Println("[spirit] please input alias name first")
@@ -915,6 +937,12 @@ func (p *ClassicSpirit) restartProcess(c *cli.Context) {
 	}
 
 	lockfilePath := p.getLockeFileName()
+
+	if _, err := os.Stat(lockfilePath); os.IsNotExist(err) {
+		fmt.Printf("[spirit] component of spirit %s not created before\n", p.alias)
+		return
+	}
+
 	if lockfile, e := OpenLockFile(lockfilePath, 0640); e != nil {
 		fmt.Printf("[spirit] open spirit of %s context failed, error: %s\n", p.alias, e)
 		return
