@@ -1,5 +1,11 @@
 package spirit
 
+type PortChan struct {
+	Message chan ComponentMessage
+	Error   chan error
+	Signal  chan int
+}
+
 type MessageAddress struct {
 	Type string `json:"type"`
 	Url  string `json:"url"`
@@ -9,7 +15,7 @@ type MessageReceiver interface {
 	Type() string
 	Init(url, configFile string) error
 	Address() MessageAddress
-	Receive(message chan ComponentMessage, err chan error)
+	Receive(portChan *PortChan)
 }
 
 type MessageSender interface {

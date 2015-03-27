@@ -3,6 +3,7 @@ package spirit
 import (
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/gogap/ali_mqs"
 	"github.com/gogap/errors"
@@ -19,6 +20,8 @@ type MessageReceiverMQS struct {
 
 	responseChan chan ali_mqs.MessageReceiveResponse
 	errorChan    chan error
+
+	isPaused bool
 }
 
 func NewMessageReceiverMQS(url string) MessageReceiver {
@@ -78,7 +81,7 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 	return
 }
 
-func (p *MessageReceiverMQS) Receive(compMsgChan chan ComponentMessage, compErrChan chan error) {
+func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 	p.recvLocker.Lock()
 	defer p.recvLocker.Unlock()
 	if p.isReceiving == true {
@@ -86,7 +89,7 @@ func (p *MessageReceiverMQS) Receive(compMsgChan chan ComponentMessage, compErrC
 	}
 	p.isReceiving = true
 
-	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error) {
+	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error, singalChan chan int) {
 		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
 		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
@@ -96,7 +99,21 @@ func (p *MessageReceiverMQS) Receive(compMsgChan chan ComponentMessage, compErrC
 		go queue.ReceiveMessage(responseChan, errorChan)
 		logs.Info("receiver listening - ", p.url)
 
+		isPaused := false
+		isStoped := false
+
 		for {
+			if isStoped {
+				logs.Info("[mqs receiver stopped] resp chan len:", len(responseChan))
+				return
+			}
+
+			if isPaused {
+				logs.Info("[mqs receiver pausing] resp chan len:", len(responseChan))
+				time.Sleep(time.Second)
+				continue
+			}
+
 			select {
 			case resp := <-responseChan:
 				{
@@ -130,8 +147,24 @@ func (p *MessageReceiverMQS) Receive(compMsgChan chan ComponentMessage, compErrC
 						}
 					}(respErr)
 				}
+			case signal := <-singalChan:
+				{
+					switch signal {
+					case SIG_PAUSE:
+						logs.Info("mqs receiver paused - resp chan len:", len(responseChan))
+						isPaused = true
+					case SIG_RESUME:
+						logs.Info("mqs receiver resumed")
+						isPaused = false
+					case SIG_STOP:
+						logs.Info("mqs receiver stopping")
+						isStoped = true
+						queue.Stop()
+					}
+				}
 			}
+
 		}
 	}
-	recvLoop(p.Type(), p.url, p.queue, compMsgChan, compErrChan)
+	recvLoop(p.Type(), p.url, p.queue, portChan.Message, portChan.Error, portChan.Signal)
 }

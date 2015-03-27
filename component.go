@@ -1,5 +1,15 @@
 package spirit
 
+type ComponentStatus int
+
+const (
+	STATUS_READY    ComponentStatus = 0
+	STATUS_RUNNING  ComponentStatus = 1
+	STATUS_PAUSED   ComponentStatus = 2
+	STATUS_STOPPING ComponentStatus = 3
+	STATUS_STOPED   ComponentStatus = 4
+)
+
 type ComponentHandler func(payload *Payload) (result interface{}, err error)
 
 type Component interface {
@@ -19,4 +29,9 @@ type Component interface {
 
 	Build() Component
 	Run()
+
+	PauseOrResume()
+	Stop()
+
+	Status() ComponentStatus
 }

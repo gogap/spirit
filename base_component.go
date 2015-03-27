@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gogap/errors"
 	"github.com/gogap/logs"
@@ -22,10 +23,12 @@ type BaseComponent struct {
 
 	runtimeLocker sync.Mutex
 	isBuilt       bool
-	isRunning     bool
 
-	messageChans map[string]chan ComponentMessage
-	errChans     map[string]chan error
+	status ComponentStatus
+
+	portChans     map[string]*PortChan
+	stoppingChans map[string]chan bool
+	stopedChans   map[string]chan bool
 
 	senderFactory MessageSenderFactory
 }
@@ -40,8 +43,9 @@ func NewBaseComponent(componentName string) Component {
 		receivers:     make(map[string][]MessageReceiver),
 		handlers:      make(map[string]ComponentHandler),
 		inPortHandler: make(map[string]ComponentHandler),
-		messageChans:  make(map[string]chan ComponentMessage),
-		errChans:      make(map[string]chan error),
+		portChans:     make(map[string]*PortChan),
+		stopedChans:   make(map[string]chan bool),
+		stoppingChans: make(map[string]chan bool),
 	}
 }
 
@@ -191,8 +195,14 @@ func (p *BaseComponent) Build() Component {
 	}
 
 	for inPortName, _ := range p.receivers {
-		p.errChans[inPortName] = make(chan error, MESSAGE_CHAN_SIZE)
-		p.messageChans[inPortName] = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
+		portChan := new(PortChan)
+		portChan.Error = make(chan error, MESSAGE_CHAN_SIZE)
+		portChan.Message = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
+		portChan.Signal = make(chan int)
+
+		p.portChans[inPortName] = portChan
+		p.stopedChans[inPortName] = make(chan bool)
+		p.stoppingChans[inPortName] = make(chan bool)
 	}
 
 	p.isBuilt = true
@@ -208,26 +218,24 @@ func (p *BaseComponent) Run() {
 		panic(fmt.Sprintf("the component of %s should be build first", p.name))
 	}
 
-	if p.isRunning == true {
+	if p.status > 0 {
 		panic(fmt.Sprintf("the component of %s already running", p.name))
 	}
 
 	for inPortName, typedReceivers := range p.receivers {
-		var errChan chan error
-		var messageChan chan ComponentMessage
+		var portChan *PortChan
 		exist := false
-		if errChan, exist = p.errChans[inPortName]; !exist {
-			panic(fmt.Sprintf("error chan of component: %s, not exist", p.name))
-		}
-
-		if messageChan, exist = p.messageChans[inPortName]; !exist {
-			panic(fmt.Sprintf("error chan of component: %s, not exist", p.name))
+		if portChan, exist = p.portChans[inPortName]; !exist {
+			panic(fmt.Sprintf("port chan of component: %s, not exist", p.name))
 		}
 
 		for _, receiver := range typedReceivers {
-			go receiver.Receive(messageChan, errChan)
+			go receiver.Receive(portChan)
 		}
 	}
+
+	p.status = STATUS_RUNNING
+
 	p.ReceiverLoop()
 	return
 }
@@ -239,23 +247,111 @@ func (p *BaseComponent) ReceiverLoop() {
 	}
 
 	for _, inPortName := range loopInPortNames {
-		respChan, _ := p.messageChans[inPortName]
-		errChan, _ := p.errChans[inPortName]
-		go func(portName string, respChan chan ComponentMessage, errChan chan error) {
+		portChan := p.portChans[inPortName]
+		stopedChan := p.stopedChans[inPortName]
+		stoppingChan := p.stoppingChans[inPortName]
+		go func(portName string, respChan chan ComponentMessage, errChan chan error, stoppingChan chan bool, stopedChan chan bool) {
+			isStopping := false
 			for {
+				if isStopping {
+					if len(respChan) == 0 && len(errChan) == 0 {
+						logs.Info(fmt.Sprintf("[port - %s] have no message, so it will be stop running", portName))
+						return
+					} else {
+						logs.Info(fmt.Sprintf("[port - %s] stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan)), len(errChan))
+						time.Sleep(time.Second)
+					}
+				}
 				select {
 				case compMsg := <-respChan:
 					{
 						go p.handleComponentMessage(portName, compMsg)
+						if len(respChan) == 0 && (p.status == STATUS_STOPPING || p.status == STATUS_STOPED) {
+							stopedChan <- true
+							break
+						}
 					}
 				case respErr := <-errChan:
 					{
 						logs.Error(respErr)
 					}
+				case isStopping = <-stoppingChan:
+					{
+						logs.Info(fmt.Sprintf("[port - %s] received stop signal", portName))
+					}
+				case <-time.After(time.Second):
+					{
+						if len(respChan) == 0 && isStopping {
+							stopedChan <- true
+							break
+						}
+					}
 				}
 			}
-		}(inPortName, respChan, errChan)
+		}(inPortName, portChan.Message, portChan.Error, stoppingChan, stopedChan)
 	}
+}
+
+func (p *BaseComponent) PauseOrResume() {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if p.status == STATUS_RUNNING {
+		for _, Chans := range p.portChans {
+			select {
+			case Chans.Signal <- SIG_PAUSE:
+			case <-time.After(time.Second * 2):
+			}
+		}
+		p.status = STATUS_PAUSED
+	} else if p.status == STATUS_PAUSED {
+		for _, Chans := range p.portChans {
+			select {
+			case Chans.Signal <- SIG_RESUME:
+			case <-time.After(time.Second * 2):
+			}
+		}
+		p.status = STATUS_RUNNING
+	} else {
+		logs.Warn("[base component] pause or resume at error status")
+	}
+
+}
+
+func (p *BaseComponent) Stop() {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	for _, Chans := range p.portChans {
+		select {
+		case Chans.Signal <- SIG_STOP:
+		case <-time.After(time.Second):
+		}
+
+	}
+	for _, Chan := range p.stoppingChans {
+		select {
+		case Chan <- true:
+		case <-time.After(time.Second * 60):
+		}
+	}
+
+	for inportName, stopedChan := range p.stopedChans {
+		select {
+		case _ = <-stopedChan:
+			{
+				logs.Info("component", inportName, "stoped")
+			}
+		case <-time.After(time.Second):
+			logs.Warn("stop component", inportName, "timeout")
+		}
+	}
+
+	p.status = STATUS_STOPED
+}
+
+func (p *BaseComponent) Status() ComponentStatus {
+	return p.status
 }
 
 func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload *Payload) (content interface{}, err error) {
