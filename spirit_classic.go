@@ -3,6 +3,7 @@ package spirit
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gogap/logs"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -710,6 +711,7 @@ func (p *ClassicSpirit) waitSignal() {
 	for {
 		select {
 		case signal := <-interrupt:
+			logs.Info("singal received", signal)
 			switch signal {
 			case os.Interrupt, syscall.SIGTERM:
 				{
@@ -722,21 +724,23 @@ func (p *ClassicSpirit) waitSignal() {
 						fmt.Printf("\r[spirit] waiting for running component %s to stop, %d sec", p.runningComponent.Name(), i)
 						time.Sleep(time.Second)
 					}
-					fmt.Printf("[spirit] component %s was gracefully stoped\n", p.runningComponent.Name())
-					return
+					logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", p.runningComponent.Name()))
+					time.Sleep(time.Second)
+					os.Exit(0)
 				}
 			case os.Kill:
 				{
-					fmt.Printf("[spirit] component %s was killed\n", p.runningComponent.Name())
-					return
+					logs.Info(fmt.Sprintf("[spirit] component %s was killed\n", p.runningComponent.Name()))
+					time.Sleep(time.Second)
+					os.Exit(128)
 				}
 			case syscall.SIGUSR1:
 				{
 					p.runningComponent.PauseOrResume()
 					if p.runningComponent.Status() == STATUS_PAUSED {
-						fmt.Printf("[spirit] component %s was paused\n", p.runningComponent.Name())
+						logs.Info(fmt.Sprintf("[spirit] component %s was paused\n", p.runningComponent.Name()))
 					} else {
-						fmt.Printf("[spirit] component %s was resumed\n", p.runningComponent.Name())
+						logs.Info(fmt.Sprintf("[spirit] component %s was resumed\n", p.runningComponent.Name()))
 					}
 				}
 			}

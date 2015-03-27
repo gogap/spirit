@@ -103,6 +103,28 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 		isStoped := false
 
 		for {
+
+			select {
+			case signal := <-singalChan:
+				{
+					switch signal {
+					case SIG_PAUSE:
+						logs.Warn("* mqs receiver paused - resp chan len:", len(responseChan))
+						queue.Stop()
+						isPaused = true
+					case SIG_RESUME:
+						logs.Warn("* mqs receiver resumed")
+						go queue.ReceiveMessage(responseChan, errorChan)
+						isPaused = false
+					case SIG_STOP:
+						logs.Warn("* mqs receiver stopping")
+						isStoped = true
+						queue.Stop()
+					}
+				}
+			default:
+			}
+
 			if isStoped {
 				logs.Info("[mqs receiver stopped] resp chan len:", len(responseChan))
 				return
@@ -146,21 +168,6 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 							compErrChan <- err
 						}
 					}(respErr)
-				}
-			case signal := <-singalChan:
-				{
-					switch signal {
-					case SIG_PAUSE:
-						logs.Warn("* mqs receiver paused - resp chan len:", len(responseChan))
-						isPaused = true
-					case SIG_RESUME:
-						logs.Warn("* mqs receiver resumed")
-						isPaused = false
-					case SIG_STOP:
-						logs.Warn("* mqs receiver stopping")
-						isStoped = true
-						queue.Stop()
-					}
 				}
 			}
 

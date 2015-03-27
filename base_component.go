@@ -324,8 +324,8 @@ func (p *BaseComponent) Stop() {
 		case Chans.Signal <- SIG_STOP:
 		case <-time.After(time.Second):
 		}
-
 	}
+
 	for _, Chan := range p.stoppingChans {
 		select {
 		case Chan <- true:
@@ -339,9 +339,6 @@ func (p *BaseComponent) Stop() {
 			{
 				logs.Warn("* component", inportName, "stoped")
 			}
-		case <-time.After(time.Second * 10):
-			logs.Warn("* stop component", inportName, "timeout")
-			break
 		}
 	}
 
