@@ -255,10 +255,11 @@ func (p *BaseComponent) ReceiverLoop() {
 			for {
 				if isStopping {
 					if len(respChan) == 0 && len(errChan) == 0 {
-						logs.Info(fmt.Sprintf("[port - %s] have no message, so it will be stop running", portName))
+						logs.Warn(fmt.Sprintf("* port - %s have no message, so it will be stop running", portName))
+						stopedChan <- true
 						return
 					} else {
-						logs.Info(fmt.Sprintf("[port - %s] stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan)), len(errChan))
+						logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan)), len(errChan))
 						time.Sleep(time.Second)
 					}
 				}
@@ -266,10 +267,6 @@ func (p *BaseComponent) ReceiverLoop() {
 				case compMsg := <-respChan:
 					{
 						go p.handleComponentMessage(portName, compMsg)
-						if len(respChan) == 0 && (p.status == STATUS_STOPPING || p.status == STATUS_STOPED) {
-							stopedChan <- true
-							break
-						}
 					}
 				case respErr := <-errChan:
 					{
@@ -277,7 +274,7 @@ func (p *BaseComponent) ReceiverLoop() {
 					}
 				case isStopping = <-stoppingChan:
 					{
-						logs.Info(fmt.Sprintf("[port - %s] received stop signal", portName))
+						logs.Warn(fmt.Sprintf("* port - %s received stop signal", portName))
 					}
 				case <-time.After(time.Second):
 					{
@@ -340,10 +337,11 @@ func (p *BaseComponent) Stop() {
 		select {
 		case _ = <-stopedChan:
 			{
-				logs.Info("component", inportName, "stoped")
+				logs.Warn("* component", inportName, "stoped")
 			}
-		case <-time.After(time.Second):
-			logs.Warn("stop component", inportName, "timeout")
+		case <-time.After(time.Second * 10):
+			logs.Warn("* stop component", inportName, "timeout")
+			break
 		}
 	}
 

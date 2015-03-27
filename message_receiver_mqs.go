@@ -151,13 +151,13 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 				{
 					switch signal {
 					case SIG_PAUSE:
-						logs.Info("mqs receiver paused - resp chan len:", len(responseChan))
+						logs.Warn("* mqs receiver paused - resp chan len:", len(responseChan))
 						isPaused = true
 					case SIG_RESUME:
-						logs.Info("mqs receiver resumed")
+						logs.Warn("* mqs receiver resumed")
 						isPaused = false
 					case SIG_STOP:
-						logs.Info("mqs receiver stopping")
+						logs.Warn("* mqs receiver stopping")
 						isStoped = true
 						queue.Stop()
 					}

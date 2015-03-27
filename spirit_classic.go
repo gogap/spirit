@@ -705,19 +705,29 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 
 func (p *ClassicSpirit) waitSignal() {
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGUSR1)
 
 	for {
 		select {
 		case signal := <-interrupt:
 			switch signal {
-			case os.Interrupt:
+			case os.Interrupt, syscall.SIGTERM:
 				{
-					p.runningComponent.Stop()
+					go p.runningComponent.Stop()
+					time.Sleep(time.Second)
+
+					i := 0
 					for p.runningComponent.Status() != STATUS_STOPED {
-						fmt.Printf("[spirit] waiting for running component %s to stop\n", p.runningComponent.Name())
+						i++
+						fmt.Printf("\r[spirit] waiting for running component %s to stop, %d sec", p.runningComponent.Name(), i)
+						time.Sleep(time.Second)
 					}
 					fmt.Printf("[spirit] component %s was gracefully stoped\n", p.runningComponent.Name())
+					return
+				}
+			case os.Kill:
+				{
+					fmt.Printf("[spirit] component %s was killed\n", p.runningComponent.Name())
 					return
 				}
 			case syscall.SIGUSR1:
