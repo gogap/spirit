@@ -103,7 +103,6 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 		isStoped := false
 
 		for {
-
 			select {
 			case signal := <-singalChan:
 				{
@@ -125,12 +124,10 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 			default:
 			}
 
-			if isStoped {
+			if isStoped && len(responseChan) == 0 && len(errorChan) == 0 {
 				logs.Info("[mqs receiver stopped] resp chan len:", len(responseChan))
 				return
-			}
-
-			if isPaused {
+			} else if isPaused && len(responseChan) == 0 && len(errorChan) == 0 {
 				logs.Info("[mqs receiver pausing] resp chan len:", len(responseChan))
 				time.Sleep(time.Second)
 				continue
