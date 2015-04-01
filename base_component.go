@@ -259,7 +259,7 @@ func (p *BaseComponent) ReceiverLoop() {
 						stopedChan <- true
 						return
 					} else {
-						logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan)), len(errChan))
+						logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan), len(errChan)))
 						time.Sleep(time.Second)
 					}
 				}
