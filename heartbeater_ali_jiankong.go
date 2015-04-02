@@ -33,7 +33,7 @@ func (p *AliJiankong) Start(configFile string) (err error) {
 	}
 
 	var tmp struct {
-		AliJIankongConfig struct {
+		AliJiankongConfig struct {
 			UID          string `json:"uid"`
 			MetricName   string `json:"metric_name"`
 			ReportPeriod int64  `json:"report_period"`
@@ -49,28 +49,28 @@ func (p *AliJiankong) Start(configFile string) (err error) {
 		return
 	}
 
-	tmp.AliJIankongConfig.UID = strings.TrimSpace(tmp.AliJIankongConfig.UID)
-	if tmp.AliJIankongConfig.UID == "" {
+	tmp.AliJiankongConfig.UID = strings.TrimSpace(tmp.AliJiankongConfig.UID)
+	if tmp.AliJiankongConfig.UID == "" {
 		err = ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST.New()
 		return
 	}
 
-	tmp.AliJIankongConfig.MetricName = strings.TrimSpace(tmp.AliJIankongConfig.MetricName)
-	if tmp.AliJIankongConfig.MetricName == "" {
-		tmp.AliJIankongConfig.MetricName = "component_heartbeat"
+	tmp.AliJiankongConfig.MetricName = strings.TrimSpace(tmp.AliJiankongConfig.MetricName)
+	if tmp.AliJiankongConfig.MetricName == "" {
+		tmp.AliJiankongConfig.MetricName = "component_heartbeat"
 	}
 
-	if tmp.AliJIankongConfig.Timeout == 0 {
-		tmp.AliJIankongConfig.Timeout = 1000
+	if tmp.AliJiankongConfig.Timeout == 0 {
+		tmp.AliJiankongConfig.Timeout = 1000
 	}
 
-	p.client = ali_jiankong.NewAliJianKong(tmp.AliJIankongConfig.UID, time.Duration(tmp.AliJIankongConfig.Timeout)*time.Microsecond)
+	p.client = ali_jiankong.NewAliJianKong(tmp.AliJiankongConfig.UID, time.Duration(tmp.AliJiankongConfig.Timeout)*time.Microsecond)
 
-	if tmp.AliJIankongConfig.ReportPeriod <= 60000 {
-		tmp.AliJIankongConfig.ReportPeriod = 60000
+	if tmp.AliJiankongConfig.ReportPeriod <= 60000 {
+		tmp.AliJiankongConfig.ReportPeriod = 60000
 	}
 
-	p.reportPeriod = time.Duration(tmp.AliJIankongConfig.ReportPeriod) * time.Millisecond
+	p.reportPeriod = time.Duration(tmp.AliJiankongConfig.ReportPeriod) * time.Millisecond
 
 	p.lastReportTime = time.Now()
 
