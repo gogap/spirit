@@ -199,6 +199,7 @@ func (p *BaseComponent) Build() Component {
 		portChan.Error = make(chan error, MESSAGE_CHAN_SIZE)
 		portChan.Message = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
 		portChan.Signal = make(chan int)
+		portChan.Stoped = make(chan bool)
 
 		p.portChans[inPortName] = portChan
 		p.stopedChans[inPortName] = make(chan bool)
@@ -252,17 +253,23 @@ func (p *BaseComponent) ReceiverLoop() {
 		stoppingChan := p.stoppingChans[inPortName]
 		go func(portName string, respChan chan ComponentMessage, errChan chan error, stoppingChan chan bool, stopedChan chan bool) {
 			isStopping := false
+			stoplogTime := time.Now()
 			for {
 				if isStopping {
+					now := time.Now()
+
 					if len(respChan) == 0 && len(errChan) == 0 {
 						logs.Warn(fmt.Sprintf("* port - %s have no message, so it will be stop running", portName))
 						stopedChan <- true
 						return
 					} else {
-						logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan), len(errChan)))
-						time.Sleep(time.Second)
+						if now.Sub(stoplogTime) >= time.Second {
+							stoplogTime = now
+							logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan), len(errChan)))
+						}
 					}
 				}
+
 				select {
 				case compMsg := <-respChan:
 					{
@@ -274,13 +281,14 @@ func (p *BaseComponent) ReceiverLoop() {
 					}
 				case isStopping = <-stoppingChan:
 					{
+						stoplogTime = time.Now()
 						logs.Warn(fmt.Sprintf("* port - %s received stop signal", portName))
 					}
-				case <-time.After(time.Second):
+				case <-time.After(time.Millisecond * 1):
 					{
 						if len(respChan) == 0 && isStopping {
 							stopedChan <- true
-							break
+							return
 						}
 					}
 				}
@@ -319,28 +327,66 @@ func (p *BaseComponent) Stop() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
+	//stop queues first
+	logs.Warn("* begin stop port receivers")
+	wgReceiverBeginStop := sync.WaitGroup{}
 	for _, Chans := range p.portChans {
-		select {
-		case Chans.Signal <- SIG_STOP:
-		case <-time.After(time.Second):
-		}
-	}
-
-	for _, Chan := range p.stoppingChans {
-		select {
-		case Chan <- true:
-		case <-time.After(time.Second * 60):
-		}
-	}
-
-	for inportName, stopedChan := range p.stopedChans {
-		select {
-		case _ = <-stopedChan:
-			{
-				logs.Warn("* component", inportName, "stoped")
+		wgReceiverBeginStop.Add(1)
+		go func(stopedChan chan bool) {
+			defer wgReceiverBeginStop.Done()
+			select {
+			case Chans.Signal <- SIG_STOP:
+			case <-time.After(time.Second * 5):
 			}
-		}
+		}(Chans.Stoped)
 	}
+	wgReceiverBeginStop.Wait()
+
+	logs.Warn("* waiting for port receivers stopped signal")
+
+	wgReceiverStop := sync.WaitGroup{}
+	for _, Chans := range p.portChans {
+		wgReceiverStop.Add(1)
+		go func(stopedChan chan bool) {
+			defer wgReceiverStop.Done()
+			select {
+			case _ = <-stopedChan:
+			case <-time.After(time.Second * 60):
+			}
+		}(Chans.Stoped)
+	}
+	wgReceiverStop.Wait()
+
+	logs.Warn("* begin stop received response message handler")
+	wgHandlerBeginStop := sync.WaitGroup{}
+	for _, Chan := range p.stoppingChans {
+		wgHandlerBeginStop.Add(1)
+		go func(stopedChan chan bool) {
+			defer wgHandlerBeginStop.Done()
+			select {
+			case Chan <- true:
+			case <-time.After(time.Second * 60):
+			}
+		}(Chan)
+	}
+	wgHandlerBeginStop.Wait()
+
+	logs.Warn("* waiting for received response message handler stopped signal")
+	wgHandlerStop := sync.WaitGroup{}
+	for inportName, Chan := range p.stopedChans {
+		wgHandlerStop.Add(1)
+		go func(stopedChan chan bool, name string) {
+			defer wgHandlerStop.Done()
+			select {
+			case _ = <-stopedChan:
+				{
+					logs.Warn("* component", inportName, "stoped")
+				}
+			case <-time.After(time.Second * 60):
+			}
+		}(Chan, inportName)
+	}
+	wgHandlerStop.Wait()
 
 	p.status = STATUS_STOPED
 }

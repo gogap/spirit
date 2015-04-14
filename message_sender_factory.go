@@ -60,21 +60,22 @@ func (p *DefaultMessageSenderFactory) IsExist(senderType string) bool {
 }
 
 func (p *DefaultMessageSenderFactory) NewSender(senderType string) (sender MessageSender, err error) {
-	if sender, exist := p.instanceCache[senderType]; exist && sender != nil {
-		return sender, nil
+	if senderInstance, exist := p.instanceCache[senderType]; exist && senderInstance != nil {
+		return senderInstance, nil
 	}
 
-	if senderType, exist := p.senderDrivers[senderType]; !exist {
+	if senderDriver, exist := p.senderDrivers[senderType]; !exist {
 		err = ERR_SENDER_DRIVER_NOT_EXIST.New(errors.Params{"type": senderType})
 		return
 	} else {
-		if vOfMessageSender := reflect.New(senderType); vOfMessageSender.CanInterface() {
+		if vOfMessageSender := reflect.New(senderDriver); vOfMessageSender.CanInterface() {
 			iMessageSender := vOfMessageSender.Interface()
 			if r, ok := iMessageSender.(MessageSender); ok {
 				if err = r.Init(); err != nil {
 					return
 				}
 				sender = r
+				p.instanceCache[senderType] = sender
 				return
 			} else {
 				err = ERR_SENDER_CREATE_FAILED.New(errors.Params{"type": senderType})

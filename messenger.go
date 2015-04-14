@@ -4,6 +4,7 @@ type PortChan struct {
 	Message chan ComponentMessage
 	Error   chan error
 	Signal  chan int
+	Stoped  chan bool
 }
 
 type MessageAddress struct {

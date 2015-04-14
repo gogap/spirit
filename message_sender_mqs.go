@@ -70,7 +70,7 @@ func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error
 
 		client = ali_mqs.NewMQSQueue(queueName, cli)
 
-		p.clientCache[url] = nil
+		p.clientCache[url] = client
 	}
 
 	msg := ali_mqs.MessageSendRequest{

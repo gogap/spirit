@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"fmt"
 	"regexp"
 	"sync"
 	"time"
@@ -89,7 +90,7 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 	}
 	p.isReceiving = true
 
-	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error, singalChan chan int) {
+	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error, singalChan chan int, stoppedChan chan bool) {
 		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
 		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
@@ -100,35 +101,50 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 		logs.Info("receiver listening - ", p.url)
 
 		isPaused := false
-		isStoped := false
+		isStopping := false
 
+		stoplogTime := time.Now()
 		for {
-			select {
-			case signal := <-singalChan:
-				{
-					switch signal {
-					case SIG_PAUSE:
-						logs.Warn("* mqs receiver paused - resp chan len:", len(responseChan))
-						queue.Stop()
-						isPaused = true
-					case SIG_RESUME:
-						logs.Warn("* mqs receiver resumed")
-						go queue.ReceiveMessage(responseChan, errorChan)
-						isPaused = false
-					case SIG_STOP:
-						logs.Warn("* mqs receiver stopping")
-						isStoped = true
-						queue.Stop()
+			if !isStopping {
+				select {
+				case signal := <-singalChan:
+					{
+						switch signal {
+						case SIG_PAUSE:
+							stopQueue(queue)
+							logs.Warn(fmt.Sprintf("* mqs receiver of %s paused - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
+							isPaused = true
+						case SIG_RESUME:
+							logs.Warn("* mqs receiver resumed")
+							go queue.ReceiveMessage(responseChan, errorChan)
+							isPaused = false
+						case SIG_STOP:
+							stopQueue(queue)
+							logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
+							isStopping = true
+							stoplogTime = time.Now()
+						}
 					}
+				default:
 				}
-			default:
 			}
 
-			if isStoped && len(responseChan) == 0 && len(errorChan) == 0 {
-				logs.Info("[mqs receiver stopped] resp chan len:", len(responseChan))
-				return
-			} else if isPaused && len(responseChan) == 0 && len(errorChan) == 0 {
-				logs.Info("[mqs receiver pausing] resp chan len:", len(responseChan))
+			if isStopping {
+				if len(responseChan) == 0 && len(errorChan) == 0 {
+					logs.Warn(fmt.Sprintf("* mqs receiver of %s stopped - resp chan len: %d, err chan len: %d", queue.Name(), 0, 0))
+					stoppedChan <- true
+					return
+				} else {
+					now := time.Now()
+					if now.Sub(stoplogTime) >= 1*time.Millisecond {
+						stoplogTime = now
+						logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
+					}
+				}
+			} else if isPaused {
+				if len(responseChan) > 0 || len(errorChan) > 0 {
+					logs.Info("[mqs receiver pausing] resp chan len:", len(responseChan))
+				}
 				time.Sleep(time.Second)
 				continue
 			}
@@ -166,9 +182,22 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 						}
 					}(respErr)
 				}
+			case <-time.After(time.Millisecond * 1):
+				{
+					if len(responseChan) == 0 && len(errorChan) == 0 && isStopping {
+						stoppedChan <- true
+						return
+					}
+				}
 			}
 
 		}
 	}
-	recvLoop(p.Type(), p.url, p.queue, portChan.Message, portChan.Error, portChan.Signal)
+	recvLoop(p.Type(), p.url, p.queue, portChan.Message, portChan.Error, portChan.Signal, portChan.Stoped)
+}
+
+func stopQueue(queue ali_mqs.AliMQSQueue) {
+	logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - begin stop receive message from ali-mqs queue", queue.Name()))
+	queue.Stop()
+	logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - stoped receive messages from ali-mqs queue", queue.Name()))
 }
