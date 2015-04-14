@@ -639,18 +639,16 @@ func (p *ClassicSpirit) waitSignal() {
 					i := 0
 					for p.runningComponent.Status() != STATUS_STOPED {
 						i++
-						fmt.Printf("\r[spirit] waiting for running component %s to stop, %d sec", p.runningComponent.Name(), i)
+						if i%2 == 0 {
+							fmt.Print("\r-")
+						} else {
+							fmt.Print("\r=")
+						}
 						time.Sleep(time.Second)
 					}
 					logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", p.runningComponent.Name()))
 					time.Sleep(time.Second)
 					os.Exit(0)
-				}
-			case os.Kill:
-				{
-					logs.Info(fmt.Sprintf("[spirit] component %s was killed\n", p.runningComponent.Name()))
-					time.Sleep(time.Second)
-					os.Exit(128)
 				}
 			case syscall.SIGUSR1:
 				{

@@ -302,20 +302,32 @@ func (p *BaseComponent) PauseOrResume() {
 	defer p.runtimeLocker.Unlock()
 
 	if p.status == STATUS_RUNNING {
+		wgReceiverPause := sync.WaitGroup{}
 		for _, Chans := range p.portChans {
-			select {
-			case Chans.Signal <- SIG_PAUSE:
-			case <-time.After(time.Second * 2):
-			}
+			wgReceiverPause.Add(1)
+			go func(singalChan chan int) {
+				defer wgReceiverPause.Done()
+				select {
+				case singalChan <- SIG_PAUSE:
+				case <-time.After(time.Second * 5):
+				}
+			}(Chans.Signal)
 		}
+		wgReceiverPause.Wait()
 		p.status = STATUS_PAUSED
 	} else if p.status == STATUS_PAUSED {
+		wgReceiverResume := sync.WaitGroup{}
 		for _, Chans := range p.portChans {
-			select {
-			case Chans.Signal <- SIG_RESUME:
-			case <-time.After(time.Second * 2):
-			}
+			wgReceiverResume.Add(1)
+			go func(singalChan chan int) {
+				defer wgReceiverResume.Done()
+				select {
+				case singalChan <- SIG_RESUME:
+				case <-time.After(time.Second * 5):
+				}
+			}(Chans.Signal)
 		}
+		wgReceiverResume.Wait()
 		p.status = STATUS_RUNNING
 	} else {
 		logs.Warn("[base component] pause or resume at error status")
