@@ -332,13 +332,13 @@ func (p *BaseComponent) Stop() {
 	wgReceiverBeginStop := sync.WaitGroup{}
 	for _, Chans := range p.portChans {
 		wgReceiverBeginStop.Add(1)
-		go func(stopedChan chan bool) {
+		go func(singalChan chan int) {
 			defer wgReceiverBeginStop.Done()
 			select {
-			case Chans.Signal <- SIG_STOP:
+			case singalChan <- SIG_STOP:
 			case <-time.After(time.Second * 5):
 			}
-		}(Chans.Stoped)
+		}(Chans.Signal)
 	}
 	wgReceiverBeginStop.Wait()
 
@@ -359,15 +359,18 @@ func (p *BaseComponent) Stop() {
 
 	logs.Warn("* begin stop received response message handler")
 	wgHandlerBeginStop := sync.WaitGroup{}
-	for _, Chan := range p.stoppingChans {
+	for inportName, Chan := range p.stoppingChans {
 		wgHandlerBeginStop.Add(1)
-		go func(stopedChan chan bool) {
+		go func(stopedChan chan bool, name string) {
 			defer wgHandlerBeginStop.Done()
 			select {
-			case Chan <- true:
+			case stopedChan <- true:
+				{
+					logs.Warn("* component begin stop port:", name)
+				}
 			case <-time.After(time.Second * 60):
 			}
-		}(Chan)
+		}(Chan, inportName)
 	}
 	wgHandlerBeginStop.Wait()
 
