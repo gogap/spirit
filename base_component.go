@@ -380,7 +380,7 @@ func (p *BaseComponent) Stop() {
 			select {
 			case _ = <-stopedChan:
 				{
-					logs.Warn("* component", inportName, "stoped")
+					logs.Warn("* component", name, "stoped")
 				}
 			case <-time.After(time.Second * 60):
 			}
