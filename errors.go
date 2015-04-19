@@ -53,4 +53,5 @@ var (
 	ERR_HOOK_CREATE_FAILED    = errors.TN(SPIRIT_ERR_NS, 34, "create receiver failed, driver type: {{.type}}")
 	ERR_HOOK_DRIVER_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 35, "message hook driver not exist, type: {{.type}}")
 	ERR_HOOK_BAD_DRIVER       = errors.TN(SPIRIT_ERR_NS, 36, "bad message hook driver of {{.type}}")
+	ERR_MESSAGE_HOOK_ERROR    = errors.TN(SPIRIT_ERR_NS, 37, "hook message error, component: {{.name}}, port: {{.port}}, hookName: {{.hookName}}, event: {{.event}}, index: {{.index}}/{{.count}}")
 )

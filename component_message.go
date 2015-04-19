@@ -42,6 +42,7 @@ type ComponentMessage struct {
 	graph             MessageGraph
 	currentGraphIndex int32
 	payload           Payload
+	hooksMetaData     []MessageHookMetadata
 }
 
 func NewComponentMessage(graph MessageGraph, payload Payload) (message ComponentMessage, err error) {
@@ -71,9 +72,10 @@ func NewComponentMessage(graph MessageGraph, payload Payload) (message Component
 
 func (p *ComponentMessage) Serialize() (data []byte, err error) {
 	jsonMap := map[string]interface{}{
-		"id":                  p.id,
-		"graph":               p.graph,
-		"current_graph_index": p.currentGraphIndex,
+		"id":                     p.id,
+		"graph":                  p.graph,
+		"current_graph_index":    p.currentGraphIndex,
+		"message_hooks_metadata": p.hooksMetaData,
 		"payload": map[string]interface{}{
 			"id":      p.id,
 			"context": p.payload.context,
@@ -92,9 +94,10 @@ func (p *ComponentMessage) Serialize() (data []byte, err error) {
 
 func (p *ComponentMessage) UnSerialize(data []byte) (err error) {
 	var tmp struct {
-		Id                string       `json:"id"`
-		Graph             MessageGraph `json:"graph"`
-		CurrentGraphIndex int32        `json:"current_graph_index"`
+		Id                string                `json:"id"`
+		Graph             MessageGraph          `json:"graph"`
+		CurrentGraphIndex int32                 `json:"current_graph_index"`
+		HooksMetaData     []MessageHookMetadata `json:"message_hooks_metadata"`
 		Payload           struct {
 			Id      string            `json:"id,omitempty"`
 			Context ComponentContext  `json:"context,omitempty"`
@@ -118,6 +121,7 @@ func (p *ComponentMessage) UnSerialize(data []byte) (err error) {
 		content: tmp.Payload.Content,
 		err:     tmp.Payload.Error,
 	}
+	p.hooksMetaData = tmp.HooksMetaData
 
 	return
 }
