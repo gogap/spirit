@@ -19,6 +19,9 @@ type Component interface {
 	RegisterHandler(name string, handler ComponentHandler) Component
 	CallHandler(handlerName string, payload *Payload) (result interface{}, err error)
 
+	AddInPortHooks(inportName string, hooks ...MessageHook) Component
+	ClearInPortHooks(inportName string) (err error)
+
 	ListHandlers() (handlers map[string]ComponentHandler, err error)
 	GetHandlers(handlerNames ...string) (handlers map[string]ComponentHandler, err error)
 

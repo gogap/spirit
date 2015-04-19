@@ -28,6 +28,7 @@ type ClassicSpirit struct {
 
 	receiverFactory MessageReceiverFactory
 	senderFactory   MessageSenderFactory
+	hookFactory     MessageHookFactory
 
 	components           map[string]Component
 	runningComponent     Component
@@ -37,8 +38,9 @@ type ClassicSpirit struct {
 	heartbeatSleepTime time.Duration
 	heartbeatersToRun  map[string]bool
 	heartbeaterConfig  string
-	alias              string
-	envs               []string
+
+	alias string
+	envs  []string
 
 	isBuilt                       bool
 	isRunCommand                  bool
@@ -72,8 +74,12 @@ func NewClassicSpirit(name, description, version string) Spirit {
 	senderFactory := NewDefaultMessageSenderFactory()
 	senderFactory.RegisterMessageSenders(new(MessageSenderMQS))
 
+	hookFactory := NewDefaultMessageHookFactory()
+	hookFactory.RegisterMessageHooks(new(MessageHookBigDataRedis))
+
 	newSpirit.receiverFactory = receiverFactory
 	newSpirit.senderFactory = senderFactory
+	newSpirit.hookFactory = hookFactory
 
 	newSpirit.RegisterHeartbeaters(new(AliJiankong))
 
@@ -126,6 +132,10 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					Name:  "env, e",
 					Value: new(cli.StringSlice),
 					Usage: "set env to the process",
+				}, cli.StringSliceFlag{
+					Name:  "hook",
+					Value: new(cli.StringSlice),
+					Usage: "hook the inport message, param format e.g.: PortName|HookeName|ConfigFile or PortName|HookeName",
 				},
 			},
 		},
@@ -369,6 +379,40 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 				BindReceiver(portName, receiver)
 		}
 	}
+
+	hooks := c.StringSlice("hook")
+
+	if hooks != nil && len(hooks) > 0 {
+		for _, strHook := range hooks {
+			hookConfs := strings.Split(strHook, "|")
+			hookName := ""
+			portName := ""
+			conf := ""
+			if hookConfs == nil {
+				panic("hook params error, e.g.:PortName|HookeName|ConfigFile")
+			} else if len(hookConfs) == 2 {
+				portName = hookConfs[0]
+				hookName = hookConfs[1]
+			} else if len(hookConfs) == 3 {
+				portName = hookConfs[0]
+				hookName = hookConfs[1]
+				conf = hookConfs[2]
+			} else {
+				panic("hook params error, e.g.:PortName|HookeName|ConfigFile or PortName|HookeName")
+			}
+
+			if !p.hookFactory.IsExist(hookName) {
+				panic(fmt.Sprintf("hook of %s not exist", hookName))
+			}
+
+			if hook, e := p.hookFactory.NewHook(hookName, conf); e != nil {
+				panic(e)
+			} else {
+				component.AddInPortHooks(portName, hook)
+			}
+		}
+	}
+
 	component.SetMessageSenderFactory(p.senderFactory).Build()
 
 	p.runningComponent = component
@@ -475,6 +519,16 @@ func (p *ClassicSpirit) SetMessageSenderFactory(factory MessageSenderFactory) {
 
 func (p *ClassicSpirit) GetMessageSenderFactory() MessageSenderFactory {
 	return p.senderFactory
+}
+
+func (p *ClassicSpirit) SetMessageHookFactory(factory MessageHookFactory) {
+	if factory == nil {
+		panic("message hook factory could not be nil")
+	}
+	p.hookFactory = factory
+}
+func (p *ClassicSpirit) GetMessageHookFactory() MessageHookFactory {
+	return p.hookFactory
 }
 
 func (p *ClassicSpirit) Hosting(components ...Component) Spirit {

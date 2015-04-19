@@ -20,6 +20,7 @@ type BaseComponent struct {
 	receivers     map[string][]MessageReceiver
 	handlers      map[string]ComponentHandler
 	inPortHandler map[string]ComponentHandler
+	inPortHooks   map[string][]MessageHook
 
 	runtimeLocker sync.Mutex
 	isBuilt       bool
@@ -43,6 +44,7 @@ func NewBaseComponent(componentName string) Component {
 		receivers:     make(map[string][]MessageReceiver),
 		handlers:      make(map[string]ComponentHandler),
 		inPortHandler: make(map[string]ComponentHandler),
+		inPortHooks:   make(map[string][]MessageHook),
 		portChans:     make(map[string]*PortChan),
 		stopedChans:   make(map[string]chan bool),
 		stoppingChans: make(map[string]chan bool),
@@ -180,6 +182,42 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 	p.receivers[inPortName] = receivers
 
 	return p
+}
+
+func (p *BaseComponent) AddInPortHooks(inportName string, hooks ...MessageHook) Component {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if inportName == "" {
+		panic("inportName could not be empty")
+	}
+
+	for _, hook := range hooks {
+		if hook == nil {
+			panic("hook could not be nil")
+		}
+	}
+
+	p.inPortHooks[inportName] = hooks
+
+	return p
+}
+
+func (p *BaseComponent) ClearInPortHooks(inportName string) (err error) {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if inportName == "" {
+		err = ERR_PORT_NAME_IS_EMPTY.New(errors.Params{"name": p.name})
+		return
+	}
+
+	if _, exist := p.inPortHooks[inportName]; !exist {
+		return
+	} else {
+		delete(p.inPortHooks, inportName)
+	}
+	return
 }
 
 func (p *BaseComponent) Build() Component {
