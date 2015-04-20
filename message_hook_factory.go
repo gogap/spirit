@@ -3,6 +3,7 @@ package spirit
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/gogap/errors"
 )
@@ -10,16 +11,21 @@ import (
 type MessageHookFactory interface {
 	RegisterMessageHooks(hooks ...MessageHook)
 	IsExist(hookType string) bool
-	NewHook(hookType, configFile string) (hook MessageHook, err error)
+	InitalHook(hookType, configFile string) (hook MessageHook, err error)
+	Get(hookType string) (hook MessageHook, err error)
 }
 
 type DefaultMessageHookFactory struct {
-	hookDrivers map[string]reflect.Type
+	hookDrivers   map[string]reflect.Type
+	instanceCache map[string]MessageHook
+
+	instanceLock sync.Mutex
 }
 
 func NewDefaultMessageHookFactory() MessageHookFactory {
 	fact := new(DefaultMessageHookFactory)
 	fact.hookDrivers = make(map[string]reflect.Type)
+	fact.instanceCache = make(map[string]MessageHook)
 	return fact
 }
 
@@ -55,18 +61,27 @@ func (p *DefaultMessageHookFactory) IsExist(hookType string) bool {
 	return false
 }
 
-func (p *DefaultMessageHookFactory) NewHook(hookType, configFile string) (hook MessageHook, err error) {
-	if hookType, exist := p.hookDrivers[hookType]; !exist {
+func (p *DefaultMessageHookFactory) InitalHook(hookType, configFile string) (hook MessageHook, err error) {
+	p.instanceLock.Lock()
+	defer p.instanceLock.Unlock()
+
+	if _, exist := p.instanceCache[hookType]; exist {
+		err = ERR_HOOK_INSTANCE_ALREADY_INITALED.New(errors.Params{"type": hookType})
+		return
+	}
+
+	if hookDriver, exist := p.hookDrivers[hookType]; !exist {
 		err = ERR_HOOK_DRIVER_NOT_EXIST.New(errors.Params{"type": hookType})
 		return
 	} else {
-		if vOfMessageHook := reflect.New(hookType); vOfMessageHook.CanInterface() {
+		if vOfMessageHook := reflect.New(hookDriver); vOfMessageHook.CanInterface() {
 			iMessageHook := vOfMessageHook.Interface()
 			if r, ok := iMessageHook.(MessageHook); ok {
 				if err = r.Init(configFile); err != nil {
 					return
 				}
 				hook = r
+				p.instanceCache[hookType] = r
 				return
 			} else {
 				err = ERR_HOOK_CREATE_FAILED.New(errors.Params{"type": hookType})
@@ -76,4 +91,14 @@ func (p *DefaultMessageHookFactory) NewHook(hookType, configFile string) (hook M
 		err = ERR_HOOK_BAD_DRIVER.New(errors.Params{"type": hookType})
 		return
 	}
+}
+
+func (p *DefaultMessageHookFactory) Get(hookType string) (hook MessageHook, err error) {
+	if instance, exist := p.instanceCache[hookType]; !exist {
+		err = ERR_HOOK_INSTANCE_NOT_INITALED.New(errors.Params{"type": hookType})
+		return
+	} else {
+		hook = instance
+	}
+	return
 }

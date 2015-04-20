@@ -50,8 +50,11 @@ var (
 
 	ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 33, "heartbeat of ali jiankong's uid does not exist")
 
-	ERR_HOOK_CREATE_FAILED    = errors.TN(SPIRIT_ERR_NS, 34, "create receiver failed, driver type: {{.type}}")
-	ERR_HOOK_DRIVER_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 35, "message hook driver not exist, type: {{.type}}")
-	ERR_HOOK_BAD_DRIVER       = errors.TN(SPIRIT_ERR_NS, 36, "bad message hook driver of {{.type}}")
-	ERR_MESSAGE_HOOK_ERROR    = errors.TN(SPIRIT_ERR_NS, 37, "hook message error, component: {{.name}}, port: {{.port}}, hookName: {{.hookName}}, event: {{.event}}, index: {{.index}}/{{.count}}")
+	ERR_HOOK_CREATE_FAILED             = errors.TN(SPIRIT_ERR_NS, 34, "create receiver failed, driver type: {{.type}}")
+	ERR_HOOK_DRIVER_NOT_EXIST          = errors.TN(SPIRIT_ERR_NS, 35, "message hook driver not exist, type: {{.type}}")
+	ERR_HOOK_BAD_DRIVER                = errors.TN(SPIRIT_ERR_NS, 36, "bad message hook driver of {{.type}}")
+	ERR_MESSAGE_HOOK_ERROR             = errors.TN(SPIRIT_ERR_NS, 37, "hook message error, component: {{.name}}, port: {{.port}}, hookName: {{.hookName}}, event: {{.event}}, index: {{.index}}/{{.count}}")
+	ERR_HOOK_INSTANCE_ALREADY_INITALED = errors.TN(SPIRIT_ERR_NS, 38, "hook instance already initaled, driver type: {{.type}}")
+	ERR_HOOK_INSTANCE_NOT_INITALED     = errors.TN(SPIRIT_ERR_NS, 39, "hook instance not initaled, driver type: {{.type}}")
+	ERR_INPORT_NOT_BIND_HOOK           = errors.TN(SPIRIT_ERR_NS, 40, "in port of {{.inPortName}} not bind hooks")
 )
