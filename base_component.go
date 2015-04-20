@@ -570,7 +570,7 @@ func (p *BaseComponent) hookMessages(inPortName string, event HookEvent, message
 
 func (p *BaseComponent) hookMessagesBefore(inPortName string, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
 	preMetadata := message.hooksMetaData
-	if preMetadata != nil || len(preMetadata) == 0 {
+	if preMetadata == nil || len(preMetadata) == 0 {
 		return
 	}
 
