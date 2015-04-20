@@ -20,7 +20,7 @@ type BaseComponent struct {
 	receivers     map[string][]MessageReceiver
 	handlers      map[string]ComponentHandler
 	inPortHandler map[string]ComponentHandler
-	inPortHooks   map[string][]MessageHook
+	inPortHooks   map[string][]string
 
 	runtimeLocker sync.Mutex
 	isBuilt       bool
@@ -32,6 +32,7 @@ type BaseComponent struct {
 	stopedChans   map[string]chan bool
 
 	senderFactory MessageSenderFactory
+	hookFactory   MessageHookFactory
 }
 
 func NewBaseComponent(componentName string) Component {
@@ -44,7 +45,7 @@ func NewBaseComponent(componentName string) Component {
 		receivers:     make(map[string][]MessageReceiver),
 		handlers:      make(map[string]ComponentHandler),
 		inPortHandler: make(map[string]ComponentHandler),
-		inPortHooks:   make(map[string][]MessageHook),
+		inPortHooks:   make(map[string][]string),
 		portChans:     make(map[string]*PortChan),
 		stopedChans:   make(map[string]chan bool),
 		stoppingChans: make(map[string]chan bool),
@@ -60,6 +61,14 @@ func (p *BaseComponent) SetMessageSenderFactory(factory MessageSenderFactory) Co
 		panic(fmt.Sprintf("message sender factory could not be nil, component name: %s", p.name))
 	}
 	p.senderFactory = factory
+	return p
+}
+
+func (p *BaseComponent) SetMessageHookFactory(factory MessageHookFactory) Component {
+	if factory == nil {
+		panic(fmt.Sprintf("message hook factory could not be nil, component name: %s", p.name))
+	}
+	p.hookFactory = factory
 	return p
 }
 
@@ -184,7 +193,7 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 	return p
 }
 
-func (p *BaseComponent) AddInPortHooks(inportName string, hooks ...MessageHook) Component {
+func (p *BaseComponent) AddInPortHooks(inportName string, hooks ...string) Component {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
@@ -193,8 +202,8 @@ func (p *BaseComponent) AddInPortHooks(inportName string, hooks ...MessageHook) 
 	}
 
 	for _, hook := range hooks {
-		if hook == nil {
-			panic("hook could not be nil")
+		if hook == "" {
+			panic("hook could not be empty")
 		}
 	}
 
@@ -551,25 +560,81 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 }
 
 func (p *BaseComponent) hookMessages(inPortName string, event HookEvent, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
-	if hooks, exist := p.inPortHooks[inPortName]; exist && hooks != nil && len(hooks) > 0 {
-		newMetadatas := []MessageHookMetadata{}
-		for index, hook := range hooks {
-			if ignored, matadata, e := hook.Hook(event, message.hooksMetaData, newMetadatas, &message.payload); e != nil {
-				if !errors.IsErrCode(e) {
-					e = ERR_MESSAGE_HOOK_ERROR.New(errors.Params{"err": e, "name": p.name, "port": inPortName, "index": index, "count": len(hooks), "hookName": hook.Name(), "event": event})
-				}
-				logs.Error(e)
-
-				if !ignored {
-					err = e
-					return
-				}
-			} else if !ignored {
-				newMetadatas = append(newMetadatas, matadata)
-			}
-		}
-		metadatas = newMetadatas
+	if event == HookEventBeforeCallHandler {
+		return p.hookMessagesBefore(inPortName, message)
+	} else if event == HookEventAfterCallHandler {
+		return p.hookMessagesAfter(inPortName, message)
 	}
+	return
+}
+
+func (p *BaseComponent) hookMessagesBefore(inPortName string, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	preMetadata := message.hooksMetaData
+	if preMetadata != nil || len(preMetadata) == 0 {
+		return
+	}
+
+	var hooks []string
+	var exist bool
+
+	if hooks, exist = p.inPortHooks[inPortName]; !exist {
+		err = ERR_INPORT_NOT_BIND_HOOK.New(errors.Params{"inPortName": inPortName})
+		return
+	}
+
+	newMetadatas := []MessageHookMetadata{}
+	for index, metadata := range preMetadata {
+		var hook MessageHook
+		hook, err = p.hookFactory.Get(metadata.HookName)
+
+		if ignored, matadata, e := hook.HookBefore(metadata, message.hooksMetaData, newMetadatas, &message.payload); e != nil {
+			if !errors.IsErrCode(e) {
+				e = ERR_MESSAGE_HOOK_ERROR.New(errors.Params{"err": e, "name": p.name, "port": inPortName, "index": index, "count": len(hooks), "hookName": hook.Name(), "event": "before"})
+			}
+			logs.Error(e)
+
+			if !ignored {
+				err = e
+				return
+			}
+		} else if !ignored {
+			newMetadatas = append(newMetadatas, matadata)
+		}
+	}
+	metadatas = newMetadatas
+	return
+}
+
+func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	var hooks []string
+	var exist bool
+
+	if hooks, exist = p.inPortHooks[inPortName]; !exist {
+		return
+	}
+
+	newMetadatas := []MessageHookMetadata{}
+	for index, hookName := range hooks {
+		var hook MessageHook
+		if hook, err = p.hookFactory.Get(hookName); err != nil {
+			return
+		}
+
+		if ignored, matadata, e := hook.HookAfter(message.hooksMetaData, newMetadatas, &message.payload); e != nil {
+			if !errors.IsErrCode(e) {
+				e = ERR_MESSAGE_HOOK_ERROR.New(errors.Params{"err": e, "name": p.name, "port": inPortName, "index": index, "count": len(hooks), "hookName": hook.Name(), "event": "after"})
+			}
+			logs.Error(e)
+
+			if !ignored {
+				err = e
+				return
+			}
+		} else if !ignored {
+			newMetadatas = append(newMetadatas, matadata)
+		}
+	}
+	metadatas = newMetadatas
 	return
 }
 

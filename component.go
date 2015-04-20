@@ -19,7 +19,7 @@ type Component interface {
 	RegisterHandler(name string, handler ComponentHandler) Component
 	CallHandler(handlerName string, payload *Payload) (result interface{}, err error)
 
-	AddInPortHooks(inportName string, hooks ...MessageHook) Component
+	AddInPortHooks(inportName string, hooks ...string) Component
 	ClearInPortHooks(inportName string) (err error)
 
 	ListHandlers() (handlers map[string]ComponentHandler, err error)
@@ -29,6 +29,7 @@ type Component interface {
 	GetReceivers(inPortName string) []MessageReceiver
 
 	SetMessageSenderFactory(factory MessageSenderFactory) Component
+	SetMessageHookFactory(factory MessageHookFactory) Component
 
 	Build() Component
 	Run()

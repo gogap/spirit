@@ -11,9 +11,17 @@ func (p *MessageHookBigDataRedis) Name() string {
 	return "message_hook_big_data_redis"
 }
 
-func (p *MessageHookBigDataRedis) Hook(event HookEvent,
+func (p *MessageHookBigDataRedis) HookBefore(
+	currentMetadata MessageHookMetadata,
 	previousMetadatas []MessageHookMetadata,
-	currentMetadatas []MessageHookMetadata,
+	contextMetadatas []MessageHookMetadata,
+	payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error) {
+	return
+}
+
+func (p *MessageHookBigDataRedis) HookAfter(
+	previousMetadatas []MessageHookMetadata,
+	contextMetadatas []MessageHookMetadata,
 	payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error) {
 	return
 }

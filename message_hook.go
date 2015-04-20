@@ -7,13 +7,22 @@ const (
 	HookEventAfterCallHandler  HookEvent = 2
 )
 
-type MessageHookMetadata map[string]interface{}
+type MessageHookMetadata struct {
+	HookName string                 `json:"hook_name"`
+	Context  map[string]interface{} `json:"context"`
+}
 
 type MessageHook interface {
 	Init(configFile string) error
 	Name() string
-	Hook(event HookEvent,
+	HookBefore(
+		currentMetadata MessageHookMetadata,
 		previousMetadatas []MessageHookMetadata,
-		currentMetadatas []MessageHookMetadata,
+		contextMetadatas []MessageHookMetadata,
+		payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error)
+
+	HookAfter(
+		previousMetadatas []MessageHookMetadata,
+		contextMetadatas []MessageHookMetadata,
 		payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error)
 }

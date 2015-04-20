@@ -133,9 +133,13 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					Value: new(cli.StringSlice),
 					Usage: "set env to the process",
 				}, cli.StringSliceFlag{
-					Name:  "hook",
+					Name:  "inital-hook,ih",
 					Value: new(cli.StringSlice),
-					Usage: "hook the inport message, param format e.g.: PortName|HookeName|ConfigFile or PortName|HookeName",
+					Usage: "inital hooks, param format e.g.: HookName|ConfigFile or HookName",
+				}, cli.StringSliceFlag{
+					Name:  "hook,bh",
+					Value: new(cli.StringSlice),
+					Usage: "inject message to inport hooks, param format e.g.: InportName|HookName|...",
 				},
 			},
 		},
@@ -380,40 +384,58 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 	}
 
+	initalHooks := c.StringSlice("inital-hook")
+
+	if initalHooks != nil && len(initalHooks) > 0 {
+		for _, strHook := range initalHooks {
+			hookConfs := strings.Split(strHook, "|")
+			hookName := ""
+			conf := ""
+			if hookConfs == nil {
+				panic("inital hook params error, e.g.:HookName|ConfigFile or HookName")
+			} else if len(hookConfs) == 1 {
+				hookName = hookConfs[0]
+			} else if len(hookConfs) == 2 {
+				hookName = hookConfs[0]
+				conf = hookConfs[1]
+			} else {
+				panic("inital hook params error, e.g.:HookName|ConfigFile or HookName")
+			}
+
+			if !p.hookFactory.IsExist(hookName) {
+				panic(fmt.Sprintf("hook driver of %s not exist", hookName))
+			}
+
+			if _, e := p.hookFactory.InitalHook(hookName, conf); e != nil {
+				panic(e)
+			}
+		}
+	}
+
 	hooks := c.StringSlice("hook")
 
 	if hooks != nil && len(hooks) > 0 {
 		for _, strHook := range hooks {
 			hookConfs := strings.Split(strHook, "|")
-			hookName := ""
 			portName := ""
-			conf := ""
+			hookNames := []string{}
 			if hookConfs == nil {
-				panic("hook params error, e.g.:PortName|HookeName|ConfigFile")
-			} else if len(hookConfs) == 2 {
+				panic("hook params error, e.g.:InPort|HookName|...")
+			} else if len(hookConfs) >= 2 {
 				portName = hookConfs[0]
-				hookName = hookConfs[1]
-			} else if len(hookConfs) == 3 {
-				portName = hookConfs[0]
-				hookName = hookConfs[1]
-				conf = hookConfs[2]
+				hookNames = hookConfs[1:]
 			} else {
-				panic("hook params error, e.g.:PortName|HookeName|ConfigFile or PortName|HookeName")
+				panic("hook params error, e.g.:InPort|HookName|...")
 			}
 
-			if !p.hookFactory.IsExist(hookName) {
-				panic(fmt.Sprintf("hook of %s not exist", hookName))
-			}
-
-			if hook, e := p.hookFactory.NewHook(hookName, conf); e != nil {
-				panic(e)
-			} else {
-				component.AddInPortHooks(portName, hook)
-			}
+			component.AddInPortHooks(portName, hookNames...)
 		}
 	}
 
-	component.SetMessageSenderFactory(p.senderFactory).Build()
+	component.
+		SetMessageSenderFactory(p.senderFactory).
+		SetMessageHookFactory(p.hookFactory).
+		Build()
 
 	p.runningComponent = component
 
