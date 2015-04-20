@@ -137,9 +137,13 @@ func (p *ClassicSpirit) commands() []cli.Command {
 					Value: new(cli.StringSlice),
 					Usage: "initial hooks, param format e.g.: HookName|ConfigFile or HookName",
 				}, cli.StringSliceFlag{
-					Name:  "hook,bh",
+					Name:  "hook",
 					Value: new(cli.StringSlice),
 					Usage: "inject message to inport hooks, param format e.g.: InportName|HookName|...",
+				}, cli.StringFlag{
+					Name:  "hook-global",
+					Value: "",
+					Usage: "inject message to all inport hooks, it will called before port, hook param format e.g.: HookName|...",
 				},
 			},
 		},
@@ -412,6 +416,14 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 	}
 
+	strGlobalHooks := c.String("hook-global")
+	strGlobalHooks = strings.TrimSpace(strGlobalHooks)
+
+	globalHookNames := []string{}
+	if strGlobalHooks != "" {
+		globalHookNames = strings.Split(strGlobalHooks, "|")
+	}
+
 	hooks := c.StringSlice("hook")
 
 	if hooks != nil && len(hooks) > 0 {
@@ -423,7 +435,7 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 				panic("hook params error, e.g.:InPort|HookName|...")
 			} else if len(hookConfs) >= 2 {
 				portName = hookConfs[0]
-				hookNames = hookConfs[1:]
+				hookNames = append(globalHookNames, hookConfs[1:]...)
 				for _, hookName := range hookNames {
 					if _, e := p.hookFactory.Get(hookName); e != nil {
 						panic(e)
