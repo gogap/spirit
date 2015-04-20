@@ -9,6 +9,9 @@ type Spirit interface {
 	SetMessageSenderFactory(factory MessageSenderFactory)
 	GetMessageSenderFactory() MessageSenderFactory
 
+	SetMessageHookFactory(factory MessageHookFactory)
+	GetMessageHookFactory() MessageHookFactory
+
 	GetComponent(name string) Component
 
 	RegisterHeartbeaters(beaters ...Heartbeater) Spirit

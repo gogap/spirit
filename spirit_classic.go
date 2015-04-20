@@ -28,6 +28,7 @@ type ClassicSpirit struct {
 
 	receiverFactory MessageReceiverFactory
 	senderFactory   MessageSenderFactory
+	hookFactory     MessageHookFactory
 
 	components           map[string]Component
 	runningComponent     Component
@@ -37,8 +38,9 @@ type ClassicSpirit struct {
 	heartbeatSleepTime time.Duration
 	heartbeatersToRun  map[string]bool
 	heartbeaterConfig  string
-	alias              string
-	envs               []string
+
+	alias string
+	envs  []string
 
 	isBuilt                       bool
 	isRunCommand                  bool
@@ -72,8 +74,12 @@ func NewClassicSpirit(name, description, version string) Spirit {
 	senderFactory := NewDefaultMessageSenderFactory()
 	senderFactory.RegisterMessageSenders(new(MessageSenderMQS))
 
+	hookFactory := NewDefaultMessageHookFactory()
+	hookFactory.RegisterMessageHooks(new(MessageHookBigDataRedis))
+
 	newSpirit.receiverFactory = receiverFactory
 	newSpirit.senderFactory = senderFactory
+	newSpirit.hookFactory = hookFactory
 
 	newSpirit.RegisterHeartbeaters(new(AliJiankong))
 
@@ -121,11 +127,23 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				}, cli.StringFlag{
 					Name:  "config",
 					Value: "",
-					Usage: "the config file path for inital func to use",
+					Usage: "the config file path for initial func to use",
 				}, cli.StringSliceFlag{
 					Name:  "env, e",
 					Value: new(cli.StringSlice),
 					Usage: "set env to the process",
+				}, cli.StringSliceFlag{
+					Name:  "initial-hook,ih",
+					Value: new(cli.StringSlice),
+					Usage: "initial hooks, param format e.g.: HookName|ConfigFile or HookName",
+				}, cli.StringSliceFlag{
+					Name:  "hook",
+					Value: new(cli.StringSlice),
+					Usage: "inject message to inport hooks, param format e.g.: InportName|HookName|...",
+				}, cli.StringFlag{
+					Name:  "hook-global",
+					Value: "",
+					Usage: "inject message hooks to all inport, it will be called before inport hook, param format e.g.: HookName|...",
 				},
 			},
 		},
@@ -369,7 +387,72 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 				BindReceiver(portName, receiver)
 		}
 	}
-	component.SetMessageSenderFactory(p.senderFactory).Build()
+
+	initialHooks := c.StringSlice("initial-hook")
+
+	if initialHooks != nil && len(initialHooks) > 0 {
+		for _, strHook := range initialHooks {
+			hookConfs := strings.Split(strHook, "|")
+			hookName := ""
+			conf := ""
+			if hookConfs == nil {
+				panic("initial hook params error, e.g.:HookName|ConfigFile or HookName")
+			} else if len(hookConfs) == 1 {
+				hookName = hookConfs[0]
+			} else if len(hookConfs) == 2 {
+				hookName = hookConfs[0]
+				conf = hookConfs[1]
+			} else {
+				panic("initial hook params error, e.g.:HookName|ConfigFile or HookName")
+			}
+
+			if !p.hookFactory.IsExist(hookName) {
+				panic(fmt.Sprintf("hook driver of %s not exist", hookName))
+			}
+
+			if _, e := p.hookFactory.InitalHook(hookName, conf); e != nil {
+				panic(e)
+			}
+		}
+	}
+
+	strGlobalHooks := c.String("hook-global")
+	strGlobalHooks = strings.TrimSpace(strGlobalHooks)
+
+	globalHookNames := []string{}
+	if strGlobalHooks != "" {
+		globalHookNames = strings.Split(strGlobalHooks, "|")
+	}
+
+	hooks := c.StringSlice("hook")
+
+	if hooks != nil && len(hooks) > 0 {
+		for _, strHook := range hooks {
+			hookConfs := strings.Split(strHook, "|")
+			portName := ""
+			hookNames := []string{}
+			if hookConfs == nil {
+				panic("hook params error, e.g.:InPort|HookName|...")
+			} else if len(hookConfs) >= 2 {
+				portName = hookConfs[0]
+				hookNames = append(globalHookNames, hookConfs[1:]...)
+				for _, hookName := range hookNames {
+					if _, e := p.hookFactory.Get(hookName); e != nil {
+						panic(e)
+					}
+				}
+			} else {
+				panic("hook params error, e.g.:InPort|HookName|...")
+			}
+
+			component.AddInPortHooks(portName, hookNames...)
+		}
+	}
+
+	component.
+		SetMessageSenderFactory(p.senderFactory).
+		SetMessageHookFactory(p.hookFactory).
+		Build()
 
 	p.runningComponent = component
 
@@ -477,6 +560,16 @@ func (p *ClassicSpirit) GetMessageSenderFactory() MessageSenderFactory {
 	return p.senderFactory
 }
 
+func (p *ClassicSpirit) SetMessageHookFactory(factory MessageHookFactory) {
+	if factory == nil {
+		panic("message hook factory could not be nil")
+	}
+	p.hookFactory = factory
+}
+func (p *ClassicSpirit) GetMessageHookFactory() MessageHookFactory {
+	return p.hookFactory
+}
+
 func (p *ClassicSpirit) Hosting(components ...Component) Spirit {
 	if components == nil || len(components) == 0 {
 		panic("components is nil or empty")
@@ -555,7 +648,7 @@ func (p *ClassicSpirit) getHeartbeatMessage() (message HeartbeatMessage) {
 	return
 }
 
-func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
+func (p *ClassicSpirit) Run(initialFuncs ...InitalFunc) {
 	if p.isRunCommand && p.isRunCheckedCorrect {
 		if !p.isBuilt {
 			fmt.Println("[spirit] spirit should build first")
@@ -582,9 +675,9 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 			return
 		}
 
-		//run inital funcs
-		if initalFuncs != nil {
-			for _, initFunc := range initalFuncs {
+		//run initial funcs
+		if initialFuncs != nil {
+			for _, initFunc := range initialFuncs {
 				if e := initFunc(p.runningComponentConf); e != nil {
 					panic(e)
 				}
