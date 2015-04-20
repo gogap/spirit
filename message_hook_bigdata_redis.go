@@ -14,7 +14,7 @@ import (
 const (
 	BIG_DATA_MESSAGE_ID           = "BIG_DATA_MESSAGE_ID"
 	MAX_DATA_LENGTH               = 1024 * 60 //60k
-	BIG_DATA_REDIS_EXPIRE_SECONDS = 60
+	BIG_DATA_REDIS_EXPIRE_SECONDS = 600
 )
 
 var redisStorage cache_storages.CacheStorage
@@ -75,14 +75,14 @@ func (p *MessageHookBigDataRedis) HookBefore(
 				err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": err.Error()})
 				return
 			}
-			var container map[string]interface{}
+			var container interface{}
 			err = json.Unmarshal([]byte(data), &container)
 			if err != nil {
 				err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err.Error()})
 				return
 			}
 			if data != "" {
-				payload.SetContent(data)
+				payload.SetContent(container)
 			}
 		}
 	}
@@ -101,13 +101,14 @@ func (p *MessageHookBigDataRedis) HookAfter(
 	}
 	if len(bit) > MAX_DATA_LENGTH {
 		messageId := getUUID()
-		err = redisStorage.Set(messageId, string(bit), 60)
+		err = redisStorage.Set(messageId, string(bit), BIG_DATA_REDIS_EXPIRE_SECONDS)
 		if err != nil {
 			err = ERR_HOOK_BIG_DATA_REDIS_SET.New(errors.Params{"err": err.Error()})
 			return
 		}
 		newMetaData.Context = make(map[string]interface{})
 		newMetaData.Context[BIG_DATA_MESSAGE_ID] = messageId
+		payload.SetContent(nil)
 		return
 	}
 	ignored = true
