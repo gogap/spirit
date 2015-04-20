@@ -598,7 +598,6 @@ func (p *BaseComponent) hookMessagesBefore(inPortName string, message *Component
 				return
 			}
 		} else if !ignored {
-			matadata.HookName = hookName
 			newMetadatas = append(newMetadatas, matadata)
 		}
 	}
