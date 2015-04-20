@@ -20,6 +20,7 @@ type BaseComponent struct {
 	receivers     map[string][]MessageReceiver
 	handlers      map[string]ComponentHandler
 	inPortHandler map[string]ComponentHandler
+	inPortHooks   map[string][]string
 
 	runtimeLocker sync.Mutex
 	isBuilt       bool
@@ -31,6 +32,7 @@ type BaseComponent struct {
 	stopedChans   map[string]chan bool
 
 	senderFactory MessageSenderFactory
+	hookFactory   MessageHookFactory
 }
 
 func NewBaseComponent(componentName string) Component {
@@ -43,6 +45,7 @@ func NewBaseComponent(componentName string) Component {
 		receivers:     make(map[string][]MessageReceiver),
 		handlers:      make(map[string]ComponentHandler),
 		inPortHandler: make(map[string]ComponentHandler),
+		inPortHooks:   make(map[string][]string),
 		portChans:     make(map[string]*PortChan),
 		stopedChans:   make(map[string]chan bool),
 		stoppingChans: make(map[string]chan bool),
@@ -58,6 +61,14 @@ func (p *BaseComponent) SetMessageSenderFactory(factory MessageSenderFactory) Co
 		panic(fmt.Sprintf("message sender factory could not be nil, component name: %s", p.name))
 	}
 	p.senderFactory = factory
+	return p
+}
+
+func (p *BaseComponent) SetMessageHookFactory(factory MessageHookFactory) Component {
+	if factory == nil {
+		panic(fmt.Sprintf("message hook factory could not be nil, component name: %s", p.name))
+	}
+	p.hookFactory = factory
 	return p
 }
 
@@ -180,6 +191,46 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 	p.receivers[inPortName] = receivers
 
 	return p
+}
+
+func (p *BaseComponent) AddInPortHooks(inportName string, hooks ...string) Component {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if inportName == "" {
+		panic("inportName could not be empty")
+	}
+
+	for _, hook := range hooks {
+		if hook == "" {
+			panic("hook could not be empty")
+		}
+	}
+
+	if originalHooks, exist := p.inPortHooks[inportName]; exist {
+		p.inPortHooks[inportName] = append(originalHooks, hooks...)
+	} else {
+		p.inPortHooks[inportName] = hooks
+	}
+
+	return p
+}
+
+func (p *BaseComponent) ClearInPortHooks(inportName string) (err error) {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if inportName == "" {
+		err = ERR_PORT_NAME_IS_EMPTY.New(errors.Params{"name": p.name})
+		return
+	}
+
+	if _, exist := p.inPortHooks[inportName]; !exist {
+		return
+	} else {
+		delete(p.inPortHooks, inportName)
+	}
+	return
 }
 
 func (p *BaseComponent) Build() Component {
@@ -440,13 +491,8 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	var nextGraphIndex int32 = 0
 	var content interface{}
 
-	if content, err = p.callHandlerWithRecover(handler, &message.payload); err != nil {
-		if !errors.IsErrCode(err) {
-			err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
-		}
-
-		logs.Error(err)
-
+	var newMetadatas []MessageHookMetadata
+	if _, err = p.hookMessages(inPortName, HookEventBeforeCallHandler, &message); err != nil {
 		if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
 			errCode := err.(errors.ErrCode)
 			message.payload.err.AddressId = message.currentGraphIndex
@@ -460,28 +506,149 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 			return
 		}
 	} else {
-		message.payload.SetContent(content)
-		if address, exist = message.graph[strconv.Itoa(int(message.currentGraphIndex)+1)]; exist {
-			nextGraphIndex = message.currentGraphIndex + 1 //forword the next component
+		if content, err = p.callHandlerWithRecover(handler, &message.payload); err != nil {
+			if !errors.IsErrCode(err) {
+				err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
+			}
+
+			logs.Error(err)
+
+			if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
+				errCode := err.(errors.ErrCode)
+				message.payload.err.AddressId = message.currentGraphIndex
+				message.payload.err.Id = errCode.Id()
+				message.payload.err.Namespace = errCode.Namespace()
+				message.payload.err.Code = errCode.Code()
+				message.payload.err.Message = errCode.Error()
+
+				nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
+			} else {
+				return
+			}
 		} else {
-			return
+			message.payload.SetContent(content)
+
+			if newMetadatas, err = p.hookMessages(inPortName, HookEventAfterCallHandler, &message); err != nil {
+				if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
+					errCode := err.(errors.ErrCode)
+					message.payload.err.AddressId = message.currentGraphIndex
+					message.payload.err.Id = errCode.Id()
+					message.payload.err.Namespace = errCode.Namespace()
+					message.payload.err.Code = errCode.Code()
+					message.payload.err.Message = errCode.Error()
+
+					nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
+				} else {
+					return
+				}
+			}
+
+			if address, exist = message.graph[strconv.Itoa(int(message.currentGraphIndex)+1)]; exist {
+				nextGraphIndex = message.currentGraphIndex + 1 //forword the next component
+			} else {
+				return
+			}
 		}
 	}
 
+	message.hooksMetaData = newMetadatas
 	message.currentGraphIndex = nextGraphIndex
 
-	go func(addrType, url string, msg ComponentMessage) {
-		var sender MessageSender
-		if sender, err = p.senderFactory.NewSender(addrType); err != nil {
-			logs.Error(err)
-			return
-		}
-
-		if err = sender.Send(url, msg); err != nil {
-			logs.Error(err)
-			return
-		}
-	}(address.Type, address.Url, message)
+	go p.sendMessage(address.Type, address.Url, message)
 
 	return
+}
+
+func (p *BaseComponent) hookMessages(inPortName string, event HookEvent, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	if event == HookEventBeforeCallHandler {
+		return p.hookMessagesBefore(inPortName, message)
+	} else if event == HookEventAfterCallHandler {
+		return p.hookMessagesAfter(inPortName, message)
+	}
+	return
+}
+
+func (p *BaseComponent) hookMessagesBefore(inPortName string, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	preMetadata := message.hooksMetaData
+	if preMetadata == nil || len(preMetadata) == 0 {
+		return
+	}
+
+	var hooks []string
+	var exist bool
+
+	if hooks, exist = p.inPortHooks[inPortName]; !exist {
+		err = ERR_INPORT_NOT_BIND_HOOK.New(errors.Params{"inPortName": inPortName})
+		return
+	}
+
+	newMetadatas := []MessageHookMetadata{}
+	for index, metadata := range preMetadata {
+		var hook MessageHook
+		hook, err = p.hookFactory.Get(metadata.HookName)
+
+		if ignored, matadata, e := hook.HookBefore(metadata, message.hooksMetaData, newMetadatas, &message.payload); e != nil {
+			if !errors.IsErrCode(e) {
+				e = ERR_MESSAGE_HOOK_ERROR.New(errors.Params{"err": e, "name": p.name, "port": inPortName, "index": index, "count": len(hooks), "hookName": hook.Name(), "event": "before"})
+			}
+			logs.Error(e)
+
+			if !ignored {
+				err = e
+				return
+			}
+		} else if !ignored {
+			newMetadatas = append(newMetadatas, matadata)
+		}
+	}
+	metadatas = newMetadatas
+	return
+}
+
+func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	var hooks []string
+	var exist bool
+
+	if hooks, exist = p.inPortHooks[inPortName]; !exist {
+		return
+	}
+
+	newMetadatas := []MessageHookMetadata{}
+	for index, hookName := range hooks {
+		var hook MessageHook
+		if hook, err = p.hookFactory.Get(hookName); err != nil {
+			return
+		}
+
+		if ignored, matadata, e := hook.HookAfter(message.hooksMetaData, newMetadatas, &message.payload); e != nil {
+			if !errors.IsErrCode(e) {
+				e = ERR_MESSAGE_HOOK_ERROR.New(errors.Params{"err": e, "name": p.name, "port": inPortName, "index": index, "count": len(hooks), "hookName": hook.Name(), "event": "after"})
+			}
+			logs.Error(e)
+
+			if !ignored {
+				err = e
+				return
+			}
+		} else if !ignored {
+			matadata.HookName = hookName
+			newMetadatas = append(newMetadatas, matadata)
+		}
+	}
+	metadatas = newMetadatas
+	return
+}
+
+func (p *BaseComponent) sendMessage(addrType, url string, msg ComponentMessage) {
+	var sender MessageSender
+	var err error
+	if sender, err = p.senderFactory.NewSender(addrType); err != nil {
+		logs.Error(err)
+		return
+	}
+
+	if err = sender.Send(url, msg); err != nil {
+		logs.Error(err)
+		return
+	}
 }
