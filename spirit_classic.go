@@ -127,15 +127,15 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				}, cli.StringFlag{
 					Name:  "config",
 					Value: "",
-					Usage: "the config file path for inital func to use",
+					Usage: "the config file path for initial func to use",
 				}, cli.StringSliceFlag{
 					Name:  "env, e",
 					Value: new(cli.StringSlice),
 					Usage: "set env to the process",
 				}, cli.StringSliceFlag{
-					Name:  "inital-hook,ih",
+					Name:  "initial-hook,ih",
 					Value: new(cli.StringSlice),
-					Usage: "inital hooks, param format e.g.: HookName|ConfigFile or HookName",
+					Usage: "initial hooks, param format e.g.: HookName|ConfigFile or HookName",
 				}, cli.StringSliceFlag{
 					Name:  "hook,bh",
 					Value: new(cli.StringSlice),
@@ -384,22 +384,22 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 		}
 	}
 
-	initalHooks := c.StringSlice("inital-hook")
+	initialHooks := c.StringSlice("initial-hook")
 
-	if initalHooks != nil && len(initalHooks) > 0 {
-		for _, strHook := range initalHooks {
+	if initialHooks != nil && len(initialHooks) > 0 {
+		for _, strHook := range initialHooks {
 			hookConfs := strings.Split(strHook, "|")
 			hookName := ""
 			conf := ""
 			if hookConfs == nil {
-				panic("inital hook params error, e.g.:HookName|ConfigFile or HookName")
+				panic("initial hook params error, e.g.:HookName|ConfigFile or HookName")
 			} else if len(hookConfs) == 1 {
 				hookName = hookConfs[0]
 			} else if len(hookConfs) == 2 {
 				hookName = hookConfs[0]
 				conf = hookConfs[1]
 			} else {
-				panic("inital hook params error, e.g.:HookName|ConfigFile or HookName")
+				panic("initial hook params error, e.g.:HookName|ConfigFile or HookName")
 			}
 
 			if !p.hookFactory.IsExist(hookName) {
@@ -636,7 +636,7 @@ func (p *ClassicSpirit) getHeartbeatMessage() (message HeartbeatMessage) {
 	return
 }
 
-func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
+func (p *ClassicSpirit) Run(initialFuncs ...InitalFunc) {
 	if p.isRunCommand && p.isRunCheckedCorrect {
 		if !p.isBuilt {
 			fmt.Println("[spirit] spirit should build first")
@@ -663,9 +663,9 @@ func (p *ClassicSpirit) Run(initalFuncs ...InitalFunc) {
 			return
 		}
 
-		//run inital funcs
-		if initalFuncs != nil {
-			for _, initFunc := range initalFuncs {
+		//run initial funcs
+		if initialFuncs != nil {
+			for _, initFunc := range initialFuncs {
 				if e := initFunc(p.runningComponentConf); e != nil {
 					panic(e)
 				}

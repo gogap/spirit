@@ -20,11 +20,11 @@ func main() {
 
 	todoSpirit.RegisterHeartbeaters(new(ConsoleHeartbeater))
 
-	todoSpirit.Hosting(todoComponent).Build().Run(inital)
+	todoSpirit.Hosting(todoComponent).Build().Run(initial)
 }
 
-func inital(configFile string) (err error) {
-	//todo something inital before run
+func initial(configFile string) (err error) {
+	//todo something initial before run
 	env := os.Getenv("DEBUG_LEVEL")
 
 	fmt.Println("DEBUG_LEVEL:", env)
