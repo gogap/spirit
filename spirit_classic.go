@@ -424,6 +424,11 @@ func (p *ClassicSpirit) cmdRunComponent(c *cli.Context) {
 			} else if len(hookConfs) >= 2 {
 				portName = hookConfs[0]
 				hookNames = hookConfs[1:]
+				for _, hookName := range hookNames {
+					if _, e := p.hookFactory.Get(hookName); e != nil {
+						panic(e)
+					}
+				}
 			} else {
 				panic("hook params error, e.g.:InPort|HookName|...")
 			}
