@@ -143,7 +143,7 @@ func (p *ClassicSpirit) commands() []cli.Command {
 				}, cli.StringFlag{
 					Name:  "hook-global",
 					Value: "",
-					Usage: "inject message to all inport hooks, it will called before port, hook param format e.g.: HookName|...",
+					Usage: "inject message hooks to all inport, it will be called before inport hook, param format e.g.: HookName|...",
 				},
 			},
 		},
