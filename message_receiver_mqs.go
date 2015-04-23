@@ -182,7 +182,7 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 						}
 					}(respErr)
 				}
-			case <-time.After(time.Millisecond * 1):
+			case <-time.After(time.Second):
 				{
 					if len(responseChan) == 0 && len(errorChan) == 0 && isStopping {
 						stoppedChan <- true
