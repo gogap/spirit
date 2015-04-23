@@ -335,7 +335,7 @@ func (p *BaseComponent) ReceiverLoop() {
 						stoplogTime = time.Now()
 						logs.Warn(fmt.Sprintf("* port - %s received stop signal", portName))
 					}
-				case <-time.After(time.Millisecond * 1):
+				case <-time.After(time.Second):
 					{
 						if len(respChan) == 0 && isStopping {
 							stopedChan <- true
