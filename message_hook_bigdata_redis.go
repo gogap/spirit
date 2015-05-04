@@ -2,7 +2,6 @@ package spirit
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -101,7 +100,6 @@ func (p *MessageHookBigDataRedis) HookAfter(
 		return
 	}
 
-	fmt.Println(len(bit))
 	if len(bit) > MAX_DATA_LENGTH {
 		messageId := getUUID()
 		err = redisStorage.Set(messageId, string(bit), BIG_DATA_REDIS_EXPIRE_SECONDS)
