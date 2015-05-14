@@ -612,14 +612,14 @@ func (p *ClassicSpirit) cmdInstanceBins(c *cli.Context) {
 		return
 	}
 
-	strPrint := fmt.Sprintf("ID\tHASH\t%39s\t%s\n", "MESSAGE", "CREATE_TIME")
+	strPrint := fmt.Sprintf("ID\tHASH\t%43s\t%22s\n", "CREATE TIME", "COMMIT MESSAGE")
 	strPrintTpl := "%s%d\t%32s\t%s\t%s\n"
 	for id, bin := range instanceBins {
 		star := " "
 		if metadata.CurrentHash == bin.hash {
 			star = "*"
 		}
-		strPrint += fmt.Sprintf(strPrintTpl, star, id+1, bin.hash, bin.message, bin.createTime)
+		strPrint += fmt.Sprintf(strPrintTpl, star, id+1, bin.hash, bin.createTime, bin.message)
 	}
 	fmt.Print(strPrint)
 }
@@ -930,10 +930,10 @@ func (p *ClassicSpirit) cmdPS(c *cli.Context) {
 			fmt.Println(instance.name)
 		}
 	} else {
-		strPrint := fmt.Sprintf("ID\tPID\tNAME%10s\tHASH%28s\tSTATUS\n", "", "")
-		strPrintTpl := "%d\t%s\t%s\t%s\t%s\n"
+		strPrint := fmt.Sprintf("ID\tPID\tNAME%10s\tHASH%28s\tSTATUS\tCOMMIT MESSAGE\n", "", "")
+		strPrintTpl := "%d\t%s\t%s\t%s\t%s\t%s\n"
 		for id, instance := range instances {
-			strPrint += fmt.Sprintf(strPrintTpl, id+1, instance.pid, instance.name, instance.hash, instance.status)
+			strPrint += fmt.Sprintf(strPrintTpl, id+1, instance.pid, instance.name, instance.hash, instance.status, instance.message)
 		}
 		fmt.Print(strPrint)
 	}

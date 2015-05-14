@@ -21,10 +21,11 @@ const (
 )
 
 type instanceStatus struct {
-	pid    string
-	name   string
-	status string
-	hash   string
+	pid     string
+	name    string
+	status  string
+	hash    string
+	message string
 }
 
 type instanceBin struct {
@@ -377,15 +378,26 @@ func (p *instanceManager) ListInstanceStatus(all bool) (instances []instanceStat
 			return
 		}
 
+		binMsgPath := p.GetInstanceBinPath(instanceName, metadata.CurrentHash) + ".msg"
+
+		binMsg := ""
+		if _, e := os.Stat(binMsgPath); e == nil {
+			if data, e := ioutil.ReadFile(binMsgPath); e == nil {
+				binMsg = string(data)
+			}
+		}
+
 		if isProcessAlive(pid) {
 			ins.pid = strPID
 			ins.status = INSTANCE_RUNNING
 			ins.hash = metadata.CurrentHash
+			ins.message = binMsg
 			inslist = append(inslist, ins)
 		} else if all {
 			ins.pid = "-"
 			ins.status = INSTANCE_EXITED
 			ins.hash = metadata.CurrentHash
+			ins.message = binMsg
 			inslist = append(inslist, ins)
 		}
 	}
