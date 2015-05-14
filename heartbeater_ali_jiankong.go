@@ -1,8 +1,6 @@
 package spirit
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,51 +24,53 @@ type AliJiankong struct {
 func (p *AliJiankong) Name() string {
 	return "ali_jiankong"
 }
-func (p *AliJiankong) Start(configFile string) (err error) {
-	if configFile == "" {
-		err = ERR_HEARTBEAT_CONFIG_FILE_IS_EMPTY.New(errors.Params{"name": p.Name()})
+func (p *AliJiankong) Start(options Options) (err error) {
+	if options == nil {
+		err = ERR_HEARTBEAT_OPTIONS_IS_NIL.New(errors.Params{"name": p.Name()})
 		return
 	}
 
-	var tmp struct {
-		AliJiankongConfig struct {
-			UID          string `json:"uid"`
-			MetricName   string `json:"metric_name"`
-			ReportPeriod int64  `json:"report_period"`
-			Timeout      int64  `json:"timeout"`
-		} `json:"ali_jiankong"`
-	}
+	var uid, metricName string = "", ""
+	var reportPeriod, timeout int64 = 0, 0
 
-	if data, e := ioutil.ReadFile(configFile); e != nil {
-		err = ERR_READE_FILE_ERROR.New(errors.Params{"err": e, "file": configFile})
-		return
-	} else if e := json.Unmarshal(data, &tmp); e != nil {
-		err = ERR_UNMARSHAL_DATA_ERROR.New(errors.Params{"err": e})
+	if uid, err = options.GetStringValue("uid"); err != nil {
 		return
 	}
 
-	tmp.AliJiankongConfig.UID = strings.TrimSpace(tmp.AliJiankongConfig.UID)
-	if tmp.AliJiankongConfig.UID == "" {
+	if metricName, err = options.GetStringValue("metric_name"); err != nil {
+		return
+	}
+
+	if reportPeriod, err = options.GetInt64Value("report_period"); err != nil {
+		return
+	}
+
+	if timeout, err = options.GetInt64Value("timeout"); err != nil {
+		return
+	}
+
+	uid = strings.TrimSpace(uid)
+	if uid == "" {
 		err = ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST.New()
 		return
 	}
 
-	tmp.AliJiankongConfig.MetricName = strings.TrimSpace(tmp.AliJiankongConfig.MetricName)
-	if tmp.AliJiankongConfig.MetricName == "" {
-		tmp.AliJiankongConfig.MetricName = "component_heartbeat"
+	metricName = strings.TrimSpace(metricName)
+	if metricName == "" {
+		metricName = "component_heartbeat"
 	}
 
-	if tmp.AliJiankongConfig.Timeout == 0 {
-		tmp.AliJiankongConfig.Timeout = 1000
+	if timeout == 0 {
+		timeout = 1000
 	}
 
-	p.client = ali_jiankong.NewAliJianKong(tmp.AliJiankongConfig.UID, time.Duration(tmp.AliJiankongConfig.Timeout)*time.Microsecond)
+	p.client = ali_jiankong.NewAliJianKong(uid, time.Duration(timeout)*time.Microsecond)
 
-	if tmp.AliJiankongConfig.ReportPeriod <= 60000 {
-		tmp.AliJiankongConfig.ReportPeriod = 60000
+	if reportPeriod <= 60000 {
+		reportPeriod = 60000
 	}
 
-	p.reportPeriod = time.Duration(tmp.AliJiankongConfig.ReportPeriod) * time.Millisecond
+	p.reportPeriod = time.Duration(reportPeriod) * time.Millisecond
 
 	p.lastReportTime = time.Now()
 
@@ -87,12 +87,12 @@ func (p *AliJiankong) Heartbeat(heartbeatMessage HeartbeatMessage) {
 			MetricName:  "component_heartbeat",
 			MetricValue: strconv.Itoa(int(p.count)),
 			Dimensions: ali_jiankong.Dimensions{
-				"component_name": heartbeatMessage.Component,
-				"process_id":     strconv.Itoa(int(heartbeatMessage.PID)),
-				"host_name":      heartbeatMessage.HostName,
-				"start_time":     heartbeatMessage.StartTime.Format("2006-01-02 15:04:05"),
+				"instance_name": heartbeatMessage.InstanceName,
+				"process_id":    strconv.Itoa(int(heartbeatMessage.PID)),
+				"host_name":     heartbeatMessage.HostName,
+				"start_time":    heartbeatMessage.StartTime.Format("2006-01-02 15:04:05"),
 			},
-			DimensionsOrder: []string{"component_name", "process_id", "host_name", "start_time"},
+			DimensionsOrder: []string{"instance_name", "process_id", "host_name", "start_time"},
 		}
 
 		if err := p.client.Report(item); err != nil {

@@ -7,7 +7,7 @@ import (
 type HeartbeatMessage struct {
 	PID            int
 	HostName       string
-	Component      string
+	InstanceName   string
 	StartTime      time.Time
 	CurrentTime    time.Time
 	HeartbeatCount int64

@@ -29,7 +29,7 @@ func NewMessageReceiverMQS(url string) MessageReceiver {
 	return &MessageReceiverMQS{url: url}
 }
 
-func (p *MessageReceiverMQS) Init(url, configFile string) (err error) {
+func (p *MessageReceiverMQS) Init(url string, options Options) (err error) {
 	p.url = url
 
 	var queue ali_mqs.AliMQSQueue

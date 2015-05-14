@@ -8,7 +8,15 @@ import (
 )
 
 func main() {
-	todoSpirit := spirit.NewClassicSpirit("example", "a example of todo component", "1.0.0")
+	todoSpirit := spirit.NewClassicSpirit(
+		"todo",
+		"a example of todo component",
+		"1.0.0",
+		[]spirit.Author{
+			spirit.Author{
+				Name:  "zeal",
+				Email: "xujinzheng@gmail.com"},
+		})
 
 	todoComponent := spirit.NewBaseComponent("todo")
 
@@ -18,12 +26,12 @@ func main() {
 	todoComponent.RegisterHandler("delete_task", todo.DeleteTask)
 	todoComponent.RegisterHandler("done_task", todo.DoneTask)
 
-	todoSpirit.RegisterHeartbeaters(new(ConsoleHeartbeater))
+	spirit.RegisterHeartbeaters(new(ConsoleHeartbeater))
 
-	todoSpirit.Hosting(todoComponent).Build().Run(initial)
+	todoSpirit.Hosting(todoComponent, initial).Build().Run()
 }
 
-func initial(configFile string) (err error) {
+func initial() (err error) {
 	//todo something initial before run
 	env := os.Getenv("DEBUG_LEVEL")
 
@@ -32,6 +40,8 @@ func initial(configFile string) (err error) {
 	env2 := os.Getenv("DEBUG_LEVEL2")
 
 	fmt.Println("DEBUG_LEVEL2:", env2)
+
+	fmt.Println(spirit.ConfigStore.Get("./spirit_todo.conf"))
 
 	return
 }

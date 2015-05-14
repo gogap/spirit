@@ -2,6 +2,6 @@ package spirit
 
 type Heartbeater interface {
 	Name() string
-	Start(configFile string) error
+	Start(options Options) error
 	Heartbeat(heartbeatMessage HeartbeatMessage)
 }
