@@ -334,6 +334,12 @@ func (p *ClassicSpirit) cmdStopInstance(c *cli.Context) {
 		err = ERR_SPIRIT_STOP_INSTANCE_FIALED.New(errors.Params{"name": instanceName, "pid": pid, "err": e})
 		return
 	}
+
+	for isProcessAlive(pid) {
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	return
 }
 
 func (p *ClassicSpirit) cmdKillInstance(c *cli.Context) {
