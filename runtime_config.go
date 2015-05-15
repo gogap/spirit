@@ -31,7 +31,7 @@ type portHookConf struct {
 	Options map[string]interface{} `json:"options"`
 }
 
-type globalHook struct {
+type globalHookConf struct {
 	Type    string                 `json:"type"`
 	Name    string                 `json:"name"`
 	Options map[string]interface{} `json:"options"`
@@ -40,7 +40,7 @@ type globalHook struct {
 type runtimeConfig struct {
 	Components   []runComponentConf `json:"components"`
 	Heartbeat    []heartbeatConf    `json:"heartbeat,omitempty"`
-	GlobalHooks  []globalHook       `json:"global_hooks,omitempty"`
+	GlobalHooks  []globalHookConf   `json:"global_hooks,omitempty"`
 	StoreConfigs []string           `json:"store_conf,omitempty"`
 }
 
