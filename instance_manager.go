@@ -46,7 +46,7 @@ type instanceMetadata struct {
 }
 
 func (p *instanceMetadata) Serialize() (str string, err error) {
-	if data, e := json.MarshalIndent(p, " ", "  "); e != nil {
+	if data, e := json.MarshalIndent(p, "", "    "); e != nil {
 		err = ERR_JSON_MARSHAL.New(errors.Params{"err": e})
 		return
 	} else {

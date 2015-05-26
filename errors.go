@@ -88,6 +88,9 @@ var (
 	ERR_WRITE_COMMIT_MESSAGE_ERROR     = errors.TN(SPIRIT_ERR_NS, 69, "write commit message error: {{.err}}")
 	ERR_MUST_CHECKOUT_BEFORE_REMOVE    = errors.TN(SPIRIT_ERR_NS, 70, "cloud not remove the binary with hash {{.hash}} while using, you can checkout other's bin before remove")
 	ERR_REMOVE_BIN_ERROR               = errors.TN(SPIRIT_ERR_NS, 71, "remove binary with hash {{.hash}} failed, err: {{.err}}")
+	ERR_COULD_NOT_MAKE_SPIRIT_TMP_DIR  = errors.TN(SPIRIT_ERR_NS, 72, "could not make tmp dir, error: {{.err}}")
+	ERR_WRITE_TMP_CONFIG_FILE_FAILED   = errors.TN(SPIRIT_ERR_NS, 73, "write tmp config of {{.fileName}} failed, err: {{.err}}")
+	ERR_MARSHAL_CONFIG_FAILED          = errors.TN(SPIRIT_ERR_NS, 74, "marshal config of {{.fileName}} failed, err: {{.err}}")
 
 	ERR_SPIRIT_NO_CONFIG_SPECIFIC        = errors.TN(SPIRIT_ERR_NS, 1000, "no config file specific")
 	ERR_SPIRIT_ENV_FORAMT_ERROR          = errors.TN(SPIRIT_ERR_NS, 1002, "env format error: {{.env}}")

@@ -46,7 +46,7 @@ type runtimeConfig struct {
 
 func (p *runtimeConfig) Serialize() (str string, err error) {
 	var data []byte
-	if data, err = env_json.MarshalIndent(p, " ", "  "); err != nil {
+	if data, err = env_json.MarshalIndent(p, "", "    "); err != nil {
 		return
 	}
 

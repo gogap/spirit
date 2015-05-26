@@ -60,7 +60,7 @@ func (p *configManager) saveCaches() (err error) {
 	}
 
 	var data []byte
-	if data, err = json.MarshalIndent(p, " ", "  "); err != nil {
+	if data, err = json.MarshalIndent(p, "", "    "); err != nil {
 		err = ERR_CACHE_FILE_SERIALIZE_FAILED.New(errors.Params{"fileName": p.cacheFile, "err": err})
 		return
 	}
@@ -85,7 +85,7 @@ func (p *configManager) serializeCaches() (str string, err error) {
 	}
 
 	var data []byte
-	if data, err = json.MarshalIndent(p, " ", "  "); err != nil {
+	if data, err = json.MarshalIndent(p, "", "    "); err != nil {
 		err = ERR_CACHE_FILE_SERIALIZE_FAILED.New(errors.Params{"fileName": p.cacheFile, "err": err})
 		return
 	}
@@ -121,6 +121,38 @@ func (p *configManager) Get(fileName string) (v interface{}, err error) {
 		v = conf.Config
 	}
 
+	return
+}
+
+func (p *configManager) TmpFile(fileName string) (tmpFile string, err error) {
+	if conf, exist := p.Configs[fileName]; !exist {
+		err = ERR_CONFIG_FILE_NOT_CACHED.New(errors.Params{"fileName": fileName})
+		return
+	} else {
+
+		tmpDir := getSpiritTmp()
+
+		if e := os.MkdirAll(tmpDir, 0744); e != nil {
+			err = ERR_COULD_NOT_MAKE_SPIRIT_TMP_DIR.New(errors.Params{"err": e})
+			return
+		}
+
+		tmpFilePath := tmpDir + "/" + conf.MD5 + ".conf"
+
+		if data, e := json.MarshalIndent(conf.Config, "", "    "); e != nil {
+			if e := ioutil.WriteFile(tmpFilePath, data, 0644); e != nil {
+				err = ERR_MARSHAL_CONFIG_FAILED.New(errors.Params{"fileName": fileName, "err": e})
+				return
+			}
+		} else {
+			if e := ioutil.WriteFile(tmpFilePath, data, 0644); e != nil {
+				err = ERR_WRITE_TMP_CONFIG_FILE_FAILED.New(errors.Params{"fileName": fileName, "err": e})
+				return
+			}
+		}
+
+		tmpFile = tmpFilePath
+	}
 	return
 }
 

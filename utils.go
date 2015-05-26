@@ -35,6 +35,11 @@ func getSpiritHome(spiritName string) string {
 	return fmt.Sprintf("%s/%s/%s", tmpDir, SPIRIT, spiritName)
 }
 
+func getSpiritTmp() string {
+	tmpDir := strings.TrimRight(os.TempDir(), "/")
+	return fmt.Sprintf("%s/%s/tmp", tmpDir, SPIRIT)
+}
+
 func getInstanceHome(instanceName string) string {
 	procDir := filepath.Dir(os.Args[0])
 
@@ -148,7 +153,7 @@ func printObject(title string, v interface{}) {
 		return
 	}
 
-	data, _ := env_json.MarshalIndent(v, " ", "  ")
+	data, _ := env_json.MarshalIndent(v, "", "    ")
 
 	fmt.Println(title+":\n", string(data))
 }

@@ -12,7 +12,7 @@ type Options map[string]interface{}
 
 func (p Options) Serialize() (str string, err error) {
 	var data []byte
-	if data, err = env_json.MarshalIndent(&p, " ", "  "); err != nil {
+	if data, err = env_json.MarshalIndent(&p, "", "    "); err != nil {
 		return
 	}
 
