@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/gogap/env_json"
+	"github.com/gogap/env_strings"
 	"github.com/gogap/errors"
 	"github.com/nu7hatch/gouuid"
 )
@@ -41,13 +42,7 @@ func getSpiritTmp() string {
 }
 
 func getInstanceHome(instanceName string) string {
-	procDir := filepath.Dir(os.Args[0])
-
-	if isChildInstance() {
-		procDir = getBinHome(instanceName)
-	}
-
-	return fmt.Sprintf("%s/.%s/.%s", procDir, SPIRIT, instanceName)
+	return fmt.Sprintf("%s/.%s/.%s", getBinHome(), SPIRIT, instanceName)
 }
 
 func getAbsInstanceHome(instanceName string) string {
@@ -73,8 +68,28 @@ func getProcDir() string {
 	}
 }
 
-func getBinHome(instanceName string) string {
-	return os.Getenv(SPIRIT_BIN_HOME)
+func getAbsBinHome() string {
+	binHome := filepath.Dir(os.Args[0])
+
+	if isChildInstance() {
+		binHome = os.Getenv(SPIRIT_BIN_HOME)
+	}
+
+	if !filepath.IsAbs(binHome) {
+		binHome, _ = filepath.Abs(binHome)
+	}
+
+	return binHome
+}
+
+func getBinHome() string {
+	binHome := filepath.Dir(os.Args[0])
+
+	if isChildInstance() {
+		binHome = os.Getenv(SPIRIT_BIN_HOME)
+	}
+
+	return binHome
 }
 
 func isPersistentProcess(instanceName string) bool {
@@ -117,6 +132,29 @@ func getFileHash(fileName string) string {
 
 func getProcBinHash() string {
 	return getFileHash(os.Args[0])
+}
+
+func readFile(fileName string, build bool) (strMD5 string, data []byte, err error) {
+
+	if data, err = ioutil.ReadFile(fileName); err != nil {
+		return
+	}
+
+	if build {
+		envStrings := env_strings.NewEnvStrings(ENV_NAME, ENV_EXT)
+		if builtStr, e := envStrings.Execute(string(data)); e != nil {
+			err = e
+			return
+		} else {
+			data = []byte(builtStr)
+		}
+	}
+
+	md5Data := md5.Sum(data)
+
+	strMD5 = fmt.Sprintf("%0x", md5Data)
+
+	return
 }
 
 func loadConfig(fileName string, v interface{}) (strMD5 string, err error) {

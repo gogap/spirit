@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	ConfigStore *configManager = newConfigManager("")
+	Assets *assetsManager = newAssetsManager("")
 )
 
 var (

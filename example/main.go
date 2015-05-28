@@ -41,7 +41,9 @@ func initial() (err error) {
 
 	fmt.Println("DEBUG_LEVEL2:", env2)
 
-	fmt.Println(spirit.ConfigStore.Get("./spirit_todo.conf"))
+	asset, _ := spirit.Assets.Get("test.conf")
+
+	fmt.Println(string(asset))
 
 	return
 }

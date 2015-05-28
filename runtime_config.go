@@ -37,11 +37,16 @@ type globalHookConf struct {
 	Options map[string]interface{} `json:"options"`
 }
 
+type AssetProperty struct {
+	FileName  string `json:"file"`
+	NeedBuild bool   `json:"env_build"`
+}
+
 type runtimeConfig struct {
-	Components   []runComponentConf `json:"components"`
-	Heartbeat    []heartbeatConf    `json:"heartbeat,omitempty"`
-	GlobalHooks  []globalHookConf   `json:"global_hooks,omitempty"`
-	StoreConfigs []string           `json:"store_conf,omitempty"`
+	Components  []runComponentConf `json:"components"`
+	Heartbeat   []heartbeatConf    `json:"heartbeat,omitempty"`
+	GlobalHooks []globalHookConf   `json:"global_hooks,omitempty"`
+	Assets      []AssetProperty    `json:"assets,omitempty"`
 }
 
 func (p *runtimeConfig) Serialize() (str string, err error) {

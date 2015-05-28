@@ -335,6 +335,10 @@ func (p *instanceManager) ListInstanceStatus(all bool) (instances []instanceStat
 	var files []os.FileInfo
 
 	if files, err = ioutil.ReadDir(spiritHome); err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+			return
+		}
 		err = ERR_SPIRIT_LIST_INSTANCE_FAILED.New(errors.Params{"err": err})
 		return
 	}

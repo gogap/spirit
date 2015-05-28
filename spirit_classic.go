@@ -214,11 +214,11 @@ func (p *ClassicSpirit) startInstance() (err error) {
 		return
 	}
 
-	ConfigStore = newConfigManager(p.instanceName)
+	Assets = newAssetsManager(p.instanceName)
 
 	p.initalEnvs()
 
-	if err = ConfigStore.loadCaches(); err != nil {
+	if err = Assets.loadAssets(); err != nil {
 		return
 	}
 
@@ -547,13 +547,13 @@ func (p *ClassicSpirit) cmdInspectInstance(c *cli.Context) {
 	printStr := ""
 
 	if c.Bool("config") {
-		confManager := newConfigManager(instanceName)
-		if err = confManager.loadCaches(); err != nil {
+		confManager := newAssetsManager(instanceName)
+		if err = confManager.loadAssets(); err != nil {
 			return
 		}
 
 		confStr := ""
-		if confStr, err = confManager.serializeCaches(); err != nil {
+		if confStr, err = confManager.serializeAssets(); err != nil {
 			return
 		}
 		printStr += "* config:\n"
@@ -755,7 +755,7 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 		return
 	}
 
-	ConfigStore = newConfigManager(p.instanceName)
+	Assets = newAssetsManager(p.instanceName)
 
 	var runComponents []string
 	if runComponents, err = p.getRunComponents(c); err != nil {
@@ -784,7 +784,7 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 
 	p.isRunCheckedCorrect = true
 
-	if err = ConfigStore.saveCaches(); err != nil {
+	if err = Assets.save(); err != nil {
 		return
 	}
 
@@ -832,7 +832,7 @@ func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
 		return
 	}
 
-	ConfigStore = newConfigManager(p.instanceName)
+	Assets = newAssetsManager(p.instanceName)
 
 	var runComponents []string
 	if runComponents, err = p.getRunComponents(c); err != nil {
@@ -877,7 +877,7 @@ func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
 			return
 		}
 
-		if err = ConfigStore.saveCaches(); err != nil {
+		if err = Assets.save(); err != nil {
 			return
 		}
 
@@ -975,13 +975,17 @@ func (p *ClassicSpirit) initalConf(c *cli.Context) (err error) {
 		return
 	}
 
-	if err = ConfigStore.load(configFile, &p.metadata.RunConfig); err != nil {
+	if err = Assets.load(configFile, true); err != nil {
 		return
 	}
 
-	if p.metadata.RunConfig.StoreConfigs != nil {
-		for _, file := range p.metadata.RunConfig.StoreConfigs {
-			if err = ConfigStore.load(file, new(Options)); err != nil {
+	if err = Assets.Unmarshal(configFile, &p.metadata.RunConfig); err != nil {
+		return
+	}
+
+	if p.metadata.RunConfig.Assets != nil {
+		for _, assetProp := range p.metadata.RunConfig.Assets {
+			if err = Assets.load(assetProp.FileName, assetProp.NeedBuild); err != nil {
 				return
 			}
 		}

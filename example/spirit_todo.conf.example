@@ -5,7 +5,7 @@
             "port_name": "port.new",
             "handler_name": "new_task",
             "type": "mqs",
-            "url": "{{redis_get "user"}}:{{redis_get "pwd"}}@http://{{redis_get "ownerId"}}.mqs-cn-beijing.aliyuncs.com/test",
+            "url": "http://{{redis_get "user"}}:{{redis_get "pwd"}}@{{redis_get "ownerId"}}.mqs-cn-beijing.aliyuncs.com/test",
             "options": {}
         }]
     }],
@@ -23,5 +23,5 @@
             "db":1
         }
     }],
-    "store_conf":["./test.conf"]
+    "assets":[{"file":"./test.conf","env_build":true}]
 }

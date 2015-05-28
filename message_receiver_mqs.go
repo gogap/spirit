@@ -57,7 +57,7 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 	accessKeySecret := ""
 	queueName := ""
 
-	regUrl := regexp.MustCompile("(.*):(.*)@(.*)/(.*)")
+	regUrl := regexp.MustCompile("http://(.*):(.*)@(.*)/(.*)")
 	regMatched := regUrl.FindAllStringSubmatch(p.url, -1)
 
 	if len(regMatched) == 1 &&
@@ -68,7 +68,7 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 		queueName = regMatched[0][4]
 	}
 
-	client := ali_mqs.NewAliMQSClient(hostId,
+	client := ali_mqs.NewAliMQSClient("http://"+hostId,
 		accessKeyId,
 		accessKeySecret)
 
