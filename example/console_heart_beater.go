@@ -8,7 +8,7 @@ import (
 type ConsoleHeartbeater struct {
 }
 
-func (p *ConsoleHeartbeater) Start(configfile string) error {
+func (p *ConsoleHeartbeater) Start(options spirit.Options) error {
 	return nil
 }
 

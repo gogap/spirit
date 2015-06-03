@@ -1,0 +1,27 @@
+{
+    "components": [{
+        "name": "todo",
+        "address": [{
+            "port_name": "port.new",
+            "handler_name": "new_task",
+            "type": "mqs",
+            "url": "http://{{redis_get "user"}}:{{redis_get "pwd"}}@{{redis_get "ownerId"}}.mqs-cn-beijing.aliyuncs.com/test",
+            "options": {}
+        }]
+    }],
+    "heartbeat": [{
+        "heart": "console_heart_beater",
+        "interval": 1000,
+        "options": {}
+    }],
+    "global_hooks": [{
+        "type": "message_hook_big_data_redis",
+        "name": "redis",
+        "options": {
+            "auth":"",
+            "address":"127.0.0.1:6379",
+            "db":1
+        }
+    }],
+    "assets":[{"file":"./test.conf","env_build":true}]
+}

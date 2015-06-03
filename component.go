@@ -3,6 +3,12 @@ package spirit
 type ComponentStatus int
 
 const (
+	SIG_PAUSE  = 1000
+	SIG_RESUME = 1001
+	SIG_STOP   = 1002
+)
+
+const (
 	STATUS_READY    ComponentStatus = 0
 	STATUS_RUNNING  ComponentStatus = 1
 	STATUS_PAUSED   ComponentStatus = 2
@@ -27,9 +33,6 @@ type Component interface {
 
 	BindReceiver(inPortName string, receivers ...MessageReceiver) Component
 	GetReceivers(inPortName string) []MessageReceiver
-
-	SetMessageSenderFactory(factory MessageSenderFactory) Component
-	SetMessageHookFactory(factory MessageHookFactory) Component
 
 	Build() Component
 	Run()

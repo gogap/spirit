@@ -30,9 +30,6 @@ type BaseComponent struct {
 	portChans     map[string]*PortChan
 	stoppingChans map[string]chan bool
 	stopedChans   map[string]chan bool
-
-	senderFactory MessageSenderFactory
-	hookFactory   MessageHookFactory
 }
 
 func NewBaseComponent(componentName string) Component {
@@ -54,22 +51,6 @@ func NewBaseComponent(componentName string) Component {
 
 func (p *BaseComponent) Name() string {
 	return p.name
-}
-
-func (p *BaseComponent) SetMessageSenderFactory(factory MessageSenderFactory) Component {
-	if factory == nil {
-		panic(fmt.Sprintf("message sender factory could not be nil, component name: %s", p.name))
-	}
-	p.senderFactory = factory
-	return p
-}
-
-func (p *BaseComponent) SetMessageHookFactory(factory MessageHookFactory) Component {
-	if factory == nil {
-		panic(fmt.Sprintf("message hook factory could not be nil, component name: %s", p.name))
-	}
-	p.hookFactory = factory
-	return p
 }
 
 func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (result interface{}, err error) {
@@ -241,7 +222,7 @@ func (p *BaseComponent) Build() Component {
 		panic(fmt.Sprintf("the component of %s already built", p.name))
 	}
 
-	if p.senderFactory == nil {
+	if senderFactory == nil {
 		panic(fmt.Sprintf("the component of %s did not have sender factory", p.name))
 	}
 
@@ -585,7 +566,7 @@ func (p *BaseComponent) hookMessagesBefore(inPortName string, message *Component
 	newMetadatas := []MessageHookMetadata{}
 	for index, metadata := range preMetadata {
 		var hook MessageHook
-		hook, err = p.hookFactory.Get(metadata.HookName)
+		hook, err = hookFactory.Get(metadata.HookName)
 
 		if ignored, matadata, e := hook.HookBefore(metadata, message.hooksMetaData, newMetadatas, &message.payload); e != nil {
 			if !errors.IsErrCode(e) {
@@ -616,7 +597,7 @@ func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentM
 	newMetadatas := []MessageHookMetadata{}
 	for index, hookName := range hooks {
 		var hook MessageHook
-		if hook, err = p.hookFactory.Get(hookName); err != nil {
+		if hook, err = hookFactory.Get(hookName); err != nil {
 			return
 		}
 
@@ -642,7 +623,7 @@ func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentM
 func (p *BaseComponent) sendMessage(addrType, url string, msg ComponentMessage) {
 	var sender MessageSender
 	var err error
-	if sender, err = p.senderFactory.NewSender(addrType); err != nil {
+	if sender, err = senderFactory.NewSender(addrType); err != nil {
 		logs.Error(err)
 		return
 	}

@@ -10,7 +10,7 @@ import (
 type MessageReceiverFactory interface {
 	RegisterMessageReceivers(receivers ...MessageReceiver)
 	IsExist(receiverType string) bool
-	NewReceiver(receiverType, url string, configFile string) (receiver MessageReceiver, err error)
+	NewReceiver(receiverType, url string, options Options) (receiver MessageReceiver, err error)
 }
 
 type DefaultMessageReceiverFactory struct {
@@ -55,7 +55,7 @@ func (p *DefaultMessageReceiverFactory) IsExist(receiverType string) bool {
 	return false
 }
 
-func (p *DefaultMessageReceiverFactory) NewReceiver(receiverType, url string, configFile string) (receiver MessageReceiver, err error) {
+func (p *DefaultMessageReceiverFactory) NewReceiver(receiverType, url string, options Options) (receiver MessageReceiver, err error) {
 	if receiverType, exist := p.receiverDrivers[receiverType]; !exist {
 		err = ERR_RECEIVER_DRIVER_NOT_EXIST.New(errors.Params{"type": receiverType})
 		return
@@ -63,7 +63,7 @@ func (p *DefaultMessageReceiverFactory) NewReceiver(receiverType, url string, co
 		if vOfMessageReceiver := reflect.New(receiverType); vOfMessageReceiver.CanInterface() {
 			iMessageReceiver := vOfMessageReceiver.Interface()
 			if r, ok := iMessageReceiver.(MessageReceiver); ok {
-				if err = r.Init(url, configFile); err != nil {
+				if err = r.Init(url, options); err != nil {
 					return
 				}
 				receiver = r
