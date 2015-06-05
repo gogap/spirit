@@ -14,7 +14,7 @@ type MessageAddress struct {
 
 type MessageReceiver interface {
 	Type() string
-	Init(url, configFile string) error
+	Init(url string, options Options) error
 	Address() MessageAddress
 	Receive(portChan *PortChan)
 }

@@ -13,7 +13,7 @@ type MessageHookMetadata struct {
 }
 
 type MessageHook interface {
-	Init(configFile string) error
+	Init(options Options) error
 	Name() string
 	HookBefore(
 		currentMetadata MessageHookMetadata,

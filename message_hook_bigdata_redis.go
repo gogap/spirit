@@ -2,13 +2,9 @@ package spirit
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
 
 	"github.com/gogap/cache_storages"
-	"github.com/gogap/env_json"
 	"github.com/gogap/errors"
-	"github.com/nu7hatch/gouuid"
 )
 
 const (
@@ -21,39 +17,35 @@ var redisStorage cache_storages.CacheStorage
 
 type MessageHookBigDataRedis struct{}
 
-func (p *MessageHookBigDataRedis) Init(configFile string) (err error) {
-	var config redisStorageConf
-	r, err := os.Open(configFile)
-	if err != nil {
-		err = ERR_HOOK_BIG_DATA_OPEN_FILE.New(errors.Params{"err": err.Error()})
-		return
-	}
-	defer r.Close()
+func (p *MessageHookBigDataRedis) Init(options Options) (err error) {
+	auth := ""
+	address := ""
+	var db int64 = 0
 
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		err = ERR_HOOK_BIG_DATA_OPEN_FILE.New(errors.Params{"err": err.Error()})
+	if auth, err = options.GetStringValue("auth"); err != nil {
 		return
 	}
 
-	envJson := env_json.NewEnvJson(ENV_NAME, ENV_EXT)
-	if err = envJson.Unmarshal(data, &config); err != nil {
-		err = ERR_HOOK_BIG_DATA_UNMARSHAL_CONF.New(errors.Params{"err": err.Error()})
+	if address, err = options.GetStringValue("address"); err != nil {
 		return
 	}
-	if config.Auth == "" {
-		redisStorage, err = cache_storages.NewRedisStorage(config.Conn, config.Index)
-		if err != nil {
+
+	if db, err = options.GetInt64Value("db"); err != nil {
+		return
+	}
+
+	if auth == "" {
+		if redisStorage, err = cache_storages.NewRedisStorage(address, int(db)); err != nil {
 			err = ERR_HOOK_BIG_DATA_CREATE_REDIS.New(errors.Params{"err": err.Error()})
 			return
 		}
 	} else {
-		redisStorage, err = cache_storages.NewAuthRedisStorage(config.Conn, config.Index, config.Auth)
-		if err != nil {
+		if redisStorage, err = cache_storages.NewAuthRedisStorage(address, int(db), auth); err != nil {
 			err = ERR_HOOK_BIG_DATA_CREATE_REDIS.New(errors.Params{"err": err.Error()})
 			return
 		}
 	}
+
 	return
 }
 
@@ -114,15 +106,4 @@ func (p *MessageHookBigDataRedis) HookAfter(
 	}
 	ignored = true
 	return
-}
-
-type redisStorageConf struct {
-	Auth  string `json:"auth"`
-	Conn  string `json:"conn"`
-	Index int    `json:"index"`
-}
-
-func getUUID() string {
-	id, _ := uuid.NewV4()
-	return id.String()
 }
