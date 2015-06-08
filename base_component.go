@@ -566,7 +566,9 @@ func (p *BaseComponent) hookMessagesBefore(inPortName string, message *Component
 	newMetadatas := []MessageHookMetadata{}
 	for index, metadata := range preMetadata {
 		var hook MessageHook
-		hook, err = hookFactory.Get(metadata.HookName)
+		if hook, err = hookFactory.Get(metadata.HookName); err != nil {
+			return
+		}
 
 		if ignored, matadata, e := hook.HookBefore(metadata, message.hooksMetaData, newMetadatas, &message.payload); e != nil {
 			if !errors.IsErrCode(e) {
