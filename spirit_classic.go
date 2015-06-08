@@ -1055,15 +1055,16 @@ func (p *ClassicSpirit) buildRunComponents() (err error) {
 		inPortHooks := map[string][]string{}
 
 		//inject global port hooks
-		for portName, _ := range ports {
-			hooks := []string{}
-			for _, hookConf := range p.metadata.RunConfig.GlobalHooks {
-				if _, err = hookFactory.CreateHook(hookConf.Type, hookConf.Name, hookConf.Options); err != nil {
-					return
-				}
-				hooks = append(hooks, hookConf.Name)
+		globalHookshooks := []string{}
+		for _, hookConf := range p.metadata.RunConfig.GlobalHooks {
+			if _, err = hookFactory.CreateHook(hookConf.Type, hookConf.Name, hookConf.Options); err != nil {
+				return
 			}
-			inPortHooks[portName] = hooks
+			globalHookshooks = append(globalHookshooks, hookConf.Name)
+		}
+
+		for portName, _ := range ports {
+			inPortHooks[portName] = globalHookshooks
 		}
 
 		//inject port hooks
