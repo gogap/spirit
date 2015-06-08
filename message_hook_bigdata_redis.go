@@ -9,7 +9,7 @@ import (
 
 const (
 	BIG_DATA_MESSAGE_ID           = "BIG_DATA_MESSAGE_ID"
-	MAX_DATA_LENGTH               = 1024 * 60 //60k
+	MAX_DATA_LENGTH               = 1024 * 30 //30k
 	BIG_DATA_REDIS_EXPIRE_SECONDS = 600
 )
 
@@ -91,6 +91,7 @@ func (p *MessageHookBigDataRedis) HookAfter(
 		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err.Error()})
 		return
 	}
+
 	if len(bit) > MAX_DATA_LENGTH {
 		messageId := getUUID()
 		err = redisStorage.Set(messageId, string(bit), BIG_DATA_REDIS_EXPIRE_SECONDS)
