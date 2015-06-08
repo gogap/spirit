@@ -1072,10 +1072,10 @@ func (p *ClassicSpirit) buildRunComponents() (err error) {
 				return
 			}
 
-			if hooks, exist := inPortHooks[hookConf.Name]; exist {
-				inPortHooks[hookConf.Name] = append(hooks, hookConf.Name)
+			if hooks, exist := inPortHooks[hookConf.Port]; exist {
+				inPortHooks[hookConf.Port] = append(hooks, hookConf.Name)
 			} else {
-				inPortHooks[hookConf.Name] = []string{hookConf.Name}
+				inPortHooks[hookConf.Port] = []string{hookConf.Name}
 			}
 		}
 
