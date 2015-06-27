@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -59,8 +60,11 @@ func (p *Payload) UnSerialize(data []byte) (err error) {
 		Error   Error             `json:"error,omitempty"`
 	}
 
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
+	if err = decoder.Decode(&tmp); err != nil {
+		return
 	}
 
 	p.id = tmp.Id
@@ -109,11 +113,15 @@ func (p *Payload) FillContentToObject(v interface{}) (err error) {
 		return
 	}
 
-	if data, e := json.Marshal(p.content); e != nil {
-		return e
+	var data []byte
+	if data, err = json.Marshal(p.content); err != nil {
+		return
 	} else {
-		if e := json.Unmarshal(data, v); e != nil {
-			return e
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.UseNumber()
+
+		if err = decoder.Decode(v); err != nil {
+			return
 		}
 		return
 	}
@@ -272,9 +280,14 @@ func (p *Payload) GetContextObject(key string, v interface{}) (err error) {
 		if bJson, e := json.Marshal(val); e != nil {
 			err = fmt.Errorf("marshal object of %s to json failed, error is:%v", key, e)
 			return
-		} else if e := json.Unmarshal(bJson, v); e != nil {
-			err = fmt.Errorf("unmarshal json to object %s failed, error is:%v", key, e)
-			return
+		} else {
+			decoder := json.NewDecoder(bytes.NewReader(bJson))
+			decoder.UseNumber()
+
+			if e := decoder.Decode(v); e != nil {
+				err = fmt.Errorf("unmarshal json to object %s failed, error is:%v", key, e)
+				return
+			}
 		}
 	}
 	return
@@ -368,7 +381,10 @@ func (p *Payload) GetCommandObjectArray(command string, values []interface{}) (e
 			return
 		}
 
-		if e = json.Unmarshal(bJson, &values[i]); e != nil {
+		decoder := json.NewDecoder(bytes.NewReader(bJson))
+		decoder.UseNumber()
+
+		if e = decoder.Decode(&values[i]); e != nil {
 			err = fmt.Errorf("unmarshal json to object %s failed, error is:%v", command, e)
 			return
 		}

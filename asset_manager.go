@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -145,7 +146,9 @@ func (p *assetsManager) Unmarshal(fileName string, v interface{}) (err error) {
 		return
 	}
 
-	if e := json.Unmarshal(data, v); e != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+
+	if e := decoder.Decode(v); e != nil {
 		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": e})
 		return
 	}
