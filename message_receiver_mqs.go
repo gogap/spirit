@@ -1,14 +1,13 @@
 package spirit
 
 import (
-	"fmt"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/gogap/ali_mqs"
 	"github.com/gogap/errors"
-	"github.com/gogap/logs"
+	"github.com/gogap/event_center"
 )
 
 type MessageReceiverMQS struct {
@@ -18,11 +17,11 @@ type MessageReceiverMQS struct {
 
 	recvLocker  sync.Mutex
 	isReceiving bool
+	isStoped    bool
+	isPaused    bool
 
 	responseChan chan ali_mqs.MessageReceiveResponse
 	errorChan    chan error
-
-	isPaused bool
 }
 
 func NewMessageReceiverMQS(url string) MessageReceiver {
@@ -85,98 +84,133 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 	p.recvLocker.Lock()
 	defer p.recvLocker.Unlock()
-	if p.isReceiving == true {
-		panic("could not start receive twice")
+
+	receiverMetadata := ReceiverMetadata{
+		ComponentName: portChan.ComponentName,
+		PortName:      portChan.PortName,
+		Url:           p.url,
+		Type:          p.Type(),
 	}
-	p.isReceiving = true
 
-	recvLoop := func(receiverType string, url string, queue ali_mqs.AliMQSQueue, compMsgChan chan ComponentMessage, compErrChan chan error, singalChan chan int, stoppedChan chan bool) {
-		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
-		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
+	responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
+	errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
-		defer close(responseChan)
-		defer close(errorChan)
+	defer close(responseChan)
+	defer close(errorChan)
 
+	stopSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
+		if !p.isStoped {
+			p.queue.Stop()
+			p.isStoped = true
+
+			EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiverMetadata)
+		}
+	})
+
+	EventCenter.Subscribe(EVENT_CMD_STOP, stopSubscriber)
+	defer EventCenter.Unsubscribe(EVENT_CMD_STOP, stopSubscriber.Id())
+
+	pauseSubscriber := event_center.NewSubscriber(
+		func(eventName string, values ...interface{}) {
+			if p.isStoped {
+				return
+			}
+
+			if p.isPaused {
+				return
+			}
+
+			p.queue.Stop()
+			p.isPaused = true
+
+			EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiverMetadata)
+		})
+
+	resumeSubscriber := event_center.NewSubscriber(
+		func(eventName string, values ...interface{}) {
+			if p.isStoped {
+				return
+			}
+
+			if !p.isPaused {
+				return
+			}
+
+			go p.queue.ReceiveMessage(responseChan, errorChan)
+			p.isPaused = false
+
+			EventCenter.PushEvent(EVENT_RECEIVER_STARTED, receiverMetadata)
+
+		})
+
+	msgProcessedSubscriber := event_center.NewSubscriber(
+		func(eventName string, values ...interface{}) {
+
+			if values == nil || len(values) != 2 {
+				return
+			}
+
+			if name := values[0].(string); name != portChan.PortName {
+				return
+			}
+
+			if receiptHandle := values[1].(string); receiptHandle == "" {
+				return
+			} else if err := p.queue.DeleteMessage(receiptHandle); err != nil {
+				EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, receiverMetadata, receiptHandle)
+			}
+		})
+
+	EventCenter.Subscribe(EVENT_CMD_PAUSE, pauseSubscriber)
+	defer EventCenter.Unsubscribe(EVENT_CMD_PAUSE, pauseSubscriber.Id())
+
+	EventCenter.Subscribe(EVENT_CMD_RESUME, resumeSubscriber)
+	defer EventCenter.Unsubscribe(EVENT_CMD_RESUME, resumeSubscriber.Id())
+
+	EventCenter.Subscribe(EVENT_RECEIVER_MSG_PROCESSED, msgProcessedSubscriber)
+	defer EventCenter.Unsubscribe(EVENT_RECEIVER_MSG_PROCESSED, msgProcessedSubscriber.Id())
+
+	recvLoop := func(
+		metadata ReceiverMetadata,
+		queue ali_mqs.AliMQSQueue,
+		compMsgChan chan ComponentMessage,
+		compErrChan chan error) {
+
+		EventCenter.PushEvent(EVENT_RECEIVER_STARTED, metadata)
 		go queue.ReceiveMessage(responseChan, errorChan)
-		logs.Info("receiver listening - ", p.url)
+		p.isPaused = false
 
-		isPaused := false
-		isStopping := false
-
-		stoplogTime := time.Now()
 		for {
-			if !isStopping {
-				select {
-				case signal := <-singalChan:
-					{
-						switch signal {
-						case SIG_PAUSE:
-							stopQueue(queue)
-							logs.Warn(fmt.Sprintf("* mqs receiver of %s paused - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
-							isPaused = true
-						case SIG_RESUME:
-							logs.Warn("* mqs receiver resumed")
-							go queue.ReceiveMessage(responseChan, errorChan)
-							isPaused = false
-						case SIG_STOP:
-							stopQueue(queue)
-							logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
-							isStopping = true
-							stoplogTime = time.Now()
-						}
-					}
-				default:
-				}
-			}
-
-			if isStopping {
-				if len(responseChan) == 0 && len(errorChan) == 0 {
-					logs.Warn(fmt.Sprintf("* mqs receiver of %s stopped - resp chan len: %d, err chan len: %d", queue.Name(), 0, 0))
-					stoppedChan <- true
-					return
-				} else {
-					now := time.Now()
-					if now.Sub(stoplogTime) >= 1*time.Millisecond {
-						stoplogTime = now
-						logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - resp chan len: %d, err chan len: %d", queue.Name(), len(responseChan), len(errorChan)))
-					}
-				}
-			} else if isPaused {
-				if len(responseChan) > 0 || len(errorChan) > 0 {
-					logs.Info("[mqs receiver pausing] resp chan len:", len(responseChan))
-				}
-				time.Sleep(time.Second)
-				continue
-			}
-
 			select {
 			case resp := <-responseChan:
 				{
-					go func(receiverType string,
-						url string,
+					go func(metadata ReceiverMetadata,
 						queue ali_mqs.AliMQSQueue,
 						compMsgChan chan ComponentMessage,
 						compErrChan chan error,
 						resp ali_mqs.MessageReceiveResponse) {
 
+						defer EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, metadata, []ChanStatistics{
+							{"receiver_message", len(responseChan), cap(responseChan)},
+							{"receiver_error", len(errorChan), cap(errorChan)},
+						})
+
 						if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
 							compMsg := ComponentMessage{}
 							if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
-								e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": receiverType, "url": url, "err": e})
+								e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": metadata.Type, "url": metadata.Url, "err": e})
 								compErrChan <- e
 							}
 							compMsgChan <- compMsg
 						}
-
-						if e := queue.DeleteMessage(resp.ReceiptHandle); e != nil {
-							e = ERR_RECEIVER_DELETE_MSG_ERROR.New(errors.Params{"type": receiverType, "url": url, "err": e})
-							compErrChan <- e
-						}
-					}(receiverType, url, queue, compMsgChan, compErrChan, resp)
+					}(metadata, queue, compMsgChan, compErrChan, resp)
 				}
 			case respErr := <-errorChan:
 				{
 					go func(err error) {
+
+						EventCenter.PushEvent(EVENT_RECEIVER_MSG_ERROR, metadata, err)
+
 						if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(err) {
 							compErrChan <- err
 						}
@@ -184,20 +218,12 @@ func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
 				}
 			case <-time.After(time.Second):
 				{
-					if len(responseChan) == 0 && len(errorChan) == 0 && isStopping {
-						stoppedChan <- true
+					if len(responseChan) == 0 && len(errorChan) == 0 && p.isStoped {
 						return
 					}
 				}
 			}
-
 		}
 	}
-	recvLoop(p.Type(), p.url, p.queue, portChan.Message, portChan.Error, portChan.Signal, portChan.Stoped)
-}
-
-func stopQueue(queue ali_mqs.AliMQSQueue) {
-	logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - begin stop receive message from ali-mqs queue", queue.Name()))
-	queue.Stop()
-	logs.Warn(fmt.Sprintf("* mqs receiver of %s stopping - stoped receive messages from ali-mqs queue", queue.Name()))
+	recvLoop(receiverMetadata, p.queue, portChan.Message, portChan.Error)
 }

@@ -1,10 +1,17 @@
 package spirit
 
+type ReceiverMetadata struct {
+	ComponentName string
+	PortName      string
+	Url           string
+	Type          string
+}
+
 type PortChan struct {
-	Message chan ComponentMessage
-	Error   chan error
-	Signal  chan int
-	Stoped  chan bool
+	ComponentName string
+	PortName      string
+	Message       chan ComponentMessage
+	Error         chan error
 }
 
 type MessageAddress struct {

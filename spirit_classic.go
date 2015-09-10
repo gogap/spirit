@@ -13,6 +13,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/gogap/errors"
+	"github.com/gogap/event_center"
 	"github.com/gogap/logs"
 )
 
@@ -50,6 +51,7 @@ type ClassicSpirit struct {
 	isRunCommand        bool
 	isRunCheckedCorrect bool
 	viewDetails         bool
+	inspectMode         bool
 }
 
 func NewClassicSpirit(name, description, version string, authors []Author) Spirit {
@@ -743,6 +745,7 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 	message := c.String("message")
 
 	viewDetails = c.Bool("v")
+	p.inspectMode = c.Bool("i")
 
 	if p.instanceName != "" {
 		if instManager.IsInstanceExist(p.instanceName) {
@@ -779,6 +782,10 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 	}
 
 	if err = p.buildRunComponents(); err != nil {
+		return
+	}
+
+	if err = p.buildEventInspectSubscribers(); err != nil {
 		return
 	}
 
@@ -885,6 +892,33 @@ func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
 			return
 		}
 	}
+}
+
+func (p *ClassicSpirit) buildEventInspectSubscribers() (err error) {
+	if !p.inspectMode {
+		return
+	}
+
+	events := EventCenter.ListEvents()
+
+	loggerSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
+
+		str := ""
+		for i, v := range values {
+			str = str + fmt.Sprintf("v_%d: %v\n", i, v)
+		}
+
+		logs.Info(fmt.Sprintf("SPIRIT-EVENT-INSPECT EVENT_NAME: %s\nValues:\n%s\n", eventName, str))
+
+	})
+
+	for _, event := range events {
+		if err = EventCenter.Subscribe(event, loggerSubscriber); err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 func (p *ClassicSpirit) saveMetadata() (err error) {
@@ -1134,8 +1168,16 @@ func (p *ClassicSpirit) startHeartbeat() (err error) {
 			}
 
 			go func(beater Heartbeater, msg HeartbeatMessage, sleepTime time.Duration) {
+				isStopped := false
+				stopSubScriber := event_center.NewSubscriber(
+					func(eventName string, values ...interface{}) {
+						isStopped = true
+					})
 
-				for {
+				EventCenter.Subscribe(EVENT_CMD_STOP, stopSubScriber)
+				defer EventCenter.Unsubscribe(EVENT_CMD_STOP, stopSubScriber.Id())
+
+				for !isStopped {
 					time.Sleep(sleepTime)
 					msg.CurrentTime = time.Now()
 					msg.HeartbeatCount += 1
@@ -1200,6 +1242,7 @@ func (p *ClassicSpirit) waitSignal() {
 			switch signal {
 			case os.Interrupt, syscall.SIGTERM:
 				{
+
 					for _, runningComponent := range p.runningComponents {
 						go runningComponent.Stop()
 					}
@@ -1212,7 +1255,7 @@ func (p *ClassicSpirit) waitSignal() {
 						go func(component Component) {
 							defer wg.Done()
 
-							for component.Status() != STATUS_STOPED {
+							for component.Status() != STATUS_STOPPED {
 								time.Sleep(time.Second)
 							}
 							logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", component.Name()))

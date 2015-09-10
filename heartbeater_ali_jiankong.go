@@ -95,6 +95,8 @@ func (p *AliJiankong) Heartbeat(heartbeatMessage HeartbeatMessage) {
 			DimensionsOrder: []string{"instance_name", "process_id", "host_name", "start_time"},
 		}
 
+		EventCenter.PushEvent(EVENT_HEARTBEAT, item)
+
 		if err := p.client.Report(item); err != nil {
 			logs.Error(err)
 		} else {

@@ -13,7 +13,7 @@ const (
 	STATUS_RUNNING  ComponentStatus = 1
 	STATUS_PAUSED   ComponentStatus = 2
 	STATUS_STOPPING ComponentStatus = 3
-	STATUS_STOPED   ComponentStatus = 4
+	STATUS_STOPPED  ComponentStatus = 4
 )
 
 type ComponentHandler func(payload *Payload) (result interface{}, err error)

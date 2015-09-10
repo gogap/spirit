@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gogap/errors"
+	"github.com/gogap/event_center"
 	"github.com/gogap/logs"
 )
 
@@ -27,9 +28,8 @@ type BaseComponent struct {
 
 	status ComponentStatus
 
-	portChans     map[string]*PortChan
-	stoppingChans map[string]chan bool
-	stopedChans   map[string]chan bool
+	portChans   map[string]*PortChan
+	stoppedPort map[string]bool
 }
 
 func NewBaseComponent(componentName string) Component {
@@ -44,8 +44,7 @@ func NewBaseComponent(componentName string) Component {
 		inPortHandler: make(map[string]ComponentHandler),
 		inPortHooks:   make(map[string][]string),
 		portChans:     make(map[string]*PortChan),
-		stopedChans:   make(map[string]chan bool),
-		stoppingChans: make(map[string]chan bool),
+		stoppedPort:   make(map[string]bool),
 	}
 }
 
@@ -74,6 +73,9 @@ func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (resul
 }
 
 func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) Component {
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_BEFORE_HANDLER_REGISTER, name)
+	defer EventCenter.PushEvent(EVENT_BASE_COMPONENT_AFTER_HANDLER_REGISTER, name)
+
 	if name == "" {
 		panic(fmt.Sprintf("[component-%s] handle name could not be empty", p.name))
 	}
@@ -85,8 +87,10 @@ func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) C
 	if _, exist := p.handlers[name]; exist {
 		panic(fmt.Sprintf("[component-%s] handler of %s, already registered", p.name, name))
 	} else {
+		EventCenter.PushEvent(EVENT_BASE_COMPONENT_HANDLER_REGISTERED, name)
 		p.handlers[name] = handler
 	}
+
 	return p
 }
 
@@ -117,6 +121,9 @@ func (p *BaseComponent) GetHandlers(handlerNames ...string) (handlers map[string
 }
 
 func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_BEFORE_HANDLER_BIND, p.name, inPortName, handlerName)
+	defer EventCenter.PushEvent(EVENT_BASE_COMPONENT_AFTER_HANDLER_BIND, p.name, inPortName, handlerName)
+
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
 	}
@@ -135,6 +142,7 @@ func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
 	if _, exist = p.inPortHandler[inPortName]; exist {
 		panic(fmt.Sprintf("[component-%s] in port of %s, already have handler, handler name: %s", p.name, inPortName, handlerName))
 	} else {
+		EventCenter.PushEvent(EVENT_BASE_COMPONENT_HANDLER_BOUND, p.name, inPortName, handlerName)
 		p.inPortHandler[inPortName] = handler
 	}
 
@@ -151,6 +159,9 @@ func (p *BaseComponent) GetReceivers(inPortName string) []MessageReceiver {
 }
 
 func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageReceiver) Component {
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_BEFORE_RECEIVER_BIND, p.name, inPortName)
+	defer EventCenter.PushEvent(EVENT_BASE_COMPONENT_AFTER_RECEIVER_BIND, p.name, inPortName)
+
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
 	}
@@ -170,6 +181,7 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 	}
 
 	p.receivers[inPortName] = receivers
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_RECEIVER_BOUND, p.name, inPortName)
 
 	return p
 }
@@ -228,14 +240,13 @@ func (p *BaseComponent) Build() Component {
 
 	for inPortName, _ := range p.receivers {
 		portChan := new(PortChan)
+		portChan.ComponentName = p.name
+		portChan.PortName = inPortName
 		portChan.Error = make(chan error, MESSAGE_CHAN_SIZE)
 		portChan.Message = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
-		portChan.Signal = make(chan int)
-		portChan.Stoped = make(chan bool)
 
 		p.portChans[inPortName] = portChan
-		p.stopedChans[inPortName] = make(chan bool)
-		p.stoppingChans[inPortName] = make(chan bool)
+		p.stoppedPort[inPortName] = false
 	}
 
 	p.isBuilt = true
@@ -246,6 +257,9 @@ func (p *BaseComponent) Build() Component {
 func (p *BaseComponent) Run() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
+
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_BEFORE_RUN, p.name)
+	defer EventCenter.PushEvent(EVENT_BASE_COMPONENT_AFTER_RUN, p.name)
 
 	if !p.isBuilt {
 		panic(fmt.Sprintf("the component of %s should be build first", p.name))
@@ -280,26 +294,123 @@ func (p *BaseComponent) ReceiverLoop() {
 	}
 
 	for _, inPortName := range loopInPortNames {
-		portChan := p.portChans[inPortName]
-		stopedChan := p.stopedChans[inPortName]
-		stoppingChan := p.stoppingChans[inPortName]
-		go func(portName string, respChan chan ComponentMessage, errChan chan error, stoppingChan chan bool, stopedChan chan bool) {
-			isStopping := false
-			stoplogTime := time.Now()
-			for {
-				if isStopping {
-					now := time.Now()
 
-					if len(respChan) == 0 && len(errChan) == 0 {
-						logs.Warn(fmt.Sprintf("* port - %s have no message, so it will be stop running", portName))
-						stopedChan <- true
+		portChan := p.portChans[inPortName]
+
+		go func(portName string, respChan chan ComponentMessage, errChan chan error) {
+			isStopping := false
+			isStopped := false
+			isPaused := false
+
+			stopSubscriber := event_center.NewSubscriber(
+				func(eventName string, values ...interface{}) {
+					if !isStopping {
+						EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPING, p.name, portName)
 						return
-					} else {
-						if now.Sub(stoplogTime) >= time.Second {
-							stoplogTime = now
-							logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan), len(errChan)))
+					}
+				})
+
+			EventCenter.Subscribe(EVENT_CMD_STOP, stopSubscriber)
+			defer EventCenter.Unsubscribe(EVENT_CMD_STOP, stopSubscriber.Id())
+
+			stopingSubscriber := event_center.NewSubscriber(
+				func(eventName string, values ...interface{}) {
+					if isStopping {
+						return
+					}
+
+					if values == nil || len(values) != 2 {
+						return
+					}
+
+					if name := values[0].(string); name != p.name {
+						return
+					}
+
+					if name := values[1].(string); name != portName {
+						return
+					}
+
+					isStopping = true
+				})
+
+			EventCenter.Subscribe(EVENT_BASE_COMPONENT_STOPPING, stopingSubscriber)
+			defer EventCenter.Unsubscribe(EVENT_BASE_COMPONENT_STOPPING, stopingSubscriber.Id())
+
+			receiverStoppedSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
+				if !isStopping {
+					return
+				}
+				if values == nil || len(values) != 1 {
+					return
+				}
+
+				if metadata := values[0].(ReceiverMetadata); metadata.PortName != portName || metadata.ComponentName != p.name {
+					return
+				}
+
+				go func() {
+					for {
+						if len(respChan) == 0 && len(errChan) == 0 {
+							EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPED, p.name, inPortName)
+							return
 						}
 					}
+				}()
+			})
+
+			EventCenter.Subscribe(EVENT_RECEIVER_STOPPED, receiverStoppedSubscriber)
+			defer EventCenter.Unsubscribe(EVENT_RECEIVER_STOPPED, receiverStoppedSubscriber.Id())
+
+			stopedSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
+				if !isStopping {
+					return
+				}
+
+				if values == nil || len(values) != 2 {
+					return
+				}
+
+				if name := values[0].(string); name != p.name {
+					return
+				}
+
+				if name := values[1].(string); name != portName {
+					return
+				}
+
+				isStopped = true
+				isStopping = false
+				isPaused = false
+
+			})
+
+			EventCenter.Subscribe(EVENT_BASE_COMPONENT_STOPPED, stopedSubscriber)
+			defer EventCenter.Unsubscribe(EVENT_BASE_COMPONENT_STOPPED, stopedSubscriber.Id())
+
+			cmdPauseSubscriber := event_center.NewSubscriber(
+				func(eventName string, values ...interface{}) {
+					if isStopped || isStopping || isPaused {
+						return
+					}
+
+					isPaused = true
+
+					EventCenter.PushEvent(EVENT_BASE_COMPONENT_PAUSED, p.name, portName)
+				})
+
+			EventCenter.Subscribe(EVENT_CMD_PAUSE, cmdPauseSubscriber)
+			defer EventCenter.Unsubscribe(EVENT_CMD_PAUSE, cmdPauseSubscriber.Id())
+
+			for {
+				if isPaused {
+					time.Sleep(time.Second)
+					continue
+				}
+
+				if isStopped {
+					p.stoppedPort[portName] = true
+					return
 				}
 
 				select {
@@ -311,21 +422,12 @@ func (p *BaseComponent) ReceiverLoop() {
 					{
 						logs.Error(respErr)
 					}
-				case isStopping = <-stoppingChan:
-					{
-						stoplogTime = time.Now()
-						logs.Warn(fmt.Sprintf("* port - %s received stop signal", portName))
-					}
 				case <-time.After(time.Second):
 					{
-						if len(respChan) == 0 && isStopping {
-							stopedChan <- true
-							return
-						}
 					}
 				}
 			}
-		}(inPortName, portChan.Message, portChan.Error, stoppingChan, stopedChan)
+		}(inPortName, portChan.Message, portChan.Error)
 	}
 }
 
@@ -333,33 +435,15 @@ func (p *BaseComponent) PauseOrResume() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
+	EventCenter.PushEvent(EVENT_CMD_PAUSE_OR_RESUME, p.name)
+
 	if p.status == STATUS_RUNNING {
-		wgReceiverPause := sync.WaitGroup{}
-		for _, Chans := range p.portChans {
-			wgReceiverPause.Add(1)
-			go func(singalChan chan int) {
-				defer wgReceiverPause.Done()
-				select {
-				case singalChan <- SIG_PAUSE:
-				case <-time.After(time.Second * 5):
-				}
-			}(Chans.Signal)
-		}
-		wgReceiverPause.Wait()
+		EventCenter.PushEvent(EVENT_CMD_PAUSE, p.name)
+
 		p.status = STATUS_PAUSED
 	} else if p.status == STATUS_PAUSED {
-		wgReceiverResume := sync.WaitGroup{}
-		for _, Chans := range p.portChans {
-			wgReceiverResume.Add(1)
-			go func(singalChan chan int) {
-				defer wgReceiverResume.Done()
-				select {
-				case singalChan <- SIG_RESUME:
-				case <-time.After(time.Second * 5):
-				}
-			}(Chans.Signal)
-		}
-		wgReceiverResume.Wait()
+
+		EventCenter.PushEvent(EVENT_AFTER_RESUME, p.name)
 		p.status = STATUS_RUNNING
 	} else {
 		logs.Warn("[base component] pause or resume at error status")
@@ -371,71 +455,21 @@ func (p *BaseComponent) Stop() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
-	//stop queues first
-	logs.Warn("* begin stop port receivers")
-	wgReceiverBeginStop := sync.WaitGroup{}
-	for _, Chans := range p.portChans {
-		wgReceiverBeginStop.Add(1)
-		go func(singalChan chan int) {
-			defer wgReceiverBeginStop.Done()
-			select {
-			case singalChan <- SIG_STOP:
-			case <-time.After(time.Second * 5):
+	EventCenter.PushEvent(EVENT_CMD_STOP, p.name)
+
+	allStopped := false
+	for !allStopped {
+
+		allStopped = true
+		for _, isStoped := range p.stoppedPort {
+			if isStoped == false {
+				allStopped = false
+				time.Sleep(time.Second)
 			}
-		}(Chans.Signal)
+		}
 	}
-	wgReceiverBeginStop.Wait()
 
-	logs.Warn("* waiting for port receivers stopped signal")
-
-	wgReceiverStop := sync.WaitGroup{}
-	for _, Chans := range p.portChans {
-		wgReceiverStop.Add(1)
-		go func(stopedChan chan bool) {
-			defer wgReceiverStop.Done()
-			select {
-			case _ = <-stopedChan:
-			case <-time.After(time.Second * 60):
-			}
-		}(Chans.Stoped)
-	}
-	wgReceiverStop.Wait()
-
-	logs.Warn("* begin stop received response message handler")
-	wgHandlerBeginStop := sync.WaitGroup{}
-	for inportName, Chan := range p.stoppingChans {
-		wgHandlerBeginStop.Add(1)
-		go func(stopedChan chan bool, name string) {
-			defer wgHandlerBeginStop.Done()
-			select {
-			case stopedChan <- true:
-				{
-					logs.Warn("* component begin stop port:", name)
-				}
-			case <-time.After(time.Second * 60):
-			}
-		}(Chan, inportName)
-	}
-	wgHandlerBeginStop.Wait()
-
-	logs.Warn("* waiting for received response message handler stopped signal")
-	wgHandlerStop := sync.WaitGroup{}
-	for inportName, Chan := range p.stopedChans {
-		wgHandlerStop.Add(1)
-		go func(stopedChan chan bool, name string) {
-			defer wgHandlerStop.Done()
-			select {
-			case _ = <-stopedChan:
-				{
-					logs.Warn("* component", name, "stoped")
-				}
-			case <-time.After(time.Second * 60):
-			}
-		}(Chan, inportName)
-	}
-	wgHandlerStop.Wait()
-
-	p.status = STATUS_STOPED
+	p.status = STATUS_STOPPED
 }
 
 func (p *BaseComponent) Status() ComponentStatus {
@@ -541,6 +575,9 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 }
 
 func (p *BaseComponent) hookMessages(inPortName string, event HookEvent, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	EventCenter.PushEvent(EVENT_BEFORE_HOOK, event)
+	defer EventCenter.PushEvent(EVENT_BEFORE_HOOK, event)
+
 	if event == HookEventBeforeCallHandler {
 		return p.hookMessagesBefore(inPortName, message)
 	} else if event == HookEventAfterCallHandler {

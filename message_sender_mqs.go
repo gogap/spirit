@@ -28,6 +28,9 @@ func (p *MessageSenderMQS) Init() (err error) {
 }
 
 func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error) {
+
+	EventCenter.PushEvent(EVENT_BEFORE_MESSAGE_SEND, url, message)
+
 	if url == "" {
 		err = ERR_MESSAGE_ADDRESS_IS_EMPTY.New()
 		return
@@ -77,6 +80,8 @@ func (p *MessageSenderMQS) Send(url string, message ComponentMessage) (err error
 		MessageBody:  msgData,
 		DelaySeconds: 0,
 		Priority:     8}
+
+	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_SEND, url, msg)
 
 	if _, e := client.SendMessage(msg); e != nil {
 		err = ERR_SENDER_SEND_FAILED.New(errors.Params{"type": p.Type(), "url": url, "err": e})
