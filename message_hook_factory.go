@@ -101,8 +101,6 @@ func (p *DefaultMessageHookFactory) CreateHook(hookType, name string, options Op
 		err = ERR_HOOK_BAD_DRIVER.New(errors.Params{"type": hookType})
 		return
 	}
-
-	return
 }
 
 func (p *DefaultMessageHookFactory) Get(name string) (hook MessageHook, err error) {

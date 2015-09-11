@@ -194,7 +194,6 @@ func (p *Payload) GetContextStringArray(key string) (vals []string, err error) {
 		err = fmt.Errorf("the type of context key %s is not array", key)
 		return
 	}
-	return
 }
 
 func (p *Payload) GetContextInt(key string) (val int, err error) {

@@ -285,7 +285,7 @@ func (p *ClassicSpirit) startChildInstance(hash string, attach, stdin bool) (exe
 	}
 
 	if viewDetails {
-		fmt.Sprintf("new spirit instance of %s started, pid: %d", p.instanceName, exeCMD.Process.Pid)
+		fmt.Printf("new spirit instance of %s started, pid: %d\n", p.instanceName, exeCMD.Process.Pid)
 	}
 
 	return

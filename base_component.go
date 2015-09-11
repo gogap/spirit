@@ -349,14 +349,14 @@ func (p *BaseComponent) ReceiverLoop() {
 					return
 				}
 
-				go func() {
+				go func(portName string) {
 					for {
 						if len(respChan) == 0 && len(errChan) == 0 {
-							EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPED, p.name, inPortName)
+							EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPED, p.name, portName)
 							return
 						}
 					}
-				}()
+				}(portName)
 			})
 
 			EventCenter.Subscribe(EVENT_RECEIVER_STOPPED, receiverStoppedSubscriber)
