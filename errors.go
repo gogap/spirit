@@ -26,7 +26,7 @@ var (
 	ERR_RECEIVER_CREDENTIAL_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 14, "credential is nil, type: {{.type}}")
 	ERR_RECEIVER_MQS_CLIENT_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 15, "receiver mqs client is nil, type: {{.type}}, url: {{.url}}")
 	ERR_RECEIVER_DELETE_MSG_ERROR      = errors.TN(SPIRIT_ERR_NS, 16, "delete message error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
-	ERR_RECEIVER_UNMARSHAL_MSG_FAILED  = errors.TN(SPIRIT_ERR_NS, 17, "receiver unmarshal message failed, type: {{.type}}, url: {{.url}}, err: {{.err}}")
+	ERR_RECEIVER_UNMARSHAL_MSG_FAILED  = errors.TN(SPIRIT_ERR_NS, 17, "receiver unmarshal message failed, type: {{.type}}, err: {{.err}}")
 	ERR_RECEIVER_RECV_ERROR            = errors.TN(SPIRIT_ERR_NS, 18, "receiver recv error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
 	ERR_RECEIVER_BAD_DRIVER            = errors.TN(SPIRIT_ERR_NS, 19, "bad message receiver driver of {{.type}}")
 	ERR_RECEIVER_CREATE_FAILED         = errors.TN(SPIRIT_ERR_NS, 20, "create receiver failed, driver type: {{.type}}, url: {{.url}}")

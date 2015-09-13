@@ -10,10 +10,10 @@ const (
 
 const (
 	STATUS_READY    ComponentStatus = 0
-	STATUS_RUNNING  ComponentStatus = 1
-	STATUS_PAUSED   ComponentStatus = 2
-	STATUS_STOPPING ComponentStatus = 3
-	STATUS_STOPPED  ComponentStatus = 4
+	STATUS_RUNNING                  = 1
+	STATUS_PAUSED                   = 2
+	STATUS_STOPPING                 = 3
+	STATUS_STOPPED                  = 4
 )
 
 type ComponentHandler func(payload *Payload) (result interface{}, err error)

@@ -3,15 +3,7 @@ package spirit
 type ReceiverMetadata struct {
 	ComponentName string
 	PortName      string
-	Url           string
 	Type          string
-}
-
-type PortChan struct {
-	ComponentName string
-	PortName      string
-	Message       chan ComponentMessage
-	Error         chan error
 }
 
 type MessageAddress struct {
@@ -19,11 +11,22 @@ type MessageAddress struct {
 	Url  string `json:"url"`
 }
 
+type OnReceiverMessageProcessed func(messageId string)
+type OnReceiverMessageReceived func(inPortName, messageId string, compMsg ComponentMessage, callbacks ...OnReceiverMessageProcessed)
+type OnReceiverError func(inPortName string, err error)
+
 type MessageReceiver interface {
 	Type() string
 	Init(url string, options Options) error
 	Address() MessageAddress
-	Receive(portChan *PortChan)
+	BindInPort(
+		componentName, inPortName string,
+		onMsgReceived OnReceiverMessageReceived,
+		onReceiverError OnReceiverError)
+	Start()
+	Stop()
+	IsRunning() bool
+	Metadata() ReceiverMetadata
 }
 
 type MessageSender interface {

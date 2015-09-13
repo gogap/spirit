@@ -7,7 +7,6 @@ import (
 
 	"github.com/gogap/ali_mqs"
 	"github.com/gogap/errors"
-	"github.com/gogap/event_center"
 )
 
 type MessageReceiverMQS struct {
@@ -15,10 +14,17 @@ type MessageReceiverMQS struct {
 
 	queue ali_mqs.AliMQSQueue
 
-	recvLocker  sync.Mutex
-	isReceiving bool
-	isStoped    bool
-	isPaused    bool
+	recvLocker sync.Mutex
+
+	isRunning bool
+
+	status ComponentStatus
+
+	inPortName    string
+	componentName string
+
+	onMsgReceived   OnReceiverMessageReceived
+	onReceiverError OnReceiverError
 
 	responseChan chan ali_mqs.MessageReceiveResponse
 	errorChan    chan error
@@ -45,8 +51,23 @@ func (p *MessageReceiverMQS) Type() string {
 	return "mqs"
 }
 
+func (p *MessageReceiverMQS) Metadata() ReceiverMetadata {
+	return ReceiverMetadata{
+		ComponentName: p.componentName,
+		PortName:      p.inPortName,
+		Type:          p.Type(),
+	}
+}
+
 func (p *MessageReceiverMQS) Address() MessageAddress {
 	return MessageAddress{Type: p.Type(), Url: p.url}
+}
+
+func (p *MessageReceiverMQS) BindInPort(componentName, inPortName string, onMsgReceived OnReceiverMessageReceived, onReceiverError OnReceiverError) {
+	p.inPortName = inPortName
+	p.componentName = componentName
+	p.onMsgReceived = onMsgReceived
+	p.onReceiverError = onReceiverError
 }
 
 func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err error) {
@@ -81,149 +102,88 @@ func (p *MessageReceiverMQS) newAliMQSQueue() (queue ali_mqs.AliMQSQueue, err er
 	return
 }
 
-func (p *MessageReceiverMQS) Receive(portChan *PortChan) {
+func (p *MessageReceiverMQS) IsRunning() bool {
+	return p.isRunning
+}
+
+func (p *MessageReceiverMQS) Stop() {
 	p.recvLocker.Lock()
 	defer p.recvLocker.Unlock()
 
-	receiverMetadata := ReceiverMetadata{
-		ComponentName: portChan.ComponentName,
-		PortName:      portChan.PortName,
-		Url:           p.url,
-		Type:          p.Type(),
+	if !p.isRunning {
+		return
 	}
 
-	responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
-	errorChan := make(chan error, MESSAGE_CHAN_SIZE)
+	p.queue.Stop()
+	p.isRunning = false
+}
 
-	defer close(responseChan)
-	defer close(errorChan)
+func (p *MessageReceiverMQS) Start() {
+	p.recvLocker.Lock()
+	defer p.recvLocker.Unlock()
 
-	stopSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
-		if !p.isStoped {
-			p.queue.Stop()
-			p.isStoped = true
+	if p.isRunning {
+		return
+	}
 
-			EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiverMetadata)
-		}
-	})
+	go func() {
+		responseChan := make(chan ali_mqs.MessageReceiveResponse, MESSAGE_CHAN_SIZE)
+		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
 
-	EventCenter.Subscribe(EVENT_CMD_STOP, stopSubscriber)
-	defer EventCenter.Unsubscribe(EVENT_CMD_STOP, stopSubscriber.Id())
+		defer close(responseChan)
+		defer close(errorChan)
 
-	pauseSubscriber := event_center.NewSubscriber(
-		func(eventName string, values ...interface{}) {
-			if p.isStoped {
-				return
-			}
+		p.isRunning = true
 
-			if p.isPaused {
-				return
-			}
-
-			p.queue.Stop()
-			p.isPaused = true
-
-			EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiverMetadata)
-		})
-
-	resumeSubscriber := event_center.NewSubscriber(
-		func(eventName string, values ...interface{}) {
-			if p.isStoped {
-				return
-			}
-
-			if !p.isPaused {
-				return
-			}
-
-			go p.queue.ReceiveMessage(responseChan, errorChan)
-			p.isPaused = false
-
-			EventCenter.PushEvent(EVENT_RECEIVER_STARTED, receiverMetadata)
-
-		})
-
-	msgProcessedSubscriber := event_center.NewSubscriber(
-		func(eventName string, values ...interface{}) {
-
-			if values == nil || len(values) != 2 {
-				return
-			}
-
-			if name := values[0].(string); name != portChan.PortName {
-				return
-			}
-
-			if receiptHandle := values[1].(string); receiptHandle == "" {
-				return
-			} else if err := p.queue.DeleteMessage(receiptHandle); err != nil {
-				EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, receiverMetadata, receiptHandle)
-			}
-		})
-
-	EventCenter.Subscribe(EVENT_CMD_PAUSE, pauseSubscriber)
-	defer EventCenter.Unsubscribe(EVENT_CMD_PAUSE, pauseSubscriber.Id())
-
-	EventCenter.Subscribe(EVENT_CMD_RESUME, resumeSubscriber)
-	defer EventCenter.Unsubscribe(EVENT_CMD_RESUME, resumeSubscriber.Id())
-
-	EventCenter.Subscribe(EVENT_RECEIVER_MSG_PROCESSED, msgProcessedSubscriber)
-	defer EventCenter.Unsubscribe(EVENT_RECEIVER_MSG_PROCESSED, msgProcessedSubscriber.Id())
-
-	recvLoop := func(
-		metadata ReceiverMetadata,
-		queue ali_mqs.AliMQSQueue,
-		compMsgChan chan ComponentMessage,
-		compErrChan chan error) {
-
-		EventCenter.PushEvent(EVENT_RECEIVER_STARTED, metadata)
-		go queue.ReceiveMessage(responseChan, errorChan)
-		p.isPaused = false
+		go p.queue.ReceiveMessage(responseChan, errorChan)
 
 		for {
 			select {
 			case resp := <-responseChan:
 				{
-					go func(metadata ReceiverMetadata,
-						queue ali_mqs.AliMQSQueue,
-						compMsgChan chan ComponentMessage,
-						compErrChan chan error,
-						resp ali_mqs.MessageReceiveResponse) {
+					go func(resp ali_mqs.MessageReceiveResponse) {
 
-						defer EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, metadata, []ChanStatistics{
+						defer EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, p.Metadata(), []ChanStatistics{
 							{"receiver_message", len(responseChan), cap(responseChan)},
 							{"receiver_error", len(errorChan), cap(errorChan)},
 						})
 
+						metadata := p.Metadata()
+
 						if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
 							compMsg := ComponentMessage{}
 							if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
-								e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": metadata.Type, "url": metadata.Url, "err": e})
-								compErrChan <- e
+								e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": metadata.Type, "err": e})
+								p.onReceiverError(p.inPortName, e)
 							}
-							compMsgChan <- compMsg
+
+							p.onMsgReceived(p.inPortName, resp.ReceiptHandle, compMsg, p.onMessageProcessedToDelete)
+							EventCenter.PushEvent(EVENT_RECEIVER_MSG_RECEIVED, p.Metadata(), compMsg)
 						}
-					}(metadata, queue, compMsgChan, compErrChan, resp)
+					}(resp)
 				}
 			case respErr := <-errorChan:
 				{
 					go func(err error) {
-
-						EventCenter.PushEvent(EVENT_RECEIVER_MSG_ERROR, metadata, err)
-
 						if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(err) {
-							compErrChan <- err
+							EventCenter.PushEvent(EVENT_RECEIVER_MSG_ERROR, p.Metadata(), err)
 						}
 					}(respErr)
 				}
 			case <-time.After(time.Second):
 				{
-					if len(responseChan) == 0 && len(errorChan) == 0 && p.isStoped {
+					if len(responseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
 						return
 					}
 				}
 			}
 		}
+	}()
+
+}
+
+func (p *MessageReceiverMQS) onMessageProcessedToDelete(messageId string) {
+	if err := p.queue.DeleteMessage(messageId); err != nil {
+		EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
 	}
-	recvLoop(receiverMetadata, p.queue, portChan.Message, portChan.Error)
 }

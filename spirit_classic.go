@@ -1232,6 +1232,7 @@ func (p *ClassicSpirit) getRunComponents(c *cli.Context) (components []string, e
 }
 
 func (p *ClassicSpirit) waitSignal() {
+	isStopping := false
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGUSR1)
 
@@ -1242,27 +1243,36 @@ func (p *ClassicSpirit) waitSignal() {
 			switch signal {
 			case os.Interrupt, syscall.SIGTERM:
 				{
-
-					for _, runningComponent := range p.runningComponents {
-						go runningComponent.Stop()
+					if isStopping {
+						os.Exit(0)
 					}
 
-					wg := sync.WaitGroup{}
+					isStopping = true
+					EventCenter.PushEvent(EVENT_CMD_STOP)
 
-					for _, runningComponent := range p.runningComponents {
-						wg.Add(1)
+					go func() {
+						for _, runningComponent := range p.runningComponents {
+							go runningComponent.Stop()
+						}
 
-						go func(component Component) {
-							defer wg.Done()
+						wg := sync.WaitGroup{}
 
-							for component.Status() != STATUS_STOPPED {
-								time.Sleep(time.Second)
-							}
-							logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", component.Name()))
-						}(runningComponent)
-					}
-					wg.Wait()
-					os.Exit(0)
+						for _, runningComponent := range p.runningComponents {
+							wg.Add(1)
+
+							go func(component Component) {
+								defer wg.Done()
+
+								for component.Status() != STATUS_STOPPED {
+									time.Sleep(time.Second)
+								}
+								logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", component.Name()))
+							}(runningComponent)
+						}
+						wg.Wait()
+						os.Exit(0)
+					}()
+
 				}
 			case syscall.SIGUSR1:
 				{
@@ -1275,6 +1285,10 @@ func (p *ClassicSpirit) waitSignal() {
 						}
 					}
 				}
+			}
+		case <-time.After(time.Second):
+			{
+				continue
 			}
 		}
 	}
