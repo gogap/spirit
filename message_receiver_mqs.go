@@ -137,16 +137,23 @@ func (p *MessageReceiverMQS) Start() {
 
 		go p.queue.ReceiveMessage(responseChan, errorChan)
 
+		lastStatUpdated := time.Now()
+		statUpdateFunc := func() {
+			if time.Now().Sub(lastStatUpdated).Seconds() >= 1 {
+				lastStatUpdated = time.Now()
+				EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, p.Metadata(), []ChanStatistics{
+					{"receiver_message", len(responseChan), cap(responseChan)},
+					{"receiver_error", len(errorChan), cap(errorChan)},
+				})
+			}
+		}
+
 		for {
 			select {
 			case resp := <-responseChan:
 				{
 					go func(resp ali_mqs.MessageReceiveResponse) {
-
-						defer EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, p.Metadata(), []ChanStatistics{
-							{"receiver_message", len(responseChan), cap(responseChan)},
-							{"receiver_error", len(errorChan), cap(errorChan)},
-						})
+						defer statUpdateFunc()
 
 						metadata := p.Metadata()
 
@@ -165,6 +172,7 @@ func (p *MessageReceiverMQS) Start() {
 			case respErr := <-errorChan:
 				{
 					go func(err error) {
+						defer statUpdateFunc()
 						if !ali_mqs.ERR_MQS_MESSAGE_NOT_EXIST.IsEqual(err) {
 							EventCenter.PushEvent(EVENT_RECEIVER_MSG_ERROR, p.Metadata(), err)
 						}
@@ -172,6 +180,7 @@ func (p *MessageReceiverMQS) Start() {
 				}
 			case <-time.After(time.Second):
 				{
+					statUpdateFunc()
 					if len(responseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
 						return
 					}
