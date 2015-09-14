@@ -16,7 +16,7 @@ var (
 	ERR_COMPONENT_HANDLER_NOT_EXIST    = errors.TN(SPIRIT_ERR_NS, 6, "component handler not exist, component name: {{.name}},  handler name: {{.handlerName}}")
 
 	ERR_SENDER_CREDENTIAL_IS_NIL = errors.TN(SPIRIT_ERR_NS, 8, "credential is nil, type: {{.type}}, url: {{.url}}")
-	ERR_SENDER_MQS_CLIENT_IS_NIL = errors.TN(SPIRIT_ERR_NS, 9, "sender mqs client is nil, type: {{.type}}, url: {{.url}}")
+	ERR_SENDER_MNS_CLIENT_IS_NIL = errors.TN(SPIRIT_ERR_NS, 9, "sender mns client is nil, type: {{.type}}, url: {{.url}}")
 	ERR_SENDER_SEND_FAILED       = errors.TN(SPIRIT_ERR_NS, 10, "component message send failed, type: {{.type}}, url: {{.url}}, err:{{.err}}")
 
 	ERR_SENDER_CREATE_FAILED    = errors.TN(SPIRIT_ERR_NS, 11, "create sender failed, driver type: {{.type}}")
@@ -24,7 +24,7 @@ var (
 	ERR_SENDER_BAD_DRIVER       = errors.TN(SPIRIT_ERR_NS, 13, "bad message sender driver of {{.type}}")
 
 	ERR_RECEIVER_CREDENTIAL_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 14, "credential is nil, type: {{.type}}")
-	ERR_RECEIVER_MQS_CLIENT_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 15, "receiver mqs client is nil, type: {{.type}}, url: {{.url}}")
+	ERR_RECEIVER_MNS_CLIENT_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 15, "receiver mns client is nil, type: {{.type}}, url: {{.url}}")
 	ERR_RECEIVER_DELETE_MSG_ERROR      = errors.TN(SPIRIT_ERR_NS, 16, "delete message error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
 	ERR_RECEIVER_UNMARSHAL_MSG_FAILED  = errors.TN(SPIRIT_ERR_NS, 17, "receiver unmarshal message failed, type: {{.type}}, err: {{.err}}")
 	ERR_RECEIVER_RECV_ERROR            = errors.TN(SPIRIT_ERR_NS, 18, "receiver recv error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
