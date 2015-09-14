@@ -257,8 +257,8 @@ func (p *BaseComponent) Run() {
 }
 
 func (p *BaseComponent) startReceivers() {
-	p.inboxMessage = 0
-	p.inboxError = 0
+	atomic.SwapInt64(&p.inboxMessage, 0)
+	atomic.SwapInt64(&p.inboxError, 0)
 
 	for _, typedReceivers := range p.receivers {
 		for _, receiver := range typedReceivers {
