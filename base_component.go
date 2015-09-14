@@ -260,24 +260,36 @@ func (p *BaseComponent) startReceivers() {
 	atomic.SwapInt64(&p.inboxMessage, 0)
 	atomic.SwapInt64(&p.inboxError, 0)
 
+	wg := sync.WaitGroup{}
 	for _, typedReceivers := range p.receivers {
 		for _, receiver := range typedReceivers {
-			go receiver.Start()
-			for !receiver.IsRunning() {
-				time.Sleep(time.Second)
-			}
-			EventCenter.PushEvent(EVENT_RECEIVER_STARTED, receiver.Metadata())
+			wg.Add(1)
+			go func(receiver MessageReceiver) {
+				defer wg.Done()
+				receiver.Start()
+				for !receiver.IsRunning() {
+					time.Sleep(time.Millisecond * 100)
+				}
+				EventCenter.PushEvent(EVENT_RECEIVER_STARTED, receiver.Metadata())
+			}(receiver)
 		}
 	}
+	wg.Wait()
 }
 
 func (p *BaseComponent) stopReceivers() {
+	wg := sync.WaitGroup{}
 	for _, typedReceivers := range p.receivers {
 		for _, receiver := range typedReceivers {
-			receiver.Stop()
-			EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiver.Metadata())
+			wg.Add(1)
+			go func(receiver MessageReceiver) {
+				defer wg.Done()
+				receiver.Stop()
+				EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiver.Metadata())
+			}(receiver)
 		}
 	}
+	wg.Wait()
 }
 
 func (p *BaseComponent) PauseOrResume() {
