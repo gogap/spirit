@@ -309,6 +309,8 @@ func (p *BaseComponent) Stop() {
 	p.status = STATUS_STOPPING
 	EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPING, p.name, p.inboxMessage, p.inboxError)
 
+	p.stopReceivers()
+
 	for p.inboxMessage != 0 || p.inboxError != 0 {
 		time.Sleep(time.Second)
 		EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPING, p.name, p.inboxMessage, p.inboxError)
