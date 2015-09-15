@@ -32,6 +32,7 @@ type MessageReceiverMNS struct {
 
 	batchMessageNumber int32
 	qpsLimit           int32
+	waitSeconds        int64
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
@@ -56,6 +57,16 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		p.qpsLimit = ali_mns.DefaultQPSLimit
 	} else {
 		p.qpsLimit = int32(v)
+	}
+
+	if v, e := options.GetInt64Value("wait_seconds"); e != nil {
+		p.waitSeconds = -1
+	} else {
+		if v > 30 {
+			p.waitSeconds = 30
+		} else {
+			p.waitSeconds = v
+		}
 	}
 
 	p.queue = queue
@@ -151,7 +162,7 @@ func (p *MessageReceiverMNS) Start() {
 
 		p.isRunning = true
 
-		go p.queue.BatchReceiveMessage(responseChan, errorChan, p.batchMessageNumber)
+		go p.queue.BatchReceiveMessage(responseChan, errorChan, p.batchMessageNumber, p.waitSeconds)
 
 		lastStatUpdated := time.Now()
 		statUpdateFunc := func() {
