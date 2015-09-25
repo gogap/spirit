@@ -1277,11 +1277,16 @@ func (p *ClassicSpirit) waitSignal() {
 			case syscall.SIGUSR1:
 				{
 					for _, runningComponent := range p.runningComponents {
-						runningComponent.PauseOrResume()
-						if runningComponent.Status() == STATUS_PAUSED {
-							logs.Info(fmt.Sprintf("spirit - component %s was paused\n", runningComponent.Name()))
-						} else {
-							logs.Info(fmt.Sprintf("spirit - component %s was resumed\n", runningComponent.Name()))
+						if runningComponent.Status() == STATUS_RUNNING {
+							runningComponent.Pause()
+							if runningComponent.Status() == STATUS_PAUSED {
+								logs.Info(fmt.Sprintf("spirit - component %s was paused\n", runningComponent.Name()))
+							}
+						} else if runningComponent.Status() == STATUS_PAUSED {
+							runningComponent.Resume()
+							if runningComponent.Status() == STATUS_RUNNING {
+								logs.Info(fmt.Sprintf("spirit - component %s was resumed\n", runningComponent.Name()))
+							}
 						}
 					}
 				}

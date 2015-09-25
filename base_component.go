@@ -17,11 +17,12 @@ var (
 )
 
 type BaseComponent struct {
-	name          string
-	receivers     map[string][]MessageReceiver
-	handlers      map[string]ComponentHandler
-	inPortHandler map[string]ComponentHandler
-	inPortHooks   map[string][]string
+	name           string
+	receivers      map[string][]MessageReceiver
+	handlers       map[string]ComponentHandler
+	inPortHandler  map[string]ComponentHandler
+	inPortHooks    map[string][]string
+	inPortUrlIndex map[string]string
 
 	inboxMessage int64
 	inboxError   int64
@@ -40,11 +41,12 @@ func NewBaseComponent(componentName string) Component {
 	}
 
 	return &BaseComponent{
-		name:          componentName,
-		receivers:     make(map[string][]MessageReceiver),
-		handlers:      make(map[string]ComponentHandler),
-		inPortHandler: make(map[string]ComponentHandler),
-		inPortHooks:   make(map[string][]string),
+		name:           componentName,
+		receivers:      make(map[string][]MessageReceiver),
+		handlers:       make(map[string]ComponentHandler),
+		inPortHandler:  make(map[string]ComponentHandler),
+		inPortHooks:    make(map[string][]string),
+		inPortUrlIndex: make(map[string]string),
 	}
 }
 
@@ -168,6 +170,8 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 		if _, exist := inPortReceivers[receiver]; !exist {
 
 			receiver.BindInPort(p.name, inPortName, p.handleComponentMessage, p.handleRecevierError)
+			addr := receiver.Address()
+			p.inPortUrlIndex[addr.Type+"|"+addr.Url] = inPortName
 
 			inPortReceivers[receiver] = true
 		} else {
@@ -292,7 +296,7 @@ func (p *BaseComponent) stopReceivers() {
 	wg.Wait()
 }
 
-func (p *BaseComponent) PauseOrResume() {
+func (p *BaseComponent) Pause() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
@@ -300,13 +304,26 @@ func (p *BaseComponent) PauseOrResume() {
 		p.stopReceivers()
 		p.status = STATUS_PAUSED
 	} else if p.status == STATUS_PAUSED {
+		return
+	} else {
+		logs.Warn("[base component] pause or resume at error status")
+		return
+	}
+}
+
+func (p *BaseComponent) Resume() {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if p.status == STATUS_RUNNING {
+		return
+	} else if p.status == STATUS_PAUSED {
 		p.startReceivers()
 		p.status = STATUS_RUNNING
 	} else {
 		logs.Warn("[base component] pause or resume at error status")
 		return
 	}
-
 }
 
 func (p *BaseComponent) Stop() {
@@ -440,7 +457,12 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, messageId stri
 	message.hooksMetaData = newMetadatas
 	message.currentGraphIndex = nextGraphIndex
 
-	p.sendMessage(address.Type, address.Url, message)
+	if nextInPortName, exist := p.inPortUrlIndex[address.Type+"|"+address.Url]; exist {
+		p.handleComponentMessage(nextInPortName, "", message)
+		EventCenter.PushEvent(EVENT_BASE_COMPONENT_INTERNAL_MESSAGE, p.name, address, message)
+	} else {
+		p.sendMessage(address, message)
+	}
 
 	return
 }
@@ -537,15 +559,15 @@ func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentM
 	return
 }
 
-func (p *BaseComponent) sendMessage(addrType, url string, msg ComponentMessage) {
+func (p *BaseComponent) sendMessage(address MessageAddress, msg ComponentMessage) {
 	var sender MessageSender
 	var err error
-	if sender, err = senderFactory.NewSender(addrType); err != nil {
+	if sender, err = senderFactory.NewSender(address.Type); err != nil {
 		logs.Error(err)
 		return
 	}
 
-	if err = sender.Send(url, msg); err != nil {
+	if err = sender.Send(address.Url, msg); err != nil {
 		logs.Error(err)
 		return
 	}

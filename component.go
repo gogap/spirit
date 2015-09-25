@@ -37,7 +37,8 @@ type Component interface {
 	Build() Component
 	Run()
 
-	PauseOrResume()
+	Pause()
+	Resume()
 	Stop()
 
 	Status() ComponentStatus
