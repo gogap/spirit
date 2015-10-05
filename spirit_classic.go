@@ -745,7 +745,7 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 	message := c.String("message")
 
 	viewDetails = c.Bool("v")
-	p.inspectMode = c.Bool("i")
+	p.inspectMode = c.Bool("watch")
 
 	if p.instanceName != "" {
 		if instManager.IsInstanceExist(p.instanceName) {
