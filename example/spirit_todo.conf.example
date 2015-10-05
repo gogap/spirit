@@ -6,7 +6,11 @@
             "handler_name": "new_task",
             "type": "mqs",
             "url": "http://{{redis_get "user"}}:{{redis_get "pwd"}}@{{redis_get "ownerId"}}.mqs-cn-beijing.aliyuncs.com/test",
-            "options": {}
+            "options": {
+                "batch_messages_number": 10,
+                "qps_limit":1000,
+                "process_mode":"sequency"
+            }
         }]
     }],
     "heartbeat": [{

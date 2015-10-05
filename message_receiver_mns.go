@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"fmt"
 	"regexp"
 	"runtime"
 	"sync"
@@ -33,10 +34,16 @@ type MessageReceiverMNS struct {
 	batchMessageNumber int32
 	qpsLimit           int32
 	waitSeconds        int64
+	processMode        string
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
-	return &MessageReceiverMNS{url: url}
+	return &MessageReceiverMNS{url: url,
+		processMode:        "concurrency",
+		qpsLimit:           ali_mns.DefaultQPSLimit,
+		batchMessageNumber: int32(runtime.NumCPU()),
+		waitSeconds:        -1,
+	}
 }
 
 func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
@@ -47,26 +54,28 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		return
 	}
 
-	if v, e := options.GetInt64Value("batch_messages_number"); e != nil {
-		p.batchMessageNumber = int32(runtime.NumCPU())
-	} else {
+	if v, e := options.GetInt64Value("batch_messages_number"); e == nil {
 		p.batchMessageNumber = int32(v)
 	}
 
-	if v, e := options.GetInt64Value("qps_limit"); e != nil {
-		p.qpsLimit = ali_mns.DefaultQPSLimit
-	} else {
+	if v, e := options.GetInt64Value("qps_limit"); e == nil {
 		p.qpsLimit = int32(v)
 	}
 
-	if v, e := options.GetInt64Value("wait_seconds"); e != nil {
-		p.waitSeconds = -1
-	} else {
+	if v, e := options.GetInt64Value("wait_seconds"); e == nil {
 		if v > 30 {
 			p.waitSeconds = 30
 		} else {
 			p.waitSeconds = v
 		}
+	}
+
+	if v, e := options.GetStringValue("process_mode"); e == nil {
+		p.processMode = v
+	}
+
+	if p.processMode != "concurrency" || p.processMode != "sequency" {
+		panic(fmt.Sprintf("unsupport process mode: %s, component: %s, inport: %s", p.processMode, p.componentName, p.inPortName))
 	}
 
 	p.queue = queue
@@ -175,27 +184,33 @@ func (p *MessageReceiverMNS) Start() {
 			}
 		}
 
+		handlerFunc := func(resp ali_mns.MessageReceiveResponse) {
+			defer statUpdateFunc()
+
+			metadata := p.Metadata()
+
+			if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
+				compMsg := ComponentMessage{}
+				if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
+					e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": metadata.Type, "err": e})
+					p.onReceiverError(p.inPortName, e)
+				}
+
+				p.onMsgReceived(p.inPortName, resp.ReceiptHandle, compMsg, p.onMessageProcessedToDelete)
+				EventCenter.PushEvent(EVENT_RECEIVER_MSG_RECEIVED, p.Metadata(), compMsg)
+			}
+		}
+
 		for {
 			select {
 			case resps := <-responseChan:
 				{
 					for _, resp := range resps.Messages {
-						go func(resp ali_mns.MessageReceiveResponse) {
-							defer statUpdateFunc()
-
-							metadata := p.Metadata()
-
-							if resp.MessageBody != nil && len(resp.MessageBody) > 0 {
-								compMsg := ComponentMessage{}
-								if e := compMsg.UnSerialize(resp.MessageBody); e != nil {
-									e = ERR_RECEIVER_UNMARSHAL_MSG_FAILED.New(errors.Params{"type": metadata.Type, "err": e})
-									p.onReceiverError(p.inPortName, e)
-								}
-
-								p.onMsgReceived(p.inPortName, resp.ReceiptHandle, compMsg, p.onMessageProcessedToDelete)
-								EventCenter.PushEvent(EVENT_RECEIVER_MSG_RECEIVED, p.Metadata(), compMsg)
-							}
-						}(resp)
+						if p.processMode == "concurrency" {
+							go handlerFunc(resp)
+						} else {
+							handlerFunc(resp)
+						}
 					}
 				}
 			case respErr := <-errorChan:
