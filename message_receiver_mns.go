@@ -72,10 +72,12 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 
 	if v, e := options.GetStringValue("process_mode"); e == nil {
 		p.processMode = v
+	} else if v == "" {
+		p.processMode = "concurrency"
 	}
 
-	if p.processMode != "concurrency" || p.processMode != "sequency" {
-		panic(fmt.Sprintf("unsupport process mode: %s, component: %s, inport: %s", p.processMode, p.componentName, p.inPortName))
+	if p.processMode != "concurrency" && p.processMode != "sequency" {
+		panic(fmt.Sprintf("unsupport process mode: %s", p.processMode))
 	}
 
 	p.queue = queue
