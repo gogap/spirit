@@ -365,14 +365,14 @@ func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload
 	return handler(payload)
 }
 
-func (p *BaseComponent) handleComponentMessage(inPortName string, messageId string, message ComponentMessage, callbacks ...OnReceiverMessageProcessed) {
+func (p *BaseComponent) handleComponentMessage(inPortName string, context interface{}, message ComponentMessage, callbacks ...OnReceiverMessageProcessed) {
 	atomic.AddInt64(&p.inboxMessage, 1)
 	defer atomic.AddInt64(&p.inboxMessage, -1)
 
 	defer func() {
 		if callbacks != nil {
 			for _, callback := range callbacks {
-				callback(messageId)
+				callback(context)
 			}
 		}
 	}()

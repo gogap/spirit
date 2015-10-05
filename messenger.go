@@ -11,8 +11,8 @@ type MessageAddress struct {
 	Url  string `json:"url"`
 }
 
-type OnReceiverMessageProcessed func(messageId string)
-type OnReceiverMessageReceived func(inPortName, messageId string, compMsg ComponentMessage, callbacks ...OnReceiverMessageProcessed)
+type OnReceiverMessageProcessed func(context interface{})
+type OnReceiverMessageReceived func(inPortName string, context interface{}, compMsg ComponentMessage, callbacks ...OnReceiverMessageProcessed)
 type OnReceiverError func(inPortName string, err error)
 
 type MessageReceiver interface {
