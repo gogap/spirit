@@ -2,6 +2,7 @@ package spirit
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/gogap/cache_storages"
 	"github.com/gogap/errors"
@@ -67,13 +68,18 @@ func (p *MessageHookBigDataRedis) HookBefore(
 				err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": err.Error()})
 				return
 			}
-			var container interface{}
-			err = json.Unmarshal([]byte(data), &container)
-			if err != nil {
-				err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err.Error()})
-				return
-			}
+
 			if data != "" {
+				var container interface{}
+
+				decoder := json.NewDecoder(strings.NewReader(data))
+				decoder.UseNumber()
+
+				if e := decoder.Decode(&container); e != nil {
+					err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err.Error()})
+					return
+				}
+
 				payload.SetContent(container)
 			}
 		}

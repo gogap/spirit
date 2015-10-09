@@ -13,6 +13,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/gogap/errors"
+	"github.com/gogap/event_center"
 	"github.com/gogap/logs"
 )
 
@@ -50,6 +51,7 @@ type ClassicSpirit struct {
 	isRunCommand        bool
 	isRunCheckedCorrect bool
 	viewDetails         bool
+	inspectMode         bool
 }
 
 func NewClassicSpirit(name, description, version string, authors []Author) Spirit {
@@ -283,7 +285,7 @@ func (p *ClassicSpirit) startChildInstance(hash string, attach, stdin bool) (exe
 	}
 
 	if viewDetails {
-		fmt.Sprintf("new spirit instance of %s started, pid: %d", p.instanceName, exeCMD.Process.Pid)
+		fmt.Printf("new spirit instance of %s started, pid: %d\n", p.instanceName, exeCMD.Process.Pid)
 	}
 
 	return
@@ -743,6 +745,7 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 	message := c.String("message")
 
 	viewDetails = c.Bool("v")
+	p.inspectMode = c.Bool("watch")
 
 	if p.instanceName != "" {
 		if instManager.IsInstanceExist(p.instanceName) {
@@ -779,6 +782,10 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 	}
 
 	if err = p.buildRunComponents(); err != nil {
+		return
+	}
+
+	if err = p.buildEventInspectSubscribers(); err != nil {
 		return
 	}
 
@@ -885,6 +892,33 @@ func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
 			return
 		}
 	}
+}
+
+func (p *ClassicSpirit) buildEventInspectSubscribers() (err error) {
+	if !p.inspectMode {
+		return
+	}
+
+	events := EventCenter.ListEvents()
+
+	loggerSubscriber := event_center.NewSubscriber(func(eventName string, values ...interface{}) {
+
+		str := ""
+		for i, v := range values {
+			str = str + fmt.Sprintf("v_%d: %v\n", i, v)
+		}
+
+		logs.Info(fmt.Sprintf("SPIRIT-EVENT-INSPECT EVENT_NAME: %s\nValues:\n%s\n", eventName, str))
+
+	})
+
+	for _, event := range events {
+		if err = EventCenter.Subscribe(event, loggerSubscriber); err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 func (p *ClassicSpirit) saveMetadata() (err error) {
@@ -1134,8 +1168,16 @@ func (p *ClassicSpirit) startHeartbeat() (err error) {
 			}
 
 			go func(beater Heartbeater, msg HeartbeatMessage, sleepTime time.Duration) {
+				isStopped := false
+				stopSubScriber := event_center.NewSubscriber(
+					func(eventName string, values ...interface{}) {
+						isStopped = true
+					})
 
-				for {
+				EventCenter.Subscribe(EVENT_CMD_STOP, stopSubScriber)
+				defer EventCenter.Unsubscribe(EVENT_CMD_STOP, stopSubScriber.Id())
+
+				for !isStopped {
 					time.Sleep(sleepTime)
 					msg.CurrentTime = time.Now()
 					msg.HeartbeatCount += 1
@@ -1190,6 +1232,7 @@ func (p *ClassicSpirit) getRunComponents(c *cli.Context) (components []string, e
 }
 
 func (p *ClassicSpirit) waitSignal() {
+	isStopping := false
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGUSR1)
 
@@ -1200,38 +1243,57 @@ func (p *ClassicSpirit) waitSignal() {
 			switch signal {
 			case os.Interrupt, syscall.SIGTERM:
 				{
-					for _, runningComponent := range p.runningComponents {
-						go runningComponent.Stop()
+					if isStopping {
+						os.Exit(0)
 					}
 
-					wg := sync.WaitGroup{}
+					isStopping = true
+					EventCenter.PushEvent(EVENT_CMD_STOP)
 
-					for _, runningComponent := range p.runningComponents {
-						wg.Add(1)
+					go func() {
+						for _, runningComponent := range p.runningComponents {
+							go runningComponent.Stop()
+						}
 
-						go func(component Component) {
-							defer wg.Done()
+						wg := sync.WaitGroup{}
 
-							for component.Status() != STATUS_STOPED {
-								time.Sleep(time.Second)
-							}
-							logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", component.Name()))
-						}(runningComponent)
-					}
-					wg.Wait()
-					os.Exit(0)
+						for _, runningComponent := range p.runningComponents {
+							wg.Add(1)
+
+							go func(component Component) {
+								defer wg.Done()
+
+								for component.Status() != STATUS_STOPPED {
+									time.Sleep(time.Second)
+								}
+								logs.Info(fmt.Sprintf("[spirit] component %s was gracefully stoped\n", component.Name()))
+							}(runningComponent)
+						}
+						wg.Wait()
+						os.Exit(0)
+					}()
+
 				}
 			case syscall.SIGUSR1:
 				{
 					for _, runningComponent := range p.runningComponents {
-						runningComponent.PauseOrResume()
-						if runningComponent.Status() == STATUS_PAUSED {
-							logs.Info(fmt.Sprintf("spirit - component %s was paused\n", runningComponent.Name()))
-						} else {
-							logs.Info(fmt.Sprintf("spirit - component %s was resumed\n", runningComponent.Name()))
+						if runningComponent.Status() == STATUS_RUNNING {
+							runningComponent.Pause()
+							if runningComponent.Status() == STATUS_PAUSED {
+								logs.Info(fmt.Sprintf("spirit - component %s was paused\n", runningComponent.Name()))
+							}
+						} else if runningComponent.Status() == STATUS_PAUSED {
+							runningComponent.Resume()
+							if runningComponent.Status() == STATUS_RUNNING {
+								logs.Info(fmt.Sprintf("spirit - component %s was resumed\n", runningComponent.Name()))
+							}
 						}
 					}
 				}
+			}
+		case <-time.After(time.Second):
+			{
+				continue
 			}
 		}
 	}

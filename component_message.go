@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 
@@ -107,8 +108,11 @@ func (p *ComponentMessage) UnSerialize(data []byte) (err error) {
 		} `json:"payload"`
 	}
 
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
+	if err = decoder.Decode(&tmp); err != nil {
+		return
 	}
 
 	p.id = tmp.Id

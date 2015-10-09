@@ -1,10 +1,9 @@
 package spirit
 
-type PortChan struct {
-	Message chan ComponentMessage
-	Error   chan error
-	Signal  chan int
-	Stoped  chan bool
+type ReceiverMetadata struct {
+	ComponentName string
+	PortName      string
+	Type          string
 }
 
 type MessageAddress struct {
@@ -12,11 +11,22 @@ type MessageAddress struct {
 	Url  string `json:"url"`
 }
 
+type OnReceiverMessageProcessed func(context interface{})
+type OnReceiverMessageReceived func(inPortName string, context interface{}, compMsg ComponentMessage, callbacks ...OnReceiverMessageProcessed)
+type OnReceiverError func(inPortName string, err error)
+
 type MessageReceiver interface {
 	Type() string
 	Init(url string, options Options) error
 	Address() MessageAddress
-	Receive(portChan *PortChan)
+	BindInPort(
+		componentName, inPortName string,
+		onMsgReceived OnReceiverMessageReceived,
+		onReceiverError OnReceiverError)
+	Start()
+	Stop()
+	IsRunning() bool
+	Metadata() ReceiverMetadata
 }
 
 type MessageSender interface {

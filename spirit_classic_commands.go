@@ -41,6 +41,9 @@ func commandRun(action cliAction) cli.Command {
 			}, cli.BoolFlag{
 				Name:  "v",
 				Usage: "print more internal info",
+			}, cli.BoolFlag{
+				Name:  "watch, w",
+				Usage: "watch all exported events",
 			}, cli.StringFlag{
 				Name:  "message, m",
 				Usage: "Commit message",
