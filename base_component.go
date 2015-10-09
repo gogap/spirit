@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gogap/errors"
@@ -16,20 +17,22 @@ var (
 )
 
 type BaseComponent struct {
-	name          string
-	receivers     map[string][]MessageReceiver
-	handlers      map[string]ComponentHandler
-	inPortHandler map[string]ComponentHandler
-	inPortHooks   map[string][]string
+	name           string
+	receivers      map[string][]MessageReceiver
+	handlers       map[string]ComponentHandler
+	inPortHandler  map[string]ComponentHandler
+	inPortHooks    map[string][]string
+	inPortUrlIndex map[string]string
+
+	inboxMessage int64
+	inboxError   int64
 
 	runtimeLocker sync.Mutex
 	isBuilt       bool
 
 	status ComponentStatus
 
-	portChans     map[string]*PortChan
-	stoppingChans map[string]chan bool
-	stopedChans   map[string]chan bool
+	isStopping bool
 }
 
 func NewBaseComponent(componentName string) Component {
@@ -38,14 +41,12 @@ func NewBaseComponent(componentName string) Component {
 	}
 
 	return &BaseComponent{
-		name:          componentName,
-		receivers:     make(map[string][]MessageReceiver),
-		handlers:      make(map[string]ComponentHandler),
-		inPortHandler: make(map[string]ComponentHandler),
-		inPortHooks:   make(map[string][]string),
-		portChans:     make(map[string]*PortChan),
-		stopedChans:   make(map[string]chan bool),
-		stoppingChans: make(map[string]chan bool),
+		name:           componentName,
+		receivers:      make(map[string][]MessageReceiver),
+		handlers:       make(map[string]ComponentHandler),
+		inPortHandler:  make(map[string]ComponentHandler),
+		inPortHooks:    make(map[string][]string),
+		inPortUrlIndex: make(map[string]string),
 	}
 }
 
@@ -74,6 +75,7 @@ func (p *BaseComponent) CallHandler(handlerName string, payload *Payload) (resul
 }
 
 func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) Component {
+
 	if name == "" {
 		panic(fmt.Sprintf("[component-%s] handle name could not be empty", p.name))
 	}
@@ -87,6 +89,7 @@ func (p *BaseComponent) RegisterHandler(name string, handler ComponentHandler) C
 	} else {
 		p.handlers[name] = handler
 	}
+
 	return p
 }
 
@@ -117,6 +120,7 @@ func (p *BaseComponent) GetHandlers(handlerNames ...string) (handlers map[string
 }
 
 func (p *BaseComponent) BindHandler(inPortName, handlerName string) Component {
+
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
 	}
@@ -151,6 +155,7 @@ func (p *BaseComponent) GetReceivers(inPortName string) []MessageReceiver {
 }
 
 func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageReceiver) Component {
+
 	if inPortName == "" {
 		panic(fmt.Sprintf("[component-%s] in port name could not be empty", p.name))
 	}
@@ -163,6 +168,11 @@ func (p *BaseComponent) BindReceiver(inPortName string, receivers ...MessageRece
 
 	for _, receiver := range receivers {
 		if _, exist := inPortReceivers[receiver]; !exist {
+
+			receiver.BindInPort(p.name, inPortName, p.handleComponentMessage, p.handleRecevierError)
+			addr := receiver.Address()
+			p.inPortUrlIndex[addr.Type+"|"+addr.Url] = inPortName
+
 			inPortReceivers[receiver] = true
 		} else {
 			panic(fmt.Sprintf("[component-%s] duplicate receiver type with in port, in port name: %s, receiver type: %s", p.name, inPortName, receiver.Type()))
@@ -226,18 +236,6 @@ func (p *BaseComponent) Build() Component {
 		panic(fmt.Sprintf("the component of %s did not have sender factory", p.name))
 	}
 
-	for inPortName, _ := range p.receivers {
-		portChan := new(PortChan)
-		portChan.Error = make(chan error, MESSAGE_CHAN_SIZE)
-		portChan.Message = make(chan ComponentMessage, MESSAGE_CHAN_SIZE)
-		portChan.Signal = make(chan int)
-		portChan.Stoped = make(chan bool)
-
-		p.portChans[inPortName] = portChan
-		p.stopedChans[inPortName] = make(chan bool)
-		p.stoppingChans[inPortName] = make(chan bool)
-	}
-
 	p.isBuilt = true
 
 	return p
@@ -251,191 +249,104 @@ func (p *BaseComponent) Run() {
 		panic(fmt.Sprintf("the component of %s should be build first", p.name))
 	}
 
-	if p.status > 0 {
+	if p.status != STATUS_READY && p.status != STATUS_STOPPED {
 		panic(fmt.Sprintf("the component of %s already running", p.name))
 	}
 
-	for inPortName, typedReceivers := range p.receivers {
-		var portChan *PortChan
-		exist := false
-		if portChan, exist = p.portChans[inPortName]; !exist {
-			panic(fmt.Sprintf("port chan of component: %s, not exist", p.name))
-		}
-
-		for _, receiver := range typedReceivers {
-			go receiver.Receive(portChan)
-		}
-	}
+	p.startReceivers()
 
 	p.status = STATUS_RUNNING
 
-	p.ReceiverLoop()
 	return
 }
 
-func (p *BaseComponent) ReceiverLoop() {
-	loopInPortNames := []string{}
-	for inPortName, _ := range p.receivers {
-		loopInPortNames = append(loopInPortNames, inPortName)
-	}
+func (p *BaseComponent) startReceivers() {
+	atomic.SwapInt64(&p.inboxMessage, 0)
+	atomic.SwapInt64(&p.inboxError, 0)
 
-	for _, inPortName := range loopInPortNames {
-		portChan := p.portChans[inPortName]
-		stopedChan := p.stopedChans[inPortName]
-		stoppingChan := p.stoppingChans[inPortName]
-		go func(portName string, respChan chan ComponentMessage, errChan chan error, stoppingChan chan bool, stopedChan chan bool) {
-			isStopping := false
-			stoplogTime := time.Now()
-			for {
-				if isStopping {
-					now := time.Now()
-
-					if len(respChan) == 0 && len(errChan) == 0 {
-						logs.Warn(fmt.Sprintf("* port - %s have no message, so it will be stop running", portName))
-						stopedChan <- true
-						return
-					} else {
-						if now.Sub(stoplogTime) >= time.Second {
-							stoplogTime = now
-							logs.Warn(fmt.Sprintf("* port - %s stopping, MsgLen: %d, ErrLen: %d", portName, len(respChan), len(errChan)))
-						}
-					}
+	wg := sync.WaitGroup{}
+	for _, typedReceivers := range p.receivers {
+		for _, receiver := range typedReceivers {
+			wg.Add(1)
+			go func(receiver MessageReceiver) {
+				defer wg.Done()
+				receiver.Start()
+				for !receiver.IsRunning() {
+					time.Sleep(time.Millisecond * 100)
 				}
-
-				select {
-				case compMsg := <-respChan:
-					{
-						go p.handleComponentMessage(portName, compMsg)
-					}
-				case respErr := <-errChan:
-					{
-						logs.Error(respErr)
-					}
-				case isStopping = <-stoppingChan:
-					{
-						stoplogTime = time.Now()
-						logs.Warn(fmt.Sprintf("* port - %s received stop signal", portName))
-					}
-				case <-time.After(time.Second):
-					{
-						if len(respChan) == 0 && isStopping {
-							stopedChan <- true
-							return
-						}
-					}
-				}
-			}
-		}(inPortName, portChan.Message, portChan.Error, stoppingChan, stopedChan)
+				EventCenter.PushEvent(EVENT_RECEIVER_STARTED, receiver.Metadata())
+			}(receiver)
+		}
 	}
+	wg.Wait()
 }
 
-func (p *BaseComponent) PauseOrResume() {
+func (p *BaseComponent) stopReceivers() {
+	wg := sync.WaitGroup{}
+	for _, typedReceivers := range p.receivers {
+		for _, receiver := range typedReceivers {
+			wg.Add(1)
+			go func(receiver MessageReceiver) {
+				defer wg.Done()
+				receiver.Stop()
+				EventCenter.PushEvent(EVENT_RECEIVER_STOPPED, receiver.Metadata())
+			}(receiver)
+		}
+	}
+	wg.Wait()
+}
+
+func (p *BaseComponent) Pause() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
 	if p.status == STATUS_RUNNING {
-		wgReceiverPause := sync.WaitGroup{}
-		for _, Chans := range p.portChans {
-			wgReceiverPause.Add(1)
-			go func(singalChan chan int) {
-				defer wgReceiverPause.Done()
-				select {
-				case singalChan <- SIG_PAUSE:
-				case <-time.After(time.Second * 5):
-				}
-			}(Chans.Signal)
-		}
-		wgReceiverPause.Wait()
+		p.stopReceivers()
 		p.status = STATUS_PAUSED
 	} else if p.status == STATUS_PAUSED {
-		wgReceiverResume := sync.WaitGroup{}
-		for _, Chans := range p.portChans {
-			wgReceiverResume.Add(1)
-			go func(singalChan chan int) {
-				defer wgReceiverResume.Done()
-				select {
-				case singalChan <- SIG_RESUME:
-				case <-time.After(time.Second * 5):
-				}
-			}(Chans.Signal)
-		}
-		wgReceiverResume.Wait()
+		return
+	} else {
+		logs.Warn("[base component] pause or resume at error status")
+		return
+	}
+}
+
+func (p *BaseComponent) Resume() {
+	p.runtimeLocker.Lock()
+	defer p.runtimeLocker.Unlock()
+
+	if p.status == STATUS_RUNNING {
+		return
+	} else if p.status == STATUS_PAUSED {
+		p.startReceivers()
 		p.status = STATUS_RUNNING
 	} else {
 		logs.Warn("[base component] pause or resume at error status")
+		return
 	}
-
 }
 
 func (p *BaseComponent) Stop() {
 	p.runtimeLocker.Lock()
 	defer p.runtimeLocker.Unlock()
 
-	//stop queues first
-	logs.Warn("* begin stop port receivers")
-	wgReceiverBeginStop := sync.WaitGroup{}
-	for _, Chans := range p.portChans {
-		wgReceiverBeginStop.Add(1)
-		go func(singalChan chan int) {
-			defer wgReceiverBeginStop.Done()
-			select {
-			case singalChan <- SIG_STOP:
-			case <-time.After(time.Second * 5):
-			}
-		}(Chans.Signal)
+	if p.status != STATUS_RUNNING && p.status != STATUS_PAUSED {
+		logs.Warn("[base component] stop at error status, current status: ", p.status)
+		return
 	}
-	wgReceiverBeginStop.Wait()
 
-	logs.Warn("* waiting for port receivers stopped signal")
+	p.status = STATUS_STOPPING
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPING, p.name, p.inboxMessage, p.inboxError)
 
-	wgReceiverStop := sync.WaitGroup{}
-	for _, Chans := range p.portChans {
-		wgReceiverStop.Add(1)
-		go func(stopedChan chan bool) {
-			defer wgReceiverStop.Done()
-			select {
-			case _ = <-stopedChan:
-			case <-time.After(time.Second * 60):
-			}
-		}(Chans.Stoped)
+	p.stopReceivers()
+
+	for p.inboxMessage != 0 || p.inboxError != 0 {
+		time.Sleep(time.Second)
+		EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPING, p.name, p.inboxMessage, p.inboxError)
 	}
-	wgReceiverStop.Wait()
 
-	logs.Warn("* begin stop received response message handler")
-	wgHandlerBeginStop := sync.WaitGroup{}
-	for inportName, Chan := range p.stoppingChans {
-		wgHandlerBeginStop.Add(1)
-		go func(stopedChan chan bool, name string) {
-			defer wgHandlerBeginStop.Done()
-			select {
-			case stopedChan <- true:
-				{
-					logs.Warn("* component begin stop port:", name)
-				}
-			case <-time.After(time.Second * 60):
-			}
-		}(Chan, inportName)
-	}
-	wgHandlerBeginStop.Wait()
-
-	logs.Warn("* waiting for received response message handler stopped signal")
-	wgHandlerStop := sync.WaitGroup{}
-	for inportName, Chan := range p.stopedChans {
-		wgHandlerStop.Add(1)
-		go func(stopedChan chan bool, name string) {
-			defer wgHandlerStop.Done()
-			select {
-			case _ = <-stopedChan:
-				{
-					logs.Warn("* component", name, "stoped")
-				}
-			case <-time.After(time.Second * 60):
-			}
-		}(Chan, inportName)
-	}
-	wgHandlerStop.Wait()
-
-	p.status = STATUS_STOPED
+	p.status = STATUS_STOPPED
+	EventCenter.PushEvent(EVENT_BASE_COMPONENT_STOPPED, p.name)
 }
 
 func (p *BaseComponent) Status() ComponentStatus {
@@ -454,7 +365,18 @@ func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload
 	return handler(payload)
 }
 
-func (p *BaseComponent) handleComponentMessage(inPortName string, message ComponentMessage) {
+func (p *BaseComponent) handleComponentMessage(inPortName string, context interface{}, message ComponentMessage, callbacks ...OnReceiverMessageProcessed) {
+	atomic.AddInt64(&p.inboxMessage, 1)
+	defer atomic.AddInt64(&p.inboxMessage, -1)
+
+	defer func() {
+		if callbacks != nil {
+			for _, callback := range callbacks {
+				callback(context)
+			}
+		}
+	}()
+
 	var handler ComponentHandler
 	var err error
 	var exist bool
@@ -465,7 +387,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	}
 
 	if handler, exist = p.inPortHandler[inPortName]; !exist {
-		panic(fmt.Sprintf("in port of %s not exist", inPortName))
+		logs.Error(fmt.Sprintf("in port of %s not exist", inPortName))
 	}
 
 	var address MessageAddress
@@ -535,12 +457,27 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, message Compon
 	message.hooksMetaData = newMetadatas
 	message.currentGraphIndex = nextGraphIndex
 
-	go p.sendMessage(address.Type, address.Url, message)
+	if nextInPortName, exist := p.inPortUrlIndex[address.Type+"|"+address.Url]; exist {
+		p.handleComponentMessage(nextInPortName, "", message)
+		EventCenter.PushEvent(EVENT_BASE_COMPONENT_INTERNAL_MESSAGE, p.name, address, message)
+	} else {
+		p.sendMessage(address, message)
+	}
 
 	return
 }
 
+func (p *BaseComponent) handleRecevierError(inportName string, err error) {
+	atomic.AddInt64(&p.inboxError, 1)
+	defer atomic.AddInt64(&p.inboxError, -1)
+
+	logs.Error(err)
+}
+
 func (p *BaseComponent) hookMessages(inPortName string, event HookEvent, message *ComponentMessage) (metadatas []MessageHookMetadata, err error) {
+	EventCenter.PushEvent(EVENT_BEFORE_MESSAGE_HOOK, event)
+	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_HOOK, event)
+
 	if event == HookEventBeforeCallHandler {
 		return p.hookMessagesBefore(inPortName, message)
 	} else if event == HookEventAfterCallHandler {
@@ -622,15 +559,15 @@ func (p *BaseComponent) hookMessagesAfter(inPortName string, message *ComponentM
 	return
 }
 
-func (p *BaseComponent) sendMessage(addrType, url string, msg ComponentMessage) {
+func (p *BaseComponent) sendMessage(address MessageAddress, msg ComponentMessage) {
 	var sender MessageSender
 	var err error
-	if sender, err = senderFactory.NewSender(addrType); err != nil {
+	if sender, err = senderFactory.NewSender(address.Type); err != nil {
 		logs.Error(err)
 		return
 	}
 
-	if err = sender.Send(url, msg); err != nil {
+	if err = sender.Send(address.Url, msg); err != nil {
 		logs.Error(err)
 		return
 	}
