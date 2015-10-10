@@ -34,12 +34,12 @@ type MessageReceiverMNS struct {
 	batchMessageNumber int32
 	qpsLimit           int32
 	waitSeconds        int64
-	processMode        string
+	processMode        ReceiverProcessMode
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
 	return &MessageReceiverMNS{url: url,
-		processMode:        "concurrency",
+		processMode:        ConcurrencyMode,
 		qpsLimit:           ali_mns.DefaultQPSLimit,
 		batchMessageNumber: int32(runtime.NumCPU()),
 		waitSeconds:        -1,
@@ -48,6 +48,10 @@ func NewMessageReceiverMNS(url string) MessageReceiver {
 
 func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.url = url
+	p.waitSeconds = -1
+	p.batchMessageNumber = int32(runtime.NumCPU())
+	p.qpsLimit = ali_mns.DefaultQPSLimit
+	p.processMode = ConcurrencyMode
 
 	var queue ali_mns.AliMNSQueue
 	if queue, err = p.newAliMNSQueue(); err != nil {
@@ -71,12 +75,14 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	}
 
 	if v, e := options.GetStringValue("process_mode"); e == nil {
-		p.processMode = v
-	} else if v == "" {
-		p.processMode = "concurrency"
+		if v == "" {
+			p.processMode = ConcurrencyMode
+		} else {
+			p.processMode = ReceiverProcessMode(v)
+		}
 	}
 
-	if p.processMode != "concurrency" && p.processMode != "sequency" {
+	if p.processMode != ConcurrencyMode && p.processMode != SequencyMode {
 		panic(fmt.Sprintf("unsupport process mode: %s", p.processMode))
 	}
 
