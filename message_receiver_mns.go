@@ -47,16 +47,16 @@ func NewMessageReceiverMNS(url string) MessageReceiver {
 }
 
 func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
-	var queue ali_mns.AliMNSQueue
-	if queue, err = p.newAliMNSQueue(); err != nil {
-		return
-	}
-
 	p.url = url
 	p.waitSeconds = -1
 	p.batchMessageNumber = int32(runtime.NumCPU())
 	p.qpsLimit = ali_mns.DefaultQPSLimit
 	p.processMode = ConcurrencyMode
+
+	var queue ali_mns.AliMNSQueue
+	if queue, err = p.newAliMNSQueue(); err != nil {
+		return
+	}
 
 	if v, e := options.GetInt64Value("batch_messages_number"); e == nil {
 		p.batchMessageNumber = int32(v)
