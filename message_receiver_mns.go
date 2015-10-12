@@ -28,9 +28,6 @@ type MessageReceiverMNS struct {
 	onMsgReceived   OnReceiverMessageReceived
 	onReceiverError OnReceiverError
 
-	responseChan chan ali_mns.MessageReceiveResponse
-	errorChan    chan error
-
 	batchMessageNumber int32
 	qpsLimit           int32
 	waitSeconds        int64
@@ -62,16 +59,28 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		p.batchMessageNumber = int32(v)
 	}
 
+	if p.batchMessageNumber > ali_mns.DefaultNumOfMessages {
+		p.batchMessageNumber = ali_mns.DefaultNumOfMessages
+	} else if p.batchMessageNumber <= 0 {
+		p.batchMessageNumber = 1
+	}
+
 	if v, e := options.GetInt64Value("qps_limit"); e == nil {
 		p.qpsLimit = int32(v)
 	}
 
+	if p.qpsLimit > ali_mns.DefaultQPSLimit || p.qpsLimit < 0 {
+		p.qpsLimit = ali_mns.DefaultQPSLimit
+	}
+
 	if v, e := options.GetInt64Value("wait_seconds"); e == nil {
-		if v > 30 {
-			p.waitSeconds = 30
-		} else {
-			p.waitSeconds = v
-		}
+		p.waitSeconds = v
+	}
+
+	if p.waitSeconds > 30 {
+		p.waitSeconds = 30
+	} else if p.waitSeconds < -1 {
+		p.waitSeconds = -1
 	}
 
 	if v, e := options.GetStringValue("process_mode"); e == nil {
@@ -171,28 +180,30 @@ func (p *MessageReceiverMNS) Start() {
 	}
 
 	go func() {
-		responseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
-		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
+		batchResponseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
+		errorChan := make(chan error, 1)
+		responseChan := make(chan ali_mns.MessageReceiveResponse, p.batchMessageNumber)
 
-		defer close(responseChan)
+		defer close(batchResponseChan)
 		defer close(errorChan)
+		defer close(responseChan)
 
 		p.isRunning = true
 
-		go p.queue.BatchReceiveMessage(responseChan, errorChan, p.batchMessageNumber, p.waitSeconds)
+		go p.queue.BatchReceiveMessage(batchResponseChan, errorChan, p.batchMessageNumber, p.waitSeconds)
 
 		lastStatUpdated := time.Now()
 		statUpdateFunc := func() {
 			if time.Now().Sub(lastStatUpdated).Seconds() >= 1 {
 				lastStatUpdated = time.Now()
 				EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, p.Metadata(), []ChanStatistics{
-					{"receiver_message", len(responseChan), cap(responseChan)},
+					{"receiver_message", len(batchResponseChan), cap(batchResponseChan)},
 					{"receiver_error", len(errorChan), cap(errorChan)},
 				})
 			}
 		}
 
-		handlerFunc := func(resp ali_mns.MessageReceiveResponse) {
+		processMessageFunc := func(resp ali_mns.MessageReceiveResponse) {
 			defer statUpdateFunc()
 
 			metadata := p.Metadata()
@@ -209,16 +220,36 @@ func (p *MessageReceiverMNS) Start() {
 			}
 		}
 
+		workerCount := p.batchMessageNumber
+		if workerCount <= 0 || p.processMode == SequencyMode {
+			workerCount = 1
+		}
+
+		for i := 0; i < int(workerCount); i++ {
+			go func(respChan chan ali_mns.MessageReceiveResponse, workerId int) {
+				for p.isRunning {
+					select {
+					case resp := <-respChan:
+						{
+							processMessageFunc(resp)
+						}
+					case <-time.After(time.Second):
+						{
+							if len(respChan) == 0 && len(batchResponseChan) == 0 && !p.isRunning {
+								return
+							}
+						}
+					}
+				}
+			}(responseChan, i)
+		}
+
 		for {
 			select {
-			case resps := <-responseChan:
+			case resps := <-batchResponseChan:
 				{
 					for _, resp := range resps.Messages {
-						if p.processMode == "concurrency" {
-							go handlerFunc(resp)
-						} else {
-							handlerFunc(resp)
-						}
+						responseChan <- resp
 					}
 				}
 			case respErr := <-errorChan:
@@ -233,7 +264,7 @@ func (p *MessageReceiverMNS) Start() {
 			case <-time.After(time.Second):
 				{
 					statUpdateFunc()
-					if len(responseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
+					if len(batchResponseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
 						return
 					}
 				}
