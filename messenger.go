@@ -1,12 +1,5 @@
 package spirit
 
-type ReceiverProcessMode string
-
-const (
-	ConcurrencyMode ReceiverProcessMode = "concurrency"
-	SequencyMode                        = "sequency"
-)
-
 type ReceiverMetadata struct {
 	ComponentName string
 	PortName      string

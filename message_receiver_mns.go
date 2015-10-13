@@ -1,7 +1,6 @@
 package spirit
 
 import (
-	"fmt"
 	"regexp"
 	"runtime"
 	"sync"
@@ -29,16 +28,16 @@ type MessageReceiverMNS struct {
 	onReceiverError OnReceiverError
 
 	batchMessageNumber int32
+	concurrencyNumber  int32
 	qpsLimit           int32
 	waitSeconds        int64
-	processMode        ReceiverProcessMode
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
 	return &MessageReceiverMNS{url: url,
-		processMode:        ConcurrencyMode,
 		qpsLimit:           ali_mns.DefaultQPSLimit,
-		batchMessageNumber: int32(runtime.NumCPU()),
+		batchMessageNumber: ali_mns.DefaultNumOfMessages,
+		concurrencyNumber:  int32(runtime.NumCPU()),
 		waitSeconds:        -1,
 	}
 }
@@ -46,9 +45,9 @@ func NewMessageReceiverMNS(url string) MessageReceiver {
 func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.url = url
 	p.waitSeconds = -1
-	p.batchMessageNumber = int32(runtime.NumCPU())
+	p.batchMessageNumber = ali_mns.DefaultNumOfMessages
+	p.concurrencyNumber = int32(runtime.NumCPU())
 	p.qpsLimit = ali_mns.DefaultQPSLimit
-	p.processMode = ConcurrencyMode
 
 	var queue ali_mns.AliMNSQueue
 	if queue, err = p.newAliMNSQueue(); err != nil {
@@ -83,16 +82,12 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		p.waitSeconds = -1
 	}
 
-	if v, e := options.GetStringValue("process_mode"); e == nil {
-		if v == "" {
-			p.processMode = ConcurrencyMode
-		} else {
-			p.processMode = ReceiverProcessMode(v)
-		}
+	if v, e := options.GetInt64Value("concurrency_number"); e == nil {
+		p.concurrencyNumber = int32(v)
 	}
 
-	if p.processMode != ConcurrencyMode && p.processMode != SequencyMode {
-		panic(fmt.Sprintf("unsupport process mode: %s", p.processMode))
+	if p.concurrencyNumber <= 0 {
+		p.concurrencyNumber = int32(runtime.NumCPU())
 	}
 
 	p.queue = queue
@@ -220,13 +215,8 @@ func (p *MessageReceiverMNS) Start() {
 			}
 		}
 
-		workerCount := p.batchMessageNumber
-		if workerCount <= 0 || p.processMode == SequencyMode {
-			workerCount = 1
-		}
-
-		for i := 0; i < int(workerCount); i++ {
-			go func(respChan chan ali_mns.MessageReceiveResponse, workerId int) {
+		for i := 0; i < int(p.concurrencyNumber); i++ {
+			go func(respChan chan ali_mns.MessageReceiveResponse, concurrencyId int) {
 				for p.isRunning {
 					select {
 					case resp := <-respChan:
