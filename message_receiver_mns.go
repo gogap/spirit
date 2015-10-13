@@ -68,7 +68,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		p.qpsLimit = int32(v)
 	}
 
-	if p.qpsLimit > ali_mns.DefaultQPSLimit || p.qpsLimit < 0 {
+	if p.qpsLimit > ali_mns.DefaultQPSLimit {
 		p.qpsLimit = ali_mns.DefaultQPSLimit
 	}
 
@@ -177,7 +177,7 @@ func (p *MessageReceiverMNS) Start() {
 	go func() {
 		batchResponseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
 		errorChan := make(chan error, 1)
-		responseChan := make(chan ali_mns.MessageReceiveResponse, p.batchMessageNumber)
+		responseChan := make(chan ali_mns.MessageReceiveResponse, p.concurrencyNumber)
 
 		defer close(batchResponseChan)
 		defer close(errorChan)
