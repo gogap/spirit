@@ -31,6 +31,7 @@ type MessageReceiverMNS struct {
 	concurrencyNumber  int32
 	qpsLimit           int32
 	waitSeconds        int64
+	deleteOnComplete   bool
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
@@ -39,6 +40,7 @@ func NewMessageReceiverMNS(url string) MessageReceiver {
 		batchMessageNumber: ali_mns.DefaultNumOfMessages,
 		concurrencyNumber:  int32(runtime.NumCPU()),
 		waitSeconds:        -1,
+		deleteOnComplete:   false,
 	}
 }
 
@@ -48,6 +50,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.batchMessageNumber = ali_mns.DefaultNumOfMessages
 	p.concurrencyNumber = int32(runtime.NumCPU())
 	p.qpsLimit = ali_mns.DefaultQPSLimit
+	p.deleteOnComplete = false
 
 	var queue ali_mns.AliMNSQueue
 	if queue, err = p.newAliMNSQueue(); err != nil {
@@ -88,6 +91,10 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 
 	if p.concurrencyNumber <= 0 {
 		p.concurrencyNumber = int32(runtime.NumCPU())
+	}
+
+	if v, e := options.GetBoolValue("delete_on_complete"); e == nil {
+		p.deleteOnComplete = v
 	}
 
 	p.queue = queue
@@ -176,7 +183,7 @@ func (p *MessageReceiverMNS) Start() {
 
 	go func() {
 		batchResponseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
-		errorChan := make(chan error, 1)
+		errorChan := make(chan error, p.concurrencyNumber)
 		responseChan := make(chan ali_mns.MessageReceiveResponse, p.concurrencyNumber)
 
 		defer close(batchResponseChan)
@@ -261,15 +268,16 @@ func (p *MessageReceiverMNS) Start() {
 			}
 		}
 	}()
-
 }
 
 func (p *MessageReceiverMNS) onMessageProcessedToDelete(context interface{}) {
-	if context != nil {
-		if messageId, ok := context.(string); ok && messageId != "" {
-			if err := p.queue.DeleteMessage(messageId); err != nil {
-				EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
-			}
+	if !p.deleteOnComplete || context == nil {
+		return
+	}
+
+	if messageId, ok := context.(string); ok && messageId != "" {
+		if err := p.queue.DeleteMessage(messageId); err != nil {
+			EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
 		}
 	}
 }

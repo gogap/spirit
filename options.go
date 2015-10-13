@@ -34,6 +34,19 @@ func (p Options) GetStringValue(key string) (value string, err error) {
 	return
 }
 
+func (p Options) GetBoolValue(key string) (value bool, err error) {
+	if val, exist := p[key]; !exist {
+		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
+		return
+	} else if boolVal, ok := val.(bool); !ok {
+		err = ERR_OPTIONS_VALUE_TYPE_ERROR.New(errors.Params{"key": key, "value": val, "type": "bool", "realType": getValueType(val)})
+		return
+	} else {
+		value = boolVal
+	}
+	return
+}
+
 func (p Options) GetInt64Value(key string) (value int64, err error) {
 	if val, exist := p[key]; !exist {
 		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
