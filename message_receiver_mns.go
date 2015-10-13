@@ -2,7 +2,6 @@ package spirit
 
 import (
 	"regexp"
-	"runtime"
 	"sync"
 	"time"
 
@@ -38,7 +37,7 @@ func NewMessageReceiverMNS(url string) MessageReceiver {
 	return &MessageReceiverMNS{url: url,
 		qpsLimit:           ali_mns.DefaultQPSLimit,
 		batchMessageNumber: ali_mns.DefaultNumOfMessages,
-		concurrencyNumber:  int32(runtime.NumCPU()),
+		concurrencyNumber:  ali_mns.DefaultNumOfMessages * 2,
 		waitSeconds:        -1,
 		deleteOnComplete:   false,
 	}
@@ -48,7 +47,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.url = url
 	p.waitSeconds = -1
 	p.batchMessageNumber = ali_mns.DefaultNumOfMessages
-	p.concurrencyNumber = int32(runtime.NumCPU())
+	p.concurrencyNumber = ali_mns.DefaultNumOfMessages * 2
 	p.qpsLimit = ali_mns.DefaultQPSLimit
 	p.deleteOnComplete = false
 
@@ -90,7 +89,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	}
 
 	if p.concurrencyNumber <= 0 {
-		p.concurrencyNumber = int32(runtime.NumCPU())
+		p.concurrencyNumber = p.batchMessageNumber * 2
 	}
 
 	if v, e := options.GetBoolValue("delete_on_complete"); e == nil {
