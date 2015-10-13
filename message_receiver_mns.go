@@ -217,7 +217,7 @@ func (p *MessageReceiverMNS) Start() {
 
 		for i := 0; i < int(p.concurrencyNumber); i++ {
 			go func(respChan chan ali_mns.MessageReceiveResponse, concurrencyId int) {
-				for p.isRunning {
+				for {
 					select {
 					case resp := <-respChan:
 						{
