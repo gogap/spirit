@@ -1,9 +1,7 @@
 package spirit
 
 import (
-	"fmt"
 	"regexp"
-	"runtime"
 	"sync"
 	"time"
 
@@ -28,30 +26,30 @@ type MessageReceiverMNS struct {
 	onMsgReceived   OnReceiverMessageReceived
 	onReceiverError OnReceiverError
 
-	responseChan chan ali_mns.MessageReceiveResponse
-	errorChan    chan error
-
 	batchMessageNumber int32
+	concurrencyNumber  int32
 	qpsLimit           int32
 	waitSeconds        int64
-	processMode        ReceiverProcessMode
+	deleteOnComplete   bool
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
 	return &MessageReceiverMNS{url: url,
-		processMode:        ConcurrencyMode,
 		qpsLimit:           ali_mns.DefaultQPSLimit,
-		batchMessageNumber: int32(runtime.NumCPU()),
+		batchMessageNumber: ali_mns.DefaultNumOfMessages,
+		concurrencyNumber:  ali_mns.DefaultNumOfMessages * 2,
 		waitSeconds:        -1,
+		deleteOnComplete:   false,
 	}
 }
 
 func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.url = url
 	p.waitSeconds = -1
-	p.batchMessageNumber = int32(runtime.NumCPU())
+	p.batchMessageNumber = ali_mns.DefaultNumOfMessages
+	p.concurrencyNumber = ali_mns.DefaultNumOfMessages * 2
 	p.qpsLimit = ali_mns.DefaultQPSLimit
-	p.processMode = ConcurrencyMode
+	p.deleteOnComplete = false
 
 	var queue ali_mns.AliMNSQueue
 	if queue, err = p.newAliMNSQueue(); err != nil {
@@ -62,28 +60,40 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 		p.batchMessageNumber = int32(v)
 	}
 
+	if p.batchMessageNumber > ali_mns.DefaultNumOfMessages {
+		p.batchMessageNumber = ali_mns.DefaultNumOfMessages
+	} else if p.batchMessageNumber <= 0 {
+		p.batchMessageNumber = 1
+	}
+
 	if v, e := options.GetInt64Value("qps_limit"); e == nil {
 		p.qpsLimit = int32(v)
 	}
 
+	if p.qpsLimit > ali_mns.DefaultQPSLimit {
+		p.qpsLimit = ali_mns.DefaultQPSLimit
+	}
+
 	if v, e := options.GetInt64Value("wait_seconds"); e == nil {
-		if v > 30 {
-			p.waitSeconds = 30
-		} else {
-			p.waitSeconds = v
-		}
+		p.waitSeconds = v
 	}
 
-	if v, e := options.GetStringValue("process_mode"); e == nil {
-		if v == "" {
-			p.processMode = ConcurrencyMode
-		} else {
-			p.processMode = ReceiverProcessMode(v)
-		}
+	if p.waitSeconds > 30 {
+		p.waitSeconds = 30
+	} else if p.waitSeconds < -1 {
+		p.waitSeconds = -1
 	}
 
-	if p.processMode != ConcurrencyMode && p.processMode != SequencyMode {
-		panic(fmt.Sprintf("unsupport process mode: %s", p.processMode))
+	if v, e := options.GetInt64Value("concurrency_number"); e == nil {
+		p.concurrencyNumber = int32(v)
+	}
+
+	if p.concurrencyNumber <= 0 {
+		p.concurrencyNumber = p.batchMessageNumber * 2
+	}
+
+	if v, e := options.GetBoolValue("delete_on_complete"); e == nil {
+		p.deleteOnComplete = v
 	}
 
 	p.queue = queue
@@ -171,28 +181,30 @@ func (p *MessageReceiverMNS) Start() {
 	}
 
 	go func() {
-		responseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
-		errorChan := make(chan error, MESSAGE_CHAN_SIZE)
+		batchResponseChan := make(chan ali_mns.BatchMessageReceiveResponse, 1)
+		errorChan := make(chan error, p.concurrencyNumber)
+		responseChan := make(chan ali_mns.MessageReceiveResponse, p.concurrencyNumber)
 
-		defer close(responseChan)
+		defer close(batchResponseChan)
 		defer close(errorChan)
+		defer close(responseChan)
 
 		p.isRunning = true
 
-		go p.queue.BatchReceiveMessage(responseChan, errorChan, p.batchMessageNumber, p.waitSeconds)
+		go p.queue.BatchReceiveMessage(batchResponseChan, errorChan, p.batchMessageNumber, p.waitSeconds)
 
 		lastStatUpdated := time.Now()
 		statUpdateFunc := func() {
 			if time.Now().Sub(lastStatUpdated).Seconds() >= 1 {
 				lastStatUpdated = time.Now()
 				EventCenter.PushEvent(EVENT_RECEIVER_MSG_COUNT_UPDATED, p.Metadata(), []ChanStatistics{
-					{"receiver_message", len(responseChan), cap(responseChan)},
+					{"receiver_message", len(batchResponseChan), cap(batchResponseChan)},
 					{"receiver_error", len(errorChan), cap(errorChan)},
 				})
 			}
 		}
 
-		handlerFunc := func(resp ali_mns.MessageReceiveResponse) {
+		processMessageFunc := func(resp ali_mns.MessageReceiveResponse) {
 			defer statUpdateFunc()
 
 			metadata := p.Metadata()
@@ -209,16 +221,31 @@ func (p *MessageReceiverMNS) Start() {
 			}
 		}
 
+		for i := 0; i < int(p.concurrencyNumber); i++ {
+			go func(respChan chan ali_mns.MessageReceiveResponse, concurrencyId int) {
+				for {
+					select {
+					case resp := <-respChan:
+						{
+							processMessageFunc(resp)
+						}
+					case <-time.After(time.Second):
+						{
+							if len(respChan) == 0 && len(batchResponseChan) == 0 && !p.isRunning {
+								return
+							}
+						}
+					}
+				}
+			}(responseChan, i)
+		}
+
 		for {
 			select {
-			case resps := <-responseChan:
+			case resps := <-batchResponseChan:
 				{
 					for _, resp := range resps.Messages {
-						if p.processMode == "concurrency" {
-							go handlerFunc(resp)
-						} else {
-							handlerFunc(resp)
-						}
+						responseChan <- resp
 					}
 				}
 			case respErr := <-errorChan:
@@ -233,22 +260,23 @@ func (p *MessageReceiverMNS) Start() {
 			case <-time.After(time.Second):
 				{
 					statUpdateFunc()
-					if len(responseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
+					if len(batchResponseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
 						return
 					}
 				}
 			}
 		}
 	}()
-
 }
 
 func (p *MessageReceiverMNS) onMessageProcessedToDelete(context interface{}) {
-	if context != nil {
-		if messageId, ok := context.(string); ok && messageId != "" {
-			if err := p.queue.DeleteMessage(messageId); err != nil {
-				EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
-			}
+	if !p.deleteOnComplete || context == nil {
+		return
+	}
+
+	if messageId, ok := context.(string); ok && messageId != "" {
+		if err := p.queue.DeleteMessage(messageId); err != nil {
+			EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
 		}
 	}
 }
