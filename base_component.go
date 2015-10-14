@@ -12,10 +12,6 @@ import (
 	"github.com/gogap/logs"
 )
 
-var (
-	MESSAGE_CHAN_SIZE = 1000
-)
-
 type BaseComponent struct {
 	name           string
 	receivers      map[string][]MessageReceiver
@@ -458,7 +454,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 	message.currentGraphIndex = nextGraphIndex
 
 	if nextInPortName, exist := p.inPortUrlIndex[address.Type+"|"+address.Url]; exist {
-		p.handleComponentMessage(nextInPortName, "", message)
+		p.handleComponentMessage(nextInPortName, nil, message)
 		EventCenter.PushEvent(EVENT_BASE_COMPONENT_INTERNAL_MESSAGE, p.name, address, message)
 	} else {
 		p.sendMessage(address, message)

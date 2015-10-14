@@ -7,9 +7,9 @@
             "type": "mqs",
             "url": "http://{{redis_get "user"}}:{{redis_get "pwd"}}@{{redis_get "ownerId"}}.mqs-cn-beijing.aliyuncs.com/test",
             "options": {
-                "batch_messages_number": 10,
+                "batch_messages_number": 16,
                 "qps_limit":1000,
-                "process_mode":"sequency"
+                "concurrency_number": 32
             }
         }]
     }],
