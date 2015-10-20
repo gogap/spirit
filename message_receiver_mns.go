@@ -2,6 +2,7 @@ package spirit
 
 import (
 	"regexp"
+	"runtime"
 	"sync"
 	"time"
 
@@ -31,13 +32,15 @@ type MessageReceiverMNS struct {
 	qpsLimit           int32
 	waitSeconds        int64
 	deleteOnComplete   bool
+
+	messageOnProcess sync.WaitGroup
 }
 
 func NewMessageReceiverMNS(url string) MessageReceiver {
 	return &MessageReceiverMNS{url: url,
 		qpsLimit:           ali_mns.DefaultQPSLimit,
 		batchMessageNumber: ali_mns.DefaultNumOfMessages,
-		concurrencyNumber:  ali_mns.DefaultNumOfMessages * 2,
+		concurrencyNumber:  ali_mns.DefaultNumOfMessages * int32(runtime.NumCPU()),
 		waitSeconds:        -1,
 		deleteOnComplete:   false,
 	}
@@ -47,7 +50,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	p.url = url
 	p.waitSeconds = -1
 	p.batchMessageNumber = ali_mns.DefaultNumOfMessages
-	p.concurrencyNumber = ali_mns.DefaultNumOfMessages * 2
+	p.concurrencyNumber = ali_mns.DefaultNumOfMessages * int32(runtime.NumCPU())
 	p.qpsLimit = ali_mns.DefaultQPSLimit
 	p.deleteOnComplete = false
 
@@ -89,7 +92,7 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	}
 
 	if p.concurrencyNumber <= 0 {
-		p.concurrencyNumber = p.batchMessageNumber * 2
+		p.concurrencyNumber = p.batchMessageNumber * int32(runtime.NumCPU())
 	}
 
 	if v, e := options.GetBoolValue("delete_on_complete"); e == nil {
@@ -205,6 +208,7 @@ func (p *MessageReceiverMNS) Start() {
 		}
 
 		processMessageFunc := func(resp ali_mns.MessageReceiveResponse) {
+			defer p.messageOnProcess.Done()
 			defer statUpdateFunc()
 
 			metadata := p.Metadata()
@@ -244,6 +248,7 @@ func (p *MessageReceiverMNS) Start() {
 			select {
 			case resps := <-batchResponseChan:
 				{
+					p.messageOnProcess.Add(len(resps.Messages))
 					for _, resp := range resps.Messages {
 						responseChan <- resp
 					}
@@ -261,11 +266,13 @@ func (p *MessageReceiverMNS) Start() {
 				{
 					statUpdateFunc()
 					if len(batchResponseChan) == 0 && len(errorChan) == 0 && !p.isRunning {
-						return
+						break
 					}
 				}
 			}
 		}
+
+		p.messageOnProcess.Wait()
 	}()
 }
 
