@@ -40,9 +40,11 @@ var (
 func init() {
 	receiverFactory.RegisterMessageReceivers(new(MessageReceiverMNS))
 	receiverFactory.RegisterMessageReceivers(new(MessageReceiverMQS)) //for compatible
+	receiverFactory.RegisterMessageReceivers(new(MessageReceiverRMQ))
 
 	senderFactory.RegisterMessageSenders(new(MessageSenderMNS))
 	senderFactory.RegisterMessageSenders(new(MessageSenderMQS)) //for compatible
+	senderFactory.RegisterMessageSenders(new(MessageSenderRMQ))
 
 	hookFactory.RegisterMessageHooks(new(MessageHookBigDataRedis))
 

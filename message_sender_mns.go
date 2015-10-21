@@ -81,7 +81,7 @@ func (p *MessageSenderMNS) Send(url string, message ComponentMessage) (err error
 		DelaySeconds: 0,
 		Priority:     8}
 
-	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_SEND, url, msg)
+	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_SEND, url, message)
 
 	if _, e := client.SendMessage(msg); e != nil {
 		err = ERR_SENDER_SEND_FAILED.New(errors.Params{"type": p.Type(), "url": url, "err": e})
