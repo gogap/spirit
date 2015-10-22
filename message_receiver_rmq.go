@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/adjust/rmq"
@@ -21,7 +20,7 @@ type MessageReceiverRMQ struct {
 
 	conns         []rmq.Connection
 	queues        []rmq.Queue
-	consumers     []*rmqConsumer
+	cleaner       *rmq.Cleaner
 	cleanerConn   rmq.Connection
 	enableCleaner bool
 
@@ -90,7 +89,7 @@ func (p *MessageReceiverRMQ) Init(url string, options Options) (err error) {
 	}
 
 	if p.concurrencyNumber <= 0 {
-		p.concurrencyNumber = p.batchMessageNumber * int(runtime.NumCPU())
+		p.concurrencyNumber = runtime.NumCPU()
 	}
 
 	if v, e := options.GetInt64Value("poll_duration"); e == nil {
@@ -139,18 +138,28 @@ func (p *MessageReceiverRMQ) Start() {
 		return
 	}
 
+	clsConn := rmq.OpenConnection("cleaner:"+p.queueTag,
+		p.network,
+		p.address,
+		p.db)
+
+	cleaner := rmq.NewCleaner(clsConn)
+
 	for _, queue := range p.queues {
 		queue.StartConsuming(p.batchMessageNumber, time.Millisecond*time.Duration(p.pollDuration))
 
-		consumer := newRMQConsumer(queue, p.Metadata(), p.onMsgReceived, p.onReceiverError)
-		queue.AddConsumer(p.queueTag, consumer)
-		p.consumers = append(p.consumers, consumer)
+		consumer := newRMQConsumer(
+			p.Metadata(),
+			p.onMsgReceived,
+			p.onReceiverError)
 
-		consumer.start()
+		queue.AddConsumer(p.queueTag, consumer)
 	}
 
+	p.cleaner = cleaner
+
 	if p.enableCleaner {
-		p.startCleaner()
+		go p.startCleaner(cleaner)
 	}
 
 	p.isRunning = true
@@ -166,15 +175,13 @@ func (p *MessageReceiverRMQ) Stop() {
 
 	wg := sync.WaitGroup{}
 
-	for _, consumer := range p.consumers {
+	for _, queue := range p.queues {
 		wg.Add(1)
-		go func(q rmq.Consumer) {
+		go func(q rmq.Queue) {
 			defer wg.Done()
-			consumer.stop()
-		}(consumer)
-
+			q.StopConsuming()
+		}(queue)
 	}
-
 	wg.Wait()
 
 	p.isRunning = false
@@ -192,80 +199,33 @@ func (p *MessageReceiverRMQ) Metadata() ReceiverMetadata {
 	}
 }
 
-func (p *MessageReceiverRMQ) startCleaner() {
-	go func() {
-		clsConn := rmq.OpenConnection("cleaner:"+p.queueTag,
-			p.network,
-			p.address,
-			p.db)
-
-		cleaner := rmq.NewCleaner(clsConn)
-
-		for _ = range time.Tick(time.Second) {
-			cleaner.Clean()
-			if !p.isRunning {
-				return
-			}
+func (p *MessageReceiverRMQ) startCleaner(cleaner *rmq.Cleaner) {
+	for _ = range time.Tick(time.Second) {
+		cleaner.Clean()
+		if !p.isRunning {
+			return
 		}
-	}()
+	}
 }
 
 type rmqConsumer struct {
-	name string
-
-	queue           rmq.Queue
 	metadata        ReceiverMetadata
 	onMsgReceived   OnReceiverMessageReceived
 	onReceiverError OnReceiverError
-
-	isRunning bool
-
-	statusLock   sync.Mutex
-	msgOnProcess int64
 }
 
 func newRMQConsumer(
-	queue rmq.Queue,
 	metadata ReceiverMetadata,
 	onMsgReceived OnReceiverMessageReceived,
 	onReceiverError OnReceiverError) *rmqConsumer {
 	return &rmqConsumer{
-		queue:           queue,
 		metadata:        metadata,
 		onMsgReceived:   onMsgReceived,
 		onReceiverError: onReceiverError,
 	}
 }
 
-func (p *rmqConsumer) start() {
-	p.statusLock.Lock()
-	defer p.statusLock.Unlock()
-
-	if p.isRunning {
-		return
-	}
-
-	atomic.StoreInt64(&p.msgOnProcess, 0)
-	p.isRunning = true
-}
-
-func (p *rmqConsumer) stop() {
-	p.statusLock.Lock()
-	defer p.statusLock.Unlock()
-
-	if !p.isRunning {
-		return
-	}
-
-	p.isRunning = false
-}
-
 func (p *rmqConsumer) Consume(delivery rmq.Delivery) {
-	if !p.isRunning {
-		time.Sleep(time.Hour)
-		return
-	}
-
 	if delivery.Ack() {
 		if delivery.Payload() != "" && len(delivery.Payload()) > 0 {
 			compMsg := ComponentMessage{}
