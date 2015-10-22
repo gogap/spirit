@@ -3,10 +3,12 @@ package spirit
 import (
 	"fmt"
 	"regexp"
+	"runtime"
 	"strconv"
 	"sync"
 
 	"github.com/adjust/rmq"
+	"github.com/gogap/errors"
 )
 
 type MessageSenderRMQ struct {
@@ -38,6 +40,14 @@ func (p *MessageSenderRMQ) Init() (err error) {
 }
 
 func (p *MessageSenderRMQ) Send(url string, message ComponentMessage) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 1024)
+			runtime.Stack(buf, false)
+			err = ERR_SENDER_SEND_FAILED.New(errors.Params{"type": p.Type(), "url": url, "err": string(buf)})
+		}
+	}()
+
 	EventCenter.PushEvent(EVENT_BEFORE_MESSAGE_SEND, url, message)
 
 	if url == "" {
