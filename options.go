@@ -1,10 +1,10 @@
 package spirit
 
 import (
+	"encoding/json"
 	"reflect"
 	"strconv"
 
-	"github.com/gogap/env_json"
 	"github.com/gogap/errors"
 )
 
@@ -12,11 +12,54 @@ type Options map[string]interface{}
 
 func (p Options) Serialize() (str string, err error) {
 	var data []byte
-	if data, err = env_json.MarshalIndent(&p, "", "    "); err != nil {
+	if data, err = json.MarshalIndent(&p, "", "    "); err != nil {
 		return
 	}
 
 	str = string(data)
+
+	return
+}
+
+func (p Options) ToObject(v interface{}) (err error) {
+	var data []byte
+	if data, err = json.Marshal(p); err != nil {
+		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err})
+		return
+	}
+
+	if err = json.Unmarshal(data, v); err != nil {
+		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err})
+		return
+	}
+
+	return
+}
+
+func (p Options) GetObject(key string, v interface{}) (err error) {
+	var obj interface{}
+	if val, exist := p[key]; !exist {
+		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
+		return
+	} else {
+		obj = val
+	}
+
+	if obj == nil {
+		v = nil
+		return
+	}
+
+	var data []byte
+	if data, err = json.Marshal(obj); err != nil {
+		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err})
+		return
+	}
+
+	if err = json.Unmarshal(data, v); err != nil {
+		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err})
+		return
+	}
 
 	return
 }

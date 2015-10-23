@@ -282,8 +282,6 @@ func (p *MessageReceiverMNS) onMessageProcessedToDelete(context interface{}) {
 	}
 
 	if messageId, ok := context.(string); ok && messageId != "" {
-		if err := p.queue.DeleteMessage(messageId); err != nil {
-			EventCenter.PushEvent(EVENT_RECEIVER_MSG_DELETED, p.Metadata(), messageId)
-		}
+		p.queue.DeleteMessage(messageId)
 	}
 }

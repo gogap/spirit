@@ -2,6 +2,7 @@ package spirit
 
 import (
 	"regexp"
+	"runtime"
 
 	"github.com/gogap/ali_mns"
 	"github.com/gogap/errors"
@@ -28,6 +29,13 @@ func (p *MessageSenderMNS) Init() (err error) {
 }
 
 func (p *MessageSenderMNS) Send(url string, message ComponentMessage) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 1024)
+			runtime.Stack(buf, false)
+			err = ERR_SENDER_SEND_FAILED.New(errors.Params{"type": p.Type(), "url": url, "err": string(buf)})
+		}
+	}()
 
 	EventCenter.PushEvent(EVENT_BEFORE_MESSAGE_SEND, url, message)
 
@@ -81,7 +89,7 @@ func (p *MessageSenderMNS) Send(url string, message ComponentMessage) (err error
 		DelaySeconds: 0,
 		Priority:     8}
 
-	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_SEND, url, msg)
+	defer EventCenter.PushEvent(EVENT_AFTER_MESSAGE_SEND, url, message)
 
 	if _, e := client.SendMessage(msg); e != nil {
 		err = ERR_SENDER_SEND_FAILED.New(errors.Params{"type": p.Type(), "url": url, "err": e})
