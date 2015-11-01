@@ -4,6 +4,74 @@ import (
 	"github.com/gogap/errors"
 )
 
+var (
+	ErrReceiverURNNotExist          = errors.New("receiver urn not exist")
+	ErrReceiverNameDuplicate        = errors.New("receiver name duplicate")
+	ErrReceiverAlreadyRunning       = errors.New("receiver already running")
+	ErrReceiverCanNotCreaterReader  = errors.New("receiver can not create reader")
+	ErrReceiverDidNotHaveTranslator = errors.New("receiver did not have translator")
+	ErrReceiverDidNotRunning        = errors.New("receiver did not running")
+	ErrReceiverReceiveTimeout       = errors.New("receiver receive timeout")
+	ErrReceiverDeliveryPutterIsNil  = errors.New("receiver delivery putter is nil")
+
+	ErrSenderURNNotExist          = errors.New("sender urn not exist")
+	ErrSenderNameDuplicate        = errors.New("sender name duplicate")
+	ErrSenderAlreadyRunning       = errors.New("sender already running")
+	ErrSenderCanNotCreaterWriter  = errors.New("sender can not create writer")
+	ErrSenderDidNotHaveTranslator = errors.New("sender did not have translator")
+	ErrSenderDidNotRunning        = errors.New("sender did not running")
+	ErrSenderDeliveryGetterIsNil  = errors.New("sender delivery getter is nil")
+
+	ErrRouterURNNotExist                     = errors.New("router urn not exist")
+	ErrRouterNameDuplicate                   = errors.New("router name duplicate")
+	ErrRouterAlreadyRunning                  = errors.New("router already running")
+	ErrRouterDidNotRunning                   = errors.New("router did not running")
+	ErrRouterAlreadyHaveThisInbox            = errors.New("router already added this inbox")
+	ErrRouterAlreadyHaveThisOutbox           = errors.New("router already added this outbox")
+	ErrRouterAlreadyHaveThisComponent        = errors.New("router already added this component")
+	ErrRouterToHandlerFailed                 = errors.New("could not router to component handler")
+	ErrRouterToComponentFailed               = errors.New("could not router to component")
+	ErrRouterDidNotHaveComponentLabelMatcher = errors.New("could not router to component")
+
+	ErrComponentURNNotExist    = errors.New("component urn not exist")
+	ErrComponentNameDuplicate  = errors.New("component name duplicate")
+	ErrComponentNameIsEmpty    = errors.New("component name is empty")
+	ErrComponentURNIsEmpty     = errors.New("component URN is empty")
+	ErrComponentNotExist       = errors.New("component not exist")
+	ErrComponentHandlerNotExit = errors.New("component handler not exist")
+
+	ErrDeliveryURNIsEmpty = errors.New("delivery urn is empty")
+
+	ErrReaderURNNotExist   = errors.New("reader urn not exist")
+	ErrReaderNameDuplicate = errors.New("reader name duplicate")
+
+	ErrWriterURNNotExist   = errors.New("writer urn not exist")
+	ErrWriterNameDuplicate = errors.New("writer name duplicate")
+
+	ErrInboxURNNotExist   = errors.New("inbox urn not exist")
+	ErrInboxNameDuplicate = errors.New("inbox name duplicate")
+
+	ErrOutboxURNNotExist   = errors.New("outbox urn not exist")
+	ErrOutboxNameDuplicate = errors.New("outbox name duplicate")
+
+	ErrLabelMatcherURNNotExist   = errors.New("label matcher urn not exist")
+	ErrLabelMatcherNameDuplicate = errors.New("label matcher name duplicate")
+
+	ErrInputTranslatorURNNotExist   = errors.New("input translator urn not exist")
+	ErrInputTranslatorNameDuplicate = errors.New("input translator name duplicate")
+
+	ErrOutputTranslatorURNNotExist   = errors.New("output translator urn not exist")
+	ErrOutputTranslatorNameDuplicate = errors.New("output translator name duplicate")
+
+	ErrSpiritAlreadyRunning   = errors.New("spirit already running")
+	ErrSpiritAlreadyStopped   = errors.New("spirit already stopped")
+	ErrSpiritAlreadyBuilt     = errors.New("spirit already built")
+	ErrSpiritNotBuild         = errors.New("spirit not build")
+	ErrSpiritActorURNNotExist = errors.New("spirit actor urn not exist")
+
+	ErrActorNotExist = errors.New("actor not exist")
+)
+
 const SPIRIT_ERR_NS = "SPIRIT"
 
 var (
@@ -19,18 +87,18 @@ var (
 	ERR_SENDER_MNS_CLIENT_IS_NIL = errors.TN(SPIRIT_ERR_NS, 9, "sender mns client is nil, type: {{.type}}, url: {{.url}}")
 	ERR_SENDER_SEND_FAILED       = errors.TN(SPIRIT_ERR_NS, 10, "component message send failed, type: {{.type}}, url: {{.url}}, err:{{.err}}")
 
-	ERR_SENDER_CREATE_FAILED    = errors.TN(SPIRIT_ERR_NS, 11, "create sender failed, driver type: {{.type}}")
-	ERR_SENDER_DRIVER_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 12, "message sender driver not exist, type: {{.type}}")
-	ERR_SENDER_BAD_DRIVER       = errors.TN(SPIRIT_ERR_NS, 13, "bad message sender driver of {{.type}}")
+	ERR_SENDER_CREATE_FAILED    = errors.TN(SPIRIT_ERR_NS, 11, "create sender failed, urn type: {{.type}}")
+	ERR_SENDER_DRIVER_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 12, "message sender urn not exist, type: {{.type}}")
+	ERR_SENDER_BAD_DRIVER       = errors.TN(SPIRIT_ERR_NS, 13, "bad message sender urn of {{.type}}")
 
 	ERR_RECEIVER_CREDENTIAL_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 14, "credential is nil, type: {{.type}}")
 	ERR_RECEIVER_MNS_CLIENT_IS_NIL     = errors.TN(SPIRIT_ERR_NS, 15, "receiver mns client is nil, type: {{.type}}, url: {{.url}}")
 	ERR_RECEIVER_DELETE_MSG_ERROR      = errors.TN(SPIRIT_ERR_NS, 16, "delete message error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
 	ERR_RECEIVER_UNMARSHAL_MSG_FAILED  = errors.TN(SPIRIT_ERR_NS, 17, "receiver unmarshal message failed, type: {{.type}}, err: {{.err}}")
 	ERR_RECEIVER_RECV_ERROR            = errors.TN(SPIRIT_ERR_NS, 18, "receiver recv error, type: {{.type}}, url: {{.url}}, err: {{.err}}")
-	ERR_RECEIVER_BAD_DRIVER            = errors.TN(SPIRIT_ERR_NS, 19, "bad message receiver driver of {{.type}}")
-	ERR_RECEIVER_CREATE_FAILED         = errors.TN(SPIRIT_ERR_NS, 20, "create receiver failed, driver type: {{.type}}, url: {{.url}}")
-	ERR_RECEIVER_DRIVER_NOT_EXIST      = errors.TN(SPIRIT_ERR_NS, 21, "message receiver driver not exist, type: {{.type}}")
+	ERR_RECEIVER_BAD_DRIVER            = errors.TN(SPIRIT_ERR_NS, 19, "bad message receiver urn of {{.type}}")
+	ERR_RECEIVER_CREATE_FAILED         = errors.TN(SPIRIT_ERR_NS, 20, "create receiver failed, urn type: {{.type}}, url: {{.url}}")
+	ERR_RECEIVER_DRIVER_NOT_EXIST      = errors.TN(SPIRIT_ERR_NS, 21, "message receiver urn not exist, type: {{.type}}")
 	ERR_RECEIVER_DECODE_MESSAGE_FAILED = errors.TN(SPIRIT_ERR_NS, 22, "message receiver decode message failed, type: {{.type}}, url: {{.url}}, err: {{.err}}")
 
 	ERR_PORT_NAME_IS_EMPTY    = errors.TN(SPIRIT_ERR_NS, 23, "port name is empty, component: {{.name}}")
@@ -50,11 +118,11 @@ var (
 
 	ERR_HEARTBEAT_ALI_JIANKONG_UID_NOT_EXIST = errors.TN(SPIRIT_ERR_NS, 33, "heartbeat of ali jiankong's uid does not exist")
 
-	ERR_HOOK_CREATE_FAILED             = errors.TN(SPIRIT_ERR_NS, 34, "create receiver failed, driver type: {{.type}}, name: {{.name}}")
-	ERR_HOOK_DRIVER_NOT_EXIST          = errors.TN(SPIRIT_ERR_NS, 35, "message hook driver not exist, type: {{.type}}")
-	ERR_HOOK_BAD_DRIVER                = errors.TN(SPIRIT_ERR_NS, 36, "bad message hook driver of {{.type}}")
+	ERR_HOOK_CREATE_FAILED             = errors.TN(SPIRIT_ERR_NS, 34, "create receiver failed, urn type: {{.type}}, name: {{.name}}")
+	ERR_HOOK_DRIVER_NOT_EXIST          = errors.TN(SPIRIT_ERR_NS, 35, "message hook urn not exist, type: {{.type}}")
+	ERR_HOOK_BAD_DRIVER                = errors.TN(SPIRIT_ERR_NS, 36, "bad message hook urn of {{.type}}")
 	ERR_MESSAGE_HOOK_ERROR             = errors.TN(SPIRIT_ERR_NS, 37, "hook message error, component: {{.name}}, port: {{.port}}, hookName: {{.hookName}}, event: {{.event}}, index: {{.index}}/{{.count}}")
-	ERR_HOOK_INSTANCE_ALREADY_INITALED = errors.TN(SPIRIT_ERR_NS, 38, "hook instance already initaled, driver type: {{.type}}, name: {{.name}}")
+	ERR_HOOK_INSTANCE_ALREADY_INITALED = errors.TN(SPIRIT_ERR_NS, 38, "hook instance already initaled, urn type: {{.type}}, name: {{.name}}")
 	ERR_HOOK_INSTANCE_NOT_INITALED     = errors.TN(SPIRIT_ERR_NS, 39, "hook instance not initaled, hook name: {{.name}}")
 	ERR_INPORT_NOT_BIND_HOOK           = errors.TN(SPIRIT_ERR_NS, 40, "in port of {{.inPortName}} not bind hooks")
 	ERR_HOOK_BIG_DATA_OPEN_FILE        = errors.TN(SPIRIT_ERR_NS, 41, "open file error,{{.err}}")
@@ -65,7 +133,7 @@ var (
 	ERR_JSON_UNMARSHAL                 = errors.TN(SPIRIT_ERR_NS, 46, "json unmarshal data error,{{.err}}")
 	ERR_JSON_MARSHAL                   = errors.TN(SPIRIT_ERR_NS, 47, "json marshal data error,{{.err}}")
 	ERR_HOOK_NAME_IS_EMPTY             = errors.TN(SPIRIT_ERR_NS, 48, "hook name is empty")
-	ERR_HOOK_DRIVER_TYPE_IS_EMPTY      = errors.TN(SPIRIT_ERR_NS, 49, "hook driver type is empty")
+	ERR_HOOK_DRIVER_TYPE_IS_EMPTY      = errors.TN(SPIRIT_ERR_NS, 49, "hook urn type is empty")
 	ERR_HEARTBEAT_NOT_EXIST            = errors.TN(SPIRIT_ERR_NS, 50, "heartbeat of {{.name}} not exist")
 	ERR_OPTIONS_KEY_NOT_EXIST          = errors.TN(SPIRIT_ERR_NS, 51, "options key of {{.key}} not exist")
 	ERR_OPTIONS_VALUE_TYPE_ERROR       = errors.TN(SPIRIT_ERR_NS, 52, "the key of {{.key}}'s value is {{.value}}, but it was not a type of {{.type}}, the real type was {{.realType}}")

@@ -1,45 +1,48 @@
 package spirit
 
-type ComponentStatus int
-
-const (
-	SIG_PAUSE  = 1000
-	SIG_RESUME = 1001
-	SIG_STOP   = 1002
+import (
+	"sync"
 )
 
-const (
-	STATUS_READY    ComponentStatus = 0
-	STATUS_RUNNING                  = 1
-	STATUS_PAUSED                   = 2
-	STATUS_STOPPING                 = 3
-	STATUS_STOPPED                  = 4
-)
+type ComponentHandler func(payload Payload) (result interface{}, err error)
 
-type ComponentHandler func(payload *Payload) (result interface{}, err error)
+type Handlers map[string]ComponentHandler
 
 type Component interface {
-	Name() string
+	URN() string
+	Labels() Labels
+	Handlers() Handlers
+}
 
-	BindHandler(inPortName string, handlerName string) Component
-	RegisterHandler(name string, handler ComponentHandler) Component
-	CallHandler(handlerName string, payload *Payload) (result interface{}, err error)
+var (
+	componentsLocker  = sync.Mutex{}
+	newComponentFuncs = make(map[string]NewComponentFunc)
+)
 
-	AddInPortHooks(inportName string, hooks ...string) Component
-	ClearInPortHooks(inportName string) (err error)
+type NewComponentFunc func(options Options) (component Component, err error)
 
-	ListHandlers() (handlers map[string]ComponentHandler, err error)
-	GetHandlers(handlerNames ...string) (handlers map[string]ComponentHandler, err error)
+func RegisterComponent(urn string, newFunc NewComponentFunc) (err error) {
+	componentsLocker.Lock()
+	componentsLocker.Unlock()
 
-	BindReceiver(inPortName string, receivers ...MessageReceiver) Component
-	GetReceivers(inPortName string) []MessageReceiver
+	if urn == "" {
+		panic("spirit: Register component urn is empty")
+	}
 
-	Build() Component
-	Run()
+	if newFunc == nil {
+		panic("spirit: Register component is nil")
+	}
 
-	Pause()
-	Resume()
-	Stop()
+	if _, exist := newComponentFuncs[urn]; exist {
+		panic("spirit: Register called twice for component " + urn)
+	}
 
-	Status() ComponentStatus
+	newComponentFuncs[urn] = newFunc
+
+	logger.WithField("module", "spirit").
+		WithField("event", "register component").
+		WithField("urn", urn).
+		Debugln("component registered")
+
+	return
 }
