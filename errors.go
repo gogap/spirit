@@ -48,6 +48,14 @@ var (
 	ErrWriterURNNotExist   = errors.New("writer urn not exist")
 	ErrWriterNameDuplicate = errors.New("writer name duplicate")
 
+	ErrWriterInUse             = errors.New("writer already in use")
+	ErrWriterPoolAlreadyClosed = errors.New("writer pool already closed")
+
+	ErrReaderIsNil              = errors.New("reader is nil")
+	ErrReaderInUse              = errors.New("reader already in use")
+	ErrReaderPoolAlreadyClosed  = errors.New("reader pool already closed")
+	ErrReaderPoolTooManyReaders = errors.New("reader pool have too many readers")
+
 	ErrInboxURNNotExist   = errors.New("inbox urn not exist")
 	ErrInboxNameDuplicate = errors.New("inbox name duplicate")
 

@@ -6,9 +6,9 @@ import (
 )
 
 type WriterPool interface {
-	SetNewWriterFunc(newFunc NewWriterFunc) (err error)
+	SetNewWriterFunc(newFunc NewWriterFunc, options Options) (err error)
 	Get(delivery Delivery) (writer io.WriteCloser, err error)
-	Put(delivery Delivery, writer io.WriteCloser)
+	Put(delivery Delivery, writer io.WriteCloser) (err error)
 	Close()
 }
 

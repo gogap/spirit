@@ -6,9 +6,9 @@ import (
 )
 
 type ReaderPool interface {
-	SetNewReaderFunc(newFunc NewReaderFunc) (err error)
+	SetNewReaderFunc(newFunc NewReaderFunc, options Options) (err error)
 	Get() (reader io.ReadCloser, err error)
-	Put(reader io.ReadCloser)
+	Put(reader io.ReadCloser) (err error)
 	Close()
 }
 
