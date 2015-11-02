@@ -7,8 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/gogap/spirit"
 )
 
@@ -100,7 +98,11 @@ func takeSTDIO(typ ioType, conf StdIOConfig) (proc *STDProcess, err error) {
 	go func(indexName string, proc *STDProcess) {
 		proc.procMetadata.cmd.Wait()
 
-		spirit.Logger().WithFields(logrus.Fields{"actor": "io", "type": "STDProcess", "path": proc.procMetadata.cmd.Path, "args": proc.procMetadata.cmd.Args}).Debugln("process terminaled")
+		spirit.Logger().WithField("actor", "io").
+			WithField("type", "STDProcess").
+			WithField("path", proc.procMetadata.cmd.Path).
+			WithField("args", proc.procMetadata.cmd.Args).
+			Debugln("process terminaled")
 
 		select {
 		case proc.terminated <- true:

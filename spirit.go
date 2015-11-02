@@ -96,6 +96,16 @@ func (p *ClassicSpirit) Start() (err error) {
 
 	p.status = StatusRunning
 
+	for _, components := range p.components {
+		for _, component := range components {
+			if err = component.Start(); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "start component").
+					Panic(err)
+			}
+		}
+	}
+
 	for _, router := range p.routers {
 		if err = router.Start(); err != nil {
 			logger.WithField("module", "spirit").
@@ -189,6 +199,16 @@ func (p *ClassicSpirit) Stop() (err error) {
 	if p.status == StatusStopped {
 		err = ErrSpiritAlreadyStopped
 		return
+	}
+
+	for _, components := range p.components {
+		for _, component := range components {
+			if err = component.Stop(); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "stop component").
+					Errorln(err)
+			}
+		}
 	}
 
 	for _, router := range p.routers {

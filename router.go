@@ -2,8 +2,6 @@ package spirit
 
 import (
 	"sync"
-
-	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -40,15 +38,19 @@ func RegisterRouter(urn string, newFunc NewRouterFunc) (err error) {
 	routersLocker.Unlock()
 
 	if urn == "" {
-		logger.WithFields(logrus.Fields{"module": "spirit"}).Panicln("Register router urn is empty")
+		logger.WithField("module", "spirit").
+			Panicln("Register router urn is empty")
 	}
 
 	if newFunc == nil {
-		logger.WithFields(logrus.Fields{"module": "spirit"}).Panicln("Register router is nil")
+		logger.WithField("module", "spirit").
+			Panicln("Register router is nil")
 	}
 
 	if _, exist := newRouterFuncs[urn]; exist {
-		logger.WithFields(logrus.Fields{"module": "spirit", "router": urn}).Panicln("Register router called twice for same router")
+		logger.WithField("module", "spirit").
+			WithField("router", urn).
+			Panicln("Register router called twice for same router")
 	}
 
 	newRouterFuncs[urn] = newFunc

@@ -2,8 +2,6 @@ package spirit
 
 import (
 	"sync"
-
-	"github.com/Sirupsen/logrus"
 )
 
 type NewSenderFunc func(options Options) (sender Sender, err error)
@@ -28,15 +26,15 @@ func RegisterSender(urn string, newFunc NewSenderFunc) (err error) {
 	sendersLocker.Unlock()
 
 	if urn == "" {
-		logger.WithFields(logrus.Fields{"module": "spirit"}).Panicln("Register sender urn is empty")
+		logger.WithField("module", "spirit").Panicln("Register sender urn is empty")
 	}
 
 	if newFunc == nil {
-		logger.WithFields(logrus.Fields{"module": "spirit"}).Panicln("Register sender is nil")
+		logger.WithField("module", "spirit").Panicln("Register sender is nil")
 	}
 
 	if _, exist := newSenderFuncs[urn]; exist {
-		logger.WithFields(logrus.Fields{"module": "spirit", "router": urn}).Panicln("Register router called twice for same sender")
+		logger.WithField("module", "spirit").WithField("router", urn).Panicln("Register router called twice for same sender")
 	}
 
 	newSenderFuncs[urn] = newFunc
