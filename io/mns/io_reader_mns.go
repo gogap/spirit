@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	msnReaderURN = "urn:spirit:reader:mns"
+	msnReaderURN = "urn:spirit:io:reader:mns"
 )
 
 var _ io.ReadCloser = new(MNSReader)

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	stdReaderURN = "urn:spirit:reader:std"
+	stdReaderURN = "urn:spirit:io:reader:std"
 )
 
 var _ io.ReadCloser = new(Stdout)

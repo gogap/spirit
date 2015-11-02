@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	jsonTranslatorInURN = "urn:spirit:input-translator:json"
+	jsonTranslatorInURN = "urn:spirit:translator:in:json"
 )
 
 var _ spirit.InputTranslator = new(JSONInputTranslator)

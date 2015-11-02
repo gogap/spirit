@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	containsMatcherURN = "urn:spirit:label-matcher:contains"
+	containsMatcherURN = "urn:spirit:matcher:label:contains"
 )
 
 type ContainsLabelMatcherConfig struct {

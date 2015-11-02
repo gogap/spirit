@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	lineTranslatorOutURN = "urn:spirit:output-translator:line"
+	lineTranslatorOutURN = "urn:spirit:translator:out:line"
 )
 
 var _ spirit.OutputTranslator = new(LineOutputTranslator)

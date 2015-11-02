@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	xmlTranslatorInURN = "urn:spirit:input-translator:xml"
+	xmlTranslatorInURN = "urn:spirit:translator:in:xml"
 )
 
 var _ spirit.InputTranslator = new(XMLInputTranslator)

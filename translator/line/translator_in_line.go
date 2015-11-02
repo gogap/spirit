@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	lineTranslatorInURN = "urn:spirit:input-translator:line"
+	lineTranslatorInURN = "urn:spirit:translator:in:line"
 )
 
 var _ spirit.InputTranslator = new(LineInputTranslator)

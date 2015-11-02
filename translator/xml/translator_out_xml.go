@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	xmlTranslatorOutURN = "urn:spirit:output-translator:xml"
+	xmlTranslatorOutURN = "urn:spirit:translator:out:xml"
 )
 
 var _ spirit.OutputTranslator = new(XMLOutputTranslator)

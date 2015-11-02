@@ -1,4 +1,4 @@
-package classic
+package pool
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	writerPoolURN = "urn:spirit:writer-pool:classic"
+	writerPoolURN = "urn:spirit:io:pool:writer:classic"
 )
 
 var _ spirit.WriterPool = new(ClassicWriterPool)

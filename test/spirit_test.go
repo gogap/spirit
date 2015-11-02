@@ -48,7 +48,7 @@ var (
     }],
     "readers": [{
         "name": "test",
-        "urn": "urn:spirit:reader:std",
+        "urn": "urn:spirit:io:reader:std",
         "options": {
             "name": "ping",
             "proc": "ping",
@@ -59,7 +59,7 @@ var (
     }],
     "writers": [{
         "name": "test",
-        "urn": "urn:spirit:writer:std",
+        "urn": "urn:spirit:io:writer:std",
         "options": {
             "name": "write",
             "proc": "my-program-w",
@@ -70,7 +70,7 @@ var (
     }],
     "input_translators": [{
         "name": "test",
-        "urn": "urn:spirit:input-translator:line",
+        "urn": "urn:spirit:translator:in:line",
         "options": {
             "urn": "componentA:handlerA",
             "labels": {
@@ -80,7 +80,7 @@ var (
     }],
     "output_translators": [{
         "name": "test",
-        "urn": "urn:spirit:output-translator:line",
+        "urn": "urn:spirit:translator:out:line",
         "options": {}
     }],
     "receivers": [{
@@ -123,7 +123,7 @@ var (
     }],
     "label_matchers": [{
         "name": "test",
-        "urn": "urn:spirit:label-matcher:equal",
+        "urn": "urn:spirit:matcher:label:equal",
         "options": {}
     }],
     "components": [{

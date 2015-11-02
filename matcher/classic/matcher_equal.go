@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	equalMatcherURN = "urn:spirit:label-matcher:equal"
+	equalMatcherURN = "urn:spirit:matcher:label:equal"
 )
 
 type EqualLabelMatcher struct {

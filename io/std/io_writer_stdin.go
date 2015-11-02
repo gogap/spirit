@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	stdWriterURN = "urn:spirit:writer:std"
+	stdWriterURN = "urn:spirit:io:writer:std"
 )
 
 var _ io.WriteCloser = new(Stdin)

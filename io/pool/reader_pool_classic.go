@@ -1,4 +1,4 @@
-package classic
+package pool
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	readerPoolURN = "urn:spirit:reader-pool:classic"
+	readerPoolURN = "urn:spirit:io:pool:reader:classic"
 )
 
 var _ spirit.ReaderPool = new(ClassicReaderPool)

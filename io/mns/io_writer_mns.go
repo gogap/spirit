@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	msnWriterURN = "urn:spirit:writer:mns"
+	msnWriterURN = "urn:spirit:io:writer:mns"
 )
 
 var _ io.WriteCloser = new(MNSWriter)
