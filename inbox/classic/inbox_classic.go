@@ -58,7 +58,7 @@ func (p *ClassicInbox) Start() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "inbox").
-		WithField("type", "classic").
+		WithField("urn", inboxURN).
 		WithField("event", "start").
 		Infoln("enter start")
 
@@ -72,13 +72,13 @@ func (p *ClassicInbox) Start() (err error) {
 			if receiver.Status() == spirit.StatusStopped {
 				if err = receiver.Start(); err != nil {
 					spirit.Logger().WithField("actor", "inbox").
-						WithField("type", "classic").
+						WithField("urn", inboxURN).
 						WithField("event", "start receiver").
 						Errorln(err)
 				}
 
 				spirit.Logger().WithField("actor", "inbox").
-					WithField("type", "classic").
+					WithField("urn", inboxURN).
 					WithField("event", "start receiver").
 					Debugln("receiver started")
 			}
@@ -86,7 +86,7 @@ func (p *ClassicInbox) Start() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "inbox").
-		WithField("type", "classic").
+		WithField("urn", inboxURN).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -102,7 +102,7 @@ func (p *ClassicInbox) Stop() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "inbox").
-		WithField("type", "classic").
+		WithField("urn", inboxURN).
 		WithField("event", "stop").
 		Infoln("enter stop")
 
@@ -111,7 +111,7 @@ func (p *ClassicInbox) Stop() (err error) {
 	close(p.deliveriesChan)
 
 	spirit.Logger().WithField("actor", "inbox").
-		WithField("type", "classic").
+		WithField("urn", inboxURN).
 		WithField("event", "stop").
 		Infoln("stopped")
 
@@ -130,7 +130,7 @@ func (p *ClassicInbox) AddReceiver(receiver spirit.Receiver) (err error) {
 	p.receivers = append(p.receivers, receiver)
 
 	spirit.Logger().WithField("actor", "inbox").
-		WithField("type", "classic").
+		WithField("urn", inboxURN).
 		WithField("event", "add receiver").
 		Debugln("receiver added")
 
@@ -149,7 +149,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 		case p.deliveriesChan <- deliveries:
 			{
 				spirit.Logger().WithField("actor", "inbox").
-					WithField("type", "classic").
+					WithField("urn", inboxURN).
 					WithField("event", "put deliveries").
 					WithField("length", len(deliveries)).
 					WithField("chan_size", len(p.deliveriesChan)).
@@ -159,7 +159,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 		case <-time.After(time.Duration(p.conf.PutTimeout) * time.Millisecond):
 			{
 				spirit.Logger().WithField("actor", "inbox").
-					WithField("type", "classic").
+					WithField("urn", inboxURN).
 					WithField("event", "put deliveries").
 					WithField("chan_size", len(p.deliveriesChan)).
 					WithField("chan_cap", cap(p.deliveriesChan)).
@@ -182,7 +182,7 @@ func (p *ClassicInbox) Get() (deliveries []spirit.Delivery, err error) {
 		case <-time.After(time.Duration(p.conf.GetTimeout) * time.Millisecond):
 			{
 				spirit.Logger().WithField("actor", "inbox").
-					WithField("type", "classic").
+					WithField("urn", inboxURN).
 					WithField("event", "get deliveries").
 					Debugln("get deliveries timeout")
 			}

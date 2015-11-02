@@ -57,7 +57,7 @@ func (p *ClassicOutbox) Start() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "outbox").
-		WithField("type", "classic").
+		WithField("urn", outboxURN).
 		WithField("event", "start").
 		Infoln("enter start")
 
@@ -66,18 +66,17 @@ func (p *ClassicOutbox) Start() (err error) {
 	p.status = spirit.StatusRunning
 
 	for _, sender := range p.senders {
-
 		go func(sender spirit.Sender) {
 			if sender.Status() == spirit.StatusStopped {
 				if err = sender.Start(); err != nil {
 					spirit.Logger().WithField("actor", "outbox").
-						WithField("type", "classic").
+						WithField("urn", outboxURN).
 						WithField("event", "start sender").
 						Errorln(err)
 				}
 
 				spirit.Logger().WithField("actor", "outbox").
-					WithField("type", "classic").
+					WithField("urn", outboxURN).
 					WithField("event", "start sender").
 					Debugln("sender started")
 			}
@@ -85,7 +84,7 @@ func (p *ClassicOutbox) Start() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "outbox").
-		WithField("type", "classic").
+		WithField("urn", outboxURN).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -101,7 +100,7 @@ func (p *ClassicOutbox) Stop() (err error) {
 	}
 
 	spirit.Logger().WithField("actor", "outbox").
-		WithField("type", "classic").
+		WithField("urn", outboxURN).
 		WithField("event", "stop").
 		Infoln("enter stop")
 
@@ -110,7 +109,7 @@ func (p *ClassicOutbox) Stop() (err error) {
 	close(p.deliveriesChan)
 
 	spirit.Logger().WithField("actor", "outbox").
-		WithField("type", "classic").
+		WithField("urn", outboxURN).
 		WithField("event", "stop").
 		Infoln("stopped")
 
@@ -134,10 +133,15 @@ func (p *ClassicOutbox) AddSender(sender spirit.Sender) (err error) {
 	p.senders = append(p.senders, sender)
 
 	spirit.Logger().WithField("actor", "outbox").
-		WithField("type", "classic").
+		WithField("urn", outboxURN).
 		WithField("event", "add sender").
 		Debugln("sender added")
 
+	return
+}
+
+func (p *ClassicOutbox) Put(deliveries []spirit.Delivery) (err error) {
+	p.deliveriesChan <- deliveries
 	return
 }
 
@@ -149,7 +153,7 @@ func (p *ClassicOutbox) Get() (deliveries []spirit.Delivery, err error) {
 		case deliveries = <-p.deliveriesChan:
 			{
 				spirit.Logger().WithField("actor", "outbox").
-					WithField("type", "classic").
+					WithField("urn", outboxURN).
 					WithField("event", "get deliveries").
 					WithField("length", len(deliveries)).
 					Debugln("deliveries received from deliveries chan")
@@ -157,7 +161,7 @@ func (p *ClassicOutbox) Get() (deliveries []spirit.Delivery, err error) {
 		case <-time.After(time.Duration(p.conf.GetTimeout) * time.Millisecond):
 			{
 				spirit.Logger().WithField("actor", "outbox").
-					WithField("type", "classic").
+					WithField("urn", outboxURN).
 					WithField("event", "get deliveries").
 					Debugln("get deliveries timeout")
 

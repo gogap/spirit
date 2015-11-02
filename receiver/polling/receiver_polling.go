@@ -64,7 +64,7 @@ func (p *PollingReceiver) Start() (err error) {
 	defer p.statusLocker.Unlock()
 
 	spirit.Logger().WithField("actor", "receiver").
-		WithField("type", "polling").
+		WithField("urn", pollingReceiverURN).
 		WithField("event", "start").
 		Debugln("enter start")
 
@@ -95,41 +95,41 @@ func (p *PollingReceiver) Start() (err error) {
 	go func() {
 		var reader io.ReadCloser
 		var err error
-		if reader, err = p.readerPool.Get(); err != nil {
-			spirit.Logger().WithField("actor", "receiver").
-				WithField("type", "polling").
-				WithField("event", "begin receive").
-				Panicln(err)
-		}
 
 		for {
+			if reader, err = p.readerPool.Get(); err != nil {
+				spirit.Logger().WithField("actor", "receiver").
+					WithField("urn", pollingReceiverURN).
+					WithField("event", "get reader from reader pool").
+					Errorln(err)
+			}
+
 			if deliveries, err := p.translator.In(reader); err != nil {
 				spirit.Logger().WithField("actor", "receiver").
-					WithField("type", "polling").
+					WithField("urn", pollingReceiverURN).
 					WithField("event", "translate reader").
 					WithField("length", len(deliveries)).
 					Errorln(err)
 
 				reader.Close()
 
-				if reader, err = p.readerPool.Get(); err != nil {
-					spirit.Logger().WithField("actor", "receiver").
-						WithField("type", "polling").
-						WithField("event", "get a reader because of reader error").
-						WithField("length", len(deliveries)).
-						Errorln(err)
-				}
-
 				spirit.Logger().WithField("actor", "receiver").
-					WithField("type", "polling").
+					WithField("urn", pollingReceiverURN).
 					WithField("event", "receiver deliveries").
 					WithField("length", len(deliveries)).
 					Debugln("translator delivery from reader")
+
 			} else {
-				p.putter.Put(deliveries)
+				if err = p.putter.Put(deliveries); err != nil {
+					spirit.Logger().WithField("actor", "receiver").
+						WithField("urn", pollingReceiverURN).
+						WithField("event", "put deliveries").
+						Errorln(err)
+				}
+
 				if err = p.readerPool.Put(reader); err != nil {
 					spirit.Logger().WithField("actor", "receiver").
-						WithField("type", "polling").
+						WithField("urn", pollingReceiverURN).
 						WithField("event", "put reader back to pool").
 						Errorln(err)
 				}
@@ -156,7 +156,7 @@ func (p *PollingReceiver) Start() (err error) {
 	}()
 
 	spirit.Logger().WithField("actor", "receiver").
-		WithField("type", "polling").
+		WithField("urn", pollingReceiverURN).
 		WithField("event", "start").
 		Debugln("started")
 

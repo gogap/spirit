@@ -94,17 +94,76 @@ func (p *ClassicSpirit) Start() (err error) {
 		return
 	}
 
+	p.status = StatusRunning
+
 	for _, router := range p.routers {
 		if err = router.Start(); err != nil {
 			logger.WithField("module", "spirit").
 				WithField("event", "start").
 				Panic(err)
 		}
+
+		go p.loop(router)
 	}
 
-	p.status = StatusRunning
-
 	return
+}
+
+func (p *ClassicSpirit) loop(router Router) {
+	for {
+		for _, inbox := range router.Inboxes() {
+			var deliveries []Delivery
+			var err error
+			if deliveries, err = inbox.Get(); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "router loop").
+					Errorln(err)
+			}
+
+			for _, delivery := range deliveries {
+				var handlers []ComponentHandler
+				if handlers, err = router.RouteToHandlers(delivery); err != nil {
+					logger.WithField("module", "spirit").
+						WithField("event", "router to handlers").
+						Errorln(err)
+				} else {
+					for _, handler := range handlers {
+						if ret, e := handler(delivery.Payload()); e != nil {
+							delivery.Payload().SetError(e)
+
+							logger.WithField("module", "spirit").
+								WithField("event", "set payload error").
+								Debugln(e)
+
+							break
+						} else {
+							if e := delivery.Payload().SetData(ret); e != nil {
+								logger.WithField("module", "spirit").
+									WithField("event", "set payload data").
+									Errorln(e)
+							}
+						}
+					}
+					if outboxes, e := router.RouteToOutboxes(delivery); e != nil {
+						logger.WithField("module", "spirit").
+							WithField("event", "router to outboxes").
+							Errorln(e)
+					} else {
+						for _, outbox := range outboxes {
+							if e := outbox.Put([]Delivery{delivery}); e != nil {
+								logger.WithField("module", "spirit").
+									WithField("event", "put delivery to outbox").
+									Errorln(e)
+							}
+						}
+					}
+				}
+			}
+		}
+		if p.status == StatusStopped {
+			return
+		}
+	}
 }
 
 func (p *ClassicSpirit) Stop() (err error) {

@@ -73,6 +73,12 @@ func (p *ClassicReaderPool) Get() (reader io.ReadCloser, err error) {
 			p.readers = []io.ReadCloser{}
 		}
 		delete(p.readersMap, reader)
+
+		spirit.Logger().WithField("actor", "reader pool").
+			WithField("urn", readerPoolURN).
+			WithField("event", "get reader").
+			Debugln("get an old reader")
+
 		return
 	} else if len(p.readers) < p.conf.MaxSize {
 		if reader, err = p.newReaderFunc(p.readerOptions); err != nil {

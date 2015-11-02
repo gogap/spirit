@@ -19,6 +19,7 @@ type Outbox interface {
 	AddSender(sender Sender) (err error)
 
 	DeliveryGetter
+	DeliveryPutter
 }
 
 func RegisterOutbox(urn string, newFunc NewOutboxFunc) (err error) {

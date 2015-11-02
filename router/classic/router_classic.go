@@ -246,8 +246,7 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	p.componentLocker.Lock()
 	defer p.componentLocker.Unlock()
 
-	if comps, exist := p.components[name+"@"+component.URN()]; exist {
-
+	if comps, exist := p.components[component.URN()]; exist {
 		for _, comp := range comps {
 			if comp == component ||
 				p.componentLabelMatcher.Match(comp.Labels(), component.Labels()) {
@@ -256,9 +255,9 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 			}
 		}
 
-		p.components[name+"@"+component.URN()] = append(comps, component)
+		p.components[component.URN()] = append(comps, component)
 	} else {
-		p.components[name+"@"+component.URN()] = []spirit.Component{component}
+		p.components[component.URN()] = []spirit.Component{component}
 	}
 
 	return
@@ -293,30 +292,30 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 		return
 	}
 
-	componentUri := ""
-	componentHandlerUri := ""
+	componentURN := ""
+	componentHandlerURN := ""
 
-	regUri := regexp.MustCompile("(.*)#(.*)")
-	regMatched := regUri.FindAllStringSubmatch(urn, -1)
+	regURN := regexp.MustCompile("(.*)#(.*)")
+	regMatched := regURN.FindAllStringSubmatch(urn, -1)
 
 	if len(regMatched) == 1 &&
 		len(regMatched[0]) == 3 {
-		componentUri = regMatched[0][1]
-		componentHandlerUri = regMatched[0][2]
+		componentURN = regMatched[0][1]
+		componentHandlerURN = regMatched[0][2]
 	}
 
 	var components []spirit.Component
 	var exist bool
 
-	if components, exist = p.components[componentUri]; !exist {
-		err = spirit.ErrRouterToComponentFailed
+	if components, exist = p.components[componentURN]; !exist {
+		err = spirit.ErrRouterComponentNotExist
 		return
 	}
 
 	lenComps := len(components)
 
 	if lenComps == 0 {
-		err = spirit.ErrRouterToComponentFailed
+		err = spirit.ErrRouterToComponentHandlerFailed
 		return
 	}
 
@@ -326,7 +325,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 			return
 		}
 
-		if h, exist := components[0].Handlers()[componentHandlerUri]; !exist {
+		if h, exist := components[0].Handlers()[componentHandlerURN]; !exist {
 			err = spirit.ErrComponentHandlerNotExit
 			return
 		} else {
@@ -337,7 +336,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 
 	for _, component := range components {
 		if p.componentLabelMatcher.Match(delivery.Labels(), component.Labels()) {
-			if h, exist := component.Handlers()[componentHandlerUri]; !exist {
+			if h, exist := component.Handlers()[componentHandlerURN]; !exist {
 				err = spirit.ErrComponentHandlerNotExit
 				return
 			} else {

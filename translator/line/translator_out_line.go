@@ -34,6 +34,9 @@ func (p *LineOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (
 	}
 
 	if data, ok := vData.(string); ok {
+		if data[len(data)-1] != '\n' {
+			data += "\n"
+		}
 		_, err = newWriter.Write([]byte(data))
 	}
 

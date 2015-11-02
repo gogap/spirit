@@ -29,7 +29,7 @@ var (
             "component": "test",
             "outbox": "test"
         },
-        "components": [],
+        "components": ["test"],
         "inboxes": [{
             "name": "test",
             "receivers": [{
@@ -85,9 +85,9 @@ var (
         "name": "test",
         "urn": "urn:spirit:translator:in:line",
         "options": {
-            "urn": "componentA:handlerA",
+            "urn": "urn:spirit:component:util:base64#encode",
             "labels": {
-                "a": "b"
+                "version": "0.0.1"
             }
         }
     }],
@@ -110,8 +110,8 @@ var (
         "urn": "urn:spirit:inbox:classic",
         "options": {
             "size": 100,
-            "put_timeout": 100,
-            "get_timeout": 100
+            "put_timeout": 1000,
+            "get_timeout": 1000
         }
     }],
     "routers": [{
@@ -129,9 +129,7 @@ var (
         "options": {
             "size": 100,
             "get_timeout": -1,
-            "labels": {
-                "a": "b"
-            }
+            "labels": {"version":"0.0.1"}
         }
     }],
     "label_matchers": [{

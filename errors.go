@@ -30,8 +30,9 @@ var (
 	ErrRouterAlreadyHaveThisInbox            = errors.New("router already added this inbox")
 	ErrRouterAlreadyHaveThisOutbox           = errors.New("router already added this outbox")
 	ErrRouterAlreadyHaveThisComponent        = errors.New("router already added this component")
-	ErrRouterToHandlerFailed                 = errors.New("could not router to component handler")
+	ErrRouterToComponentHandlerFailed        = errors.New("could not router to component handler")
 	ErrRouterToComponentFailed               = errors.New("could not router to component")
+	ErrRouterComponentNotExist               = errors.New("router component not exist")
 	ErrRouterDidNotHaveComponentLabelMatcher = errors.New("could not router to component")
 
 	ErrComponentURNNotExist    = errors.New("component urn not exist")
