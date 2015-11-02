@@ -76,8 +76,7 @@ var (
                 "name": "write",
                 "proc": "my-program-w",
                 "args": [],
-                "envs": [],
-                "delim": "\n"
+                "envs": []
             }
         }
     }],
@@ -85,7 +84,7 @@ var (
         "name": "test",
         "urn": "urn:spirit:translator:in:line",
         "options": {
-            "urn": "urn:spirit:component:util:base64#encode",
+            "bind_urn": "urn:spirit:component:util:base64#encode",
             "labels": {
                 "version": "0.0.1"
             }
@@ -94,7 +93,9 @@ var (
     "output_translators": [{
         "name": "test",
         "urn": "urn:spirit:translator:out:line",
-        "options": {}
+        "options": {
+            "delim": "\n"
+        }
     }],
     "receivers": [{
         "name": "test",

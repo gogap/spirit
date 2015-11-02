@@ -127,6 +127,14 @@ func (p *ClassicSpirit) loop(router Router) {
 						WithField("event", "router to handlers").
 						Errorln(err)
 				} else {
+					if len(handlers) == 0 {
+						logger.WithField("module", "spirit").
+							WithField("event", "router to handlers").
+							Errorln("no handler found")
+
+						break
+					}
+
 					for _, handler := range handlers {
 						if ret, e := handler(delivery.Payload()); e != nil {
 							delivery.Payload().SetError(e)
@@ -144,11 +152,19 @@ func (p *ClassicSpirit) loop(router Router) {
 							}
 						}
 					}
+
 					if outboxes, e := router.RouteToOutboxes(delivery); e != nil {
 						logger.WithField("module", "spirit").
 							WithField("event", "router to outboxes").
 							Errorln(e)
 					} else {
+						if len(outboxes) == 0 {
+							logger.WithField("module", "spirit").
+								WithField("event", "router to outboxes").
+								Errorln("no outbox found")
+							break
+						}
+
 						for _, outbox := range outboxes {
 							if e := outbox.Put([]Delivery{delivery}); e != nil {
 								logger.WithField("module", "spirit").

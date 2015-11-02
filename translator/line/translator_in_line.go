@@ -17,8 +17,9 @@ var _ spirit.InputTranslator = new(LineInputTranslator)
 var ErrLineInputTranslatorNeedDefaultURN = errors.New("line input translator need default urn")
 
 type LineInputTranslatorConfig struct {
-	URN    string        `json:"urn"`
-	Labels spirit.Labels `json:"labels"`
+	BindURN string        `json:"bind_urn"`
+	Labels  spirit.Labels `json:"labels"`
+	Delim   string        `json:"delim"`
 }
 
 type LineInputTranslator struct {
@@ -36,7 +37,7 @@ func NewLineInputTranslator(options spirit.Options) (translator spirit.InputTran
 		return
 	}
 
-	if conf.URN == "" {
+	if conf.BindURN == "" {
 		err = ErrLineInputTranslatorNeedDefaultURN
 		return
 	}
@@ -52,7 +53,12 @@ func (p *LineInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err
 
 	txt := ""
 
-	if txt, err = reader.ReadString('\n'); err != nil {
+	var delim byte = '\n'
+	if len(p.conf.Delim) == 1 {
+		delim = p.conf.Delim[0]
+	}
+
+	if txt, err = reader.ReadString(delim); err != nil {
 		return
 	}
 
@@ -62,7 +68,7 @@ func (p *LineInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err
 	}
 
 	delivery := &LineDelivery{
-		urn:    p.conf.URN,
+		urn:    p.conf.BindURN,
 		labels: labels,
 		payload: &LinePayload{
 			data: txt,

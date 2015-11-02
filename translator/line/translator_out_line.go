@@ -13,7 +13,12 @@ const (
 
 var _ spirit.OutputTranslator = new(LineOutputTranslator)
 
+type LineOutputTranslatorConfig struct {
+	Delim string `json:"delim"`
+}
+
 type LineOutputTranslator struct {
+	conf LineOutputTranslatorConfig
 }
 
 func init() {
@@ -21,7 +26,15 @@ func init() {
 }
 
 func NewLineOutputTranslator(options spirit.Options) (translator spirit.OutputTranslator, err error) {
-	translator = &LineOutputTranslator{}
+	conf := LineOutputTranslatorConfig{}
+
+	if err = options.ToObject(&conf); err != nil {
+		return
+	}
+
+	translator = &LineOutputTranslator{
+		conf: conf,
+	}
 	return
 }
 
@@ -33,9 +46,14 @@ func (p *LineOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (
 		return
 	}
 
+	var delim byte = '\n'
+	if len(p.conf.Delim) == 1 {
+		delim = p.conf.Delim[0]
+	}
+
 	if data, ok := vData.(string); ok {
-		if data[len(data)-1] != '\n' {
-			data += "\n"
+		if data[len(data)-1] != delim {
+			data += string(delim)
 		}
 		_, err = newWriter.Write([]byte(data))
 	}
