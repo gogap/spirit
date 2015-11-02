@@ -13,7 +13,7 @@ type Sender interface {
 	Stop() (err error)
 	Status() Status
 
-	SetNewWriterFunc(newFunc NewWriterFunc, options Options) (err error)
+	SetWriterPool(pool WriterPool) (err error)
 	SetTranslator(translator OutputTranslator) (err error)
 	SetDeliveryGetter(getter DeliveryGetter) (err error)
 }

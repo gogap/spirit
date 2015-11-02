@@ -8,11 +8,11 @@ var (
 	ErrReceiverURNNotExist          = errors.New("receiver urn not exist")
 	ErrReceiverNameDuplicate        = errors.New("receiver name duplicate")
 	ErrReceiverAlreadyRunning       = errors.New("receiver already running")
-	ErrReceiverCanNotCreaterReader  = errors.New("receiver can not create reader")
 	ErrReceiverDidNotHaveTranslator = errors.New("receiver did not have translator")
 	ErrReceiverDidNotRunning        = errors.New("receiver did not running")
 	ErrReceiverReceiveTimeout       = errors.New("receiver receive timeout")
 	ErrReceiverDeliveryPutterIsNil  = errors.New("receiver delivery putter is nil")
+	ErrReceiverDidNotHaveReaderPool = errors.New("receiver did not have reader pool")
 
 	ErrSenderURNNotExist          = errors.New("sender urn not exist")
 	ErrSenderNameDuplicate        = errors.New("sender name duplicate")
@@ -21,6 +21,7 @@ var (
 	ErrSenderDidNotHaveTranslator = errors.New("sender did not have translator")
 	ErrSenderDidNotRunning        = errors.New("sender did not running")
 	ErrSenderDeliveryGetterIsNil  = errors.New("sender delivery getter is nil")
+	ErrSenderDidNotHaveWriterPool = errors.New("sender did not have writer pool")
 
 	ErrRouterURNNotExist                     = errors.New("router urn not exist")
 	ErrRouterNameDuplicate                   = errors.New("router name duplicate")
@@ -50,11 +51,15 @@ var (
 
 	ErrWriterInUse             = errors.New("writer already in use")
 	ErrWriterPoolAlreadyClosed = errors.New("writer pool already closed")
+	ErrWriterPoolNameDuplicate = errors.New("writer pool name duplicate")
+	ErrWriterPoolURNNotExist   = errors.New("writer pool urn not exist")
 
 	ErrReaderIsNil              = errors.New("reader is nil")
 	ErrReaderInUse              = errors.New("reader already in use")
 	ErrReaderPoolAlreadyClosed  = errors.New("reader pool already closed")
 	ErrReaderPoolTooManyReaders = errors.New("reader pool have too many readers")
+	ErrReaderPoolNameDuplicate  = errors.New("reader pool name duplicate")
+	ErrReaderPoolURNNotExist    = errors.New("reader pool urn not exist")
 
 	ErrInboxURNNotExist   = errors.New("inbox urn not exist")
 	ErrInboxNameDuplicate = errors.New("inbox name duplicate")

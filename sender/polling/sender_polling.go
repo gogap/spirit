@@ -31,15 +31,12 @@ type PollingSender struct {
 
 	status spirit.Status
 
-	newWriterFunc spirit.NewWriterFunc
-	writerOptions spirit.Options
+	writerPool spirit.WriterPool
 
 	translator spirit.OutputTranslator
 	getter     spirit.DeliveryGetter
 
-	globalWriter   io.WriteCloser
-	sessionWriters map[string]io.WriteCloser
-	WriterLocker   sync.Mutex
+	WriterLocker sync.Mutex
 }
 
 func init() {
@@ -74,8 +71,8 @@ func (p *PollingSender) Start() (err error) {
 		WithField("event", "start").
 		Infoln("enter start")
 
-	if p.newWriterFunc == nil {
-		err = spirit.ErrSenderCanNotCreaterWriter
+	if p.writerPool == nil {
+		err = spirit.ErrSenderDidNotHaveWriterPool
 		return
 	}
 
@@ -103,17 +100,22 @@ func (p *PollingSender) Start() (err error) {
 			} else {
 				var writer io.WriteCloser
 				for _, delivery := range deliveries {
-					if writer, err = p.getWriter(delivery.SessionId()); err != nil {
+					if writer, err = p.writerPool.Get(delivery); err != nil {
 						spirit.Logger().WithField("actor", "sender").
 							WithField("type", "polling").
 							WithField("event", "get session writer").
 							WithField("session_id", delivery.SessionId()).
 							Errorln(err)
 					} else if err = p.translator.Out(writer, delivery); err != nil {
-						p.delWriter(delivery.SessionId())
 						spirit.Logger().WithField("actor", "sender").
 							WithField("type", "polling").
 							WithField("event", "translate deliveries to writer").
+							WithField("session_id", delivery.SessionId()).
+							Errorln(err)
+					} else if p.writerPool.Put(delivery, writer); err != nil {
+						spirit.Logger().WithField("actor", "sender").
+							WithField("type", "polling").
+							WithField("event", "put writer back to pool").
 							WithField("session_id", delivery.SessionId()).
 							Errorln(err)
 					}
@@ -148,49 +150,7 @@ func (p *PollingSender) Start() (err error) {
 				}
 			}
 		}
-
 	}()
-
-	return
-}
-
-func (p *PollingSender) getWriter(sessionId string) (writer io.WriteCloser, err error) {
-	p.WriterLocker.Lock()
-	defer p.WriterLocker.Unlock()
-
-	if p.conf.DisableSession {
-		if p.globalWriter == nil {
-			writer, err = p.newWriterFunc(p.writerOptions)
-			p.globalWriter = writer
-		} else {
-			writer = p.globalWriter
-		}
-		return
-	}
-
-	if w, exist := p.sessionWriters[sessionId]; exist {
-		writer = w
-		return
-	} else {
-		writer, err = p.newWriterFunc(p.writerOptions)
-		return
-	}
-
-	return
-}
-
-func (p *PollingSender) delWriter(sessionId string) {
-	p.WriterLocker.Lock()
-	defer p.WriterLocker.Unlock()
-
-	if p.conf.DisableSession {
-		p.globalWriter = nil
-		return
-	}
-
-	if _, exist := p.sessionWriters[sessionId]; exist {
-		delete(p.sessionWriters, sessionId)
-	}
 
 	return
 }
@@ -213,6 +173,8 @@ func (p *PollingSender) Stop() (err error) {
 
 	close(p.terminaled)
 
+	p.writerPool.Close()
+
 	spirit.Logger().WithField("actor", "polling").
 		WithField("type", "classic").
 		WithField("event", "stop").
@@ -225,9 +187,8 @@ func (p *PollingSender) Status() spirit.Status {
 	return p.status
 }
 
-func (p *PollingSender) SetNewWriterFunc(newFunc spirit.NewWriterFunc, options spirit.Options) (err error) {
-	p.newWriterFunc = newFunc
-	p.writerOptions = options
+func (p *PollingSender) SetWriterPool(pool spirit.WriterPool) (err error) {
+	p.writerPool = pool
 	return
 }
 

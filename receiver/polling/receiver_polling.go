@@ -32,8 +32,8 @@ type PollingReceiver struct {
 
 	status spirit.Status
 
-	newReaderFunc  spirit.NewReaderFunc
-	readerOptions  spirit.Options
+	readerPool spirit.ReaderPool
+
 	deliveriesChan chan _Deliveries
 
 	translator spirit.InputTranslator
@@ -73,8 +73,8 @@ func (p *PollingReceiver) Start() (err error) {
 		return
 	}
 
-	if p.newReaderFunc == nil {
-		err = spirit.ErrReceiverCanNotCreaterReader
+	if p.readerPool == nil {
+		err = spirit.ErrReceiverDidNotHaveReaderPool
 		return
 	}
 
@@ -88,17 +88,20 @@ func (p *PollingReceiver) Start() (err error) {
 		return
 	}
 
-	reader, err := p.newReaderFunc(p.readerOptions)
-
-	if err != nil {
-		return
-	}
-
 	p.terminaled = make(chan bool)
 
 	p.status = spirit.StatusRunning
 
-	go func(reader io.ReadCloser) {
+	go func() {
+		var reader io.ReadCloser
+		var err error
+		if reader, err = p.readerPool.Get(); err != nil {
+			spirit.Logger().WithField("actor", "receiver").
+				WithField("type", "polling").
+				WithField("event", "begin receive").
+				Panicln(err)
+		}
+
 		for {
 			if deliveries, err := p.translator.In(reader); err != nil {
 				spirit.Logger().WithField("actor", "receiver").
@@ -108,10 +111,11 @@ func (p *PollingReceiver) Start() (err error) {
 					Errorln(err)
 
 				reader.Close()
-				if reader, err = p.newReaderFunc(p.readerOptions); err != nil {
+
+				if reader, err = p.readerPool.Get(); err != nil {
 					spirit.Logger().WithField("actor", "receiver").
 						WithField("type", "polling").
-						WithField("event", "create new reader because of reader error").
+						WithField("event", "get a reader because of reader error").
 						WithField("length", len(deliveries)).
 						Errorln(err)
 				}
@@ -123,6 +127,12 @@ func (p *PollingReceiver) Start() (err error) {
 					Debugln("translator delivery from reader")
 			} else {
 				p.putter.Put(deliveries)
+				if err = p.readerPool.Put(reader); err != nil {
+					spirit.Logger().WithField("actor", "receiver").
+						WithField("type", "polling").
+						WithField("event", "put reader back to pool").
+						Errorln(err)
+				}
 			}
 
 			if p.conf.Interval > 0 {
@@ -143,7 +153,7 @@ func (p *PollingReceiver) Start() (err error) {
 			}
 		}
 
-	}(reader)
+	}()
 
 	spirit.Logger().WithField("actor", "receiver").
 		WithField("type", "polling").
@@ -164,6 +174,8 @@ func (p *PollingReceiver) Stop() (err error) {
 
 	p.terminaled <- true
 
+	p.readerPool.Close()
+
 	close(p.deliveriesChan)
 	close(p.terminaled)
 
@@ -174,9 +186,8 @@ func (p *PollingReceiver) Status() spirit.Status {
 	return p.status
 }
 
-func (p *PollingReceiver) SetNewReaderFunc(newFunc spirit.NewReaderFunc, options spirit.Options) (err error) {
-	p.newReaderFunc = newFunc
-	p.readerOptions = options
+func (p *PollingReceiver) SetReaderPool(pool spirit.ReaderPool) (err error) {
+	p.readerPool = pool
 	return
 }
 

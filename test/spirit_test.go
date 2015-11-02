@@ -11,6 +11,7 @@ import (
 import (
 	_ "github.com/gogap/spirit/component/util"
 	_ "github.com/gogap/spirit/inbox/classic"
+	_ "github.com/gogap/spirit/io/pool"
 	_ "github.com/gogap/spirit/io/std"
 	_ "github.com/gogap/spirit/matcher/classic"
 	_ "github.com/gogap/spirit/outbox/classic"
@@ -34,7 +35,7 @@ var (
             "receivers": [{
                 "name": "test",
                 "translator": "test",
-                "reader": "test"
+                "reader_pool": "test"
             }]
         }],
         "outboxes": [{
@@ -42,30 +43,42 @@ var (
             "senders": [{
                 "name": "test",
                 "translator": "test",
-                "writer": "test"
+                "writer_pool": "test"
             }]
         }]
     }],
-    "readers": [{
+    "reader_pools": [{
         "name": "test",
-        "urn": "urn:spirit:io:reader:std",
+        "urn": "urn:spirit:io:pool:reader:classic",
         "options": {
-            "name": "ping",
-            "proc": "ping",
-            "args": ["-c", "10", "baidu.com"],
-            "envs": {},
-            "delim": "\n"
+            "max_size": 100
+        },
+        "reader": {
+            "name": "test",
+            "urn": "urn:spirit:io:reader:std",
+            "options": {
+                "name": "ping",
+                "proc": "ping",
+                "args": ["-c", "10", "baidu.com"],
+                "envs": {},
+                "delim": "\n"
+            }
         }
     }],
-    "writers": [{
+    "writer_pools": [{
         "name": "test",
-        "urn": "urn:spirit:io:writer:std",
-        "options": {
-            "name": "write",
-            "proc": "my-program-w",
-            "args": [],
-            "envs": [],
-            "delim": "\n"
+        "urn": "urn:spirit:io:pool:writer:classic",
+        "options": {},
+        "writer": {
+            "name": "test",
+            "urn": "urn:spirit:io:writer:std",
+            "options": {
+                "name": "write",
+                "proc": "my-program-w",
+                "args": [],
+                "envs": [],
+                "delim": "\n"
+            }
         }
     }],
     "input_translators": [{

@@ -9,7 +9,7 @@ type NewReceiverFunc func(options Options) (receiver Receiver, err error)
 type Receiver interface {
 	StartStoper
 
-	SetNewReaderFunc(newFunc NewReaderFunc, options Options) (err error)
+	SetReaderPool(pool ReaderPool) (err error)
 	SetTranslator(translator InputTranslator) (err error)
 	SetDeliveryPutter(putter DeliveryPutter) (err error)
 }

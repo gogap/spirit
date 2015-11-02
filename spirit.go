@@ -51,8 +51,8 @@ type ClassicSpirit struct {
 
 	status Status
 
-	readers           map[string]NewReaderFunc
-	writers           map[string]NewWriterFunc
+	readerPools       map[string]ReaderPool
+	writerPools       map[string]WriterPool
 	inputTranslators  map[string]InputTranslator
 	outputTranslators map[string]OutputTranslator
 	inboxes           map[string]Inbox
@@ -62,15 +62,12 @@ type ClassicSpirit struct {
 	labelMatchers     map[string]LabelMatcher
 	routers           map[string]Router
 	components        map[string][]Component
-
-	readerOpts map[string]Options
-	writerOpts map[string]Options
 }
 
 func NewClassicSpirit() (s Spirit, err error) {
 	return &ClassicSpirit{
-		readers:           make(map[string]NewReaderFunc),
-		writers:           make(map[string]NewWriterFunc),
+		readerPools:       make(map[string]ReaderPool),
+		writerPools:       make(map[string]WriterPool),
 		inputTranslators:  make(map[string]InputTranslator),
 		outputTranslators: make(map[string]OutputTranslator),
 		inboxes:           make(map[string]Inbox),
@@ -80,8 +77,6 @@ func NewClassicSpirit() (s Spirit, err error) {
 		labelMatchers:     make(map[string]LabelMatcher),
 		routers:           make(map[string]Router),
 		components:        make(map[string][]Component),
-		readerOpts:        make(map[string]Options),
-		writerOpts:        make(map[string]Options),
 	}, nil
 }
 
@@ -158,36 +153,60 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 
 	p.built = true
 
-	// readers
-	for _, actorConf := range conf.Readers {
-		var actor interface{}
-		if actor, err = p.createActor(ActorReader, actorConf); err != nil {
+	// reader pool
+	for _, pool := range conf.ReaderPools {
+		var poolActor interface{}
+		if poolActor, err = p.createActor(ActorReaderPool, pool.ActorConfig); err != nil {
 			logger.WithField("module", "spirit").
 				WithField("event", "build").
-				WithField("actor_name", actorConf.Name).
-				WithField("actor_urn", actorConf.URN).
+				WithField("actor_name", pool.Name).
+				WithField("actor_urn", pool.URN).
 				Error(err)
-
 			return
 		}
-		p.readers[actorConf.Name] = actor.(NewReaderFunc)
-		p.readerOpts[actorConf.Name] = actorConf.Options
+
+		readerPool := poolActor.(ReaderPool)
+
+		var actor interface{}
+		if actor, err = p.createActor(ActorReader, pool.Reader); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "build").
+				WithField("actor_name", pool.Reader.Name).
+				WithField("actor_urn", pool.Reader.URN).
+				Error(err)
+			return
+		}
+
+		readerPool.SetNewReaderFunc(actor.(NewReaderFunc), pool.Reader.Options)
+		p.readerPools[pool.ActorConfig.Name] = readerPool
 	}
 
-	// writers
-	for _, actorConf := range conf.Writers {
-		var actor interface{}
-		if actor, err = p.createActor(ActorWriter, actorConf); err != nil {
+	// writer pool
+	for _, pool := range conf.WriterPools {
+		var poolActor interface{}
+		if poolActor, err = p.createActor(ActorWriterPool, pool.ActorConfig); err != nil {
 			logger.WithField("module", "spirit").
 				WithField("event", "build").
-				WithField("actor_name", actorConf.Name).
-				WithField("actor_urn", actorConf.URN).
+				WithField("actor_name", pool.Name).
+				WithField("actor_urn", pool.URN).
 				Error(err)
-
 			return
 		}
-		p.writers[actorConf.Name] = actor.(NewWriterFunc)
-		p.writerOpts[actorConf.Name] = actorConf.Options
+
+		writerPool := poolActor.(WriterPool)
+
+		var actor interface{}
+		if actor, err = p.createActor(ActorWriter, pool.Writer); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "build").
+				WithField("actor_name", pool.Writer.Name).
+				WithField("actor_urn", pool.Writer.URN).
+				Error(err)
+			return
+		}
+
+		writerPool.SetNewWriterFunc(actor.(NewWriterFunc), pool.Writer.Options)
+		p.writerPools[pool.ActorConfig.Name] = writerPool
 	}
 
 	// input translators
@@ -359,11 +378,10 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 				receiverInstance := p.receivers[receiver.Name]
 
 				translatorInstance := p.inputTranslators[receiver.Translator]
-				newReaderFunc := p.readers[receiver.Reader]
-				readerOpts := p.readerOpts[receiver.Reader]
+				readerPool := p.readerPools[receiver.ReaderPool]
 
 				receiverInstance.SetTranslator(translatorInstance)
-				receiverInstance.SetNewReaderFunc(newReaderFunc, readerOpts)
+				receiverInstance.SetReaderPool(readerPool)
 				receiverInstance.SetDeliveryPutter(inboxInstance)
 
 				inboxInstance.AddReceiver(receiverInstance)
@@ -387,12 +405,10 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 				senderInstance := p.senders[sender.Name]
 
 				translatorInstance := p.outputTranslators[sender.Translator]
-				newWriterFunc := p.writers[sender.Writer]
-
-				writerOpts := p.writerOpts[sender.Writer]
+				writerPool := p.writerPools[sender.WriterPool]
 
 				senderInstance.SetTranslator(translatorInstance)
-				senderInstance.SetNewWriterFunc(newWriterFunc, writerOpts)
+				senderInstance.SetWriterPool(writerPool)
 				senderInstance.SetDeliveryGetter(outboxInstance)
 
 				outboxInstance.AddSender(senderInstance)
@@ -455,6 +471,14 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 	case ActorComponent:
 		{
 			actor, err = newComponentFuncs[actorConf.URN](actorConf.Options)
+		}
+	case ActorReaderPool:
+		{
+			actor, err = newReaderPoolFuncs[actorConf.URN](actorConf.Options)
+		}
+	case ActorWriterPool:
+		{
+			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Options)
 		}
 	default:
 		err = ErrSpiritActorURNNotExist
