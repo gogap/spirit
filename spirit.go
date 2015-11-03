@@ -106,10 +106,26 @@ func (p *ClassicSpirit) Start() (err error) {
 		}
 	}
 
+	for _, sender := range p.senders {
+		if err = sender.Start(); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "start sender").
+				Panic(err)
+		}
+	}
+
+	for _, receiver := range p.receivers {
+		if err = receiver.Start(); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "start receiver").
+				Panic(err)
+		}
+	}
+
 	for _, router := range p.routers {
 		if err = router.Start(); err != nil {
 			logger.WithField("module", "spirit").
-				WithField("event", "start").
+				WithField("event", "start router").
 				Panic(err)
 		}
 
@@ -201,6 +217,30 @@ func (p *ClassicSpirit) Stop() (err error) {
 		return
 	}
 
+	for _, receiver := range p.receivers {
+		if err = receiver.Start(); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop receiver").
+				Errorln(err)
+		}
+	}
+
+	for _, sender := range p.senders {
+		if err = sender.Start(); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop sender").
+				Errorln(err)
+		}
+	}
+
+	for _, router := range p.routers {
+		if err = router.Stop(); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop router").
+				Errorln(err)
+		}
+	}
+
 	for _, components := range p.components {
 		for _, component := range components {
 			if err = component.Stop(); err != nil {
@@ -208,14 +248,6 @@ func (p *ClassicSpirit) Stop() (err error) {
 					WithField("event", "stop component").
 					Errorln(err)
 			}
-		}
-	}
-
-	for _, router := range p.routers {
-		if err = router.Stop(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop").
-				Error(err)
 		}
 	}
 
@@ -464,24 +496,36 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 		}
 
 		for _, inbox := range router.Inboxes {
-
 			inboxInstance := p.inboxes[inbox.Name]
 			routerInstance.AddInbox(inboxInstance)
 
 			for _, receiver := range inbox.Receivers {
-
 				receiverInstance := p.receivers[receiver.Name]
 
-				translatorInstance := p.inputTranslators[receiver.Translator]
-				readerPool := p.readerPools[receiver.ReaderPool]
+				switch rcver := receiverInstance.(type) {
+				case ReadReceiver:
+					{
+						translatorInstance := p.inputTranslators[receiver.Translator]
+						readerPool := p.readerPools[receiver.ReaderPool]
 
-				receiverInstance.SetTranslator(translatorInstance)
-				receiverInstance.SetReaderPool(readerPool)
-				receiverInstance.SetDeliveryPutter(inboxInstance)
-
-				inboxInstance.AddReceiver(receiverInstance)
+						rcver.SetTranslator(translatorInstance)
+						rcver.SetReaderPool(readerPool)
+						rcver.SetDeliveryPutter(inboxInstance)
+					}
+				case Receiver:
+					{
+						rcver.SetDeliveryPutter(inboxInstance)
+					}
+				default:
+					{
+						err = ErrReceiverTypeNotSupport
+						logger.WithField("module", "spirit").
+							WithField("event", "build receiver").
+							WithField("actor", "receiver").
+							Errorln(err)
+					}
+				}
 			}
-
 		}
 
 		componentlabelMatcher := p.labelMatchers[router.LabelMatchers.Component]
@@ -491,22 +535,34 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 		routerInstance.SetOutboxLabelMatcher(outboxLabelMatcher)
 
 		for _, outbox := range router.Outboxes {
-
 			outboxInstance := p.outboxes[outbox.Name]
 			routerInstance.AddOutbox(outboxInstance)
 
 			for _, sender := range outbox.Senders {
-
 				senderInstance := p.senders[sender.Name]
 
-				translatorInstance := p.outputTranslators[sender.Translator]
-				writerPool := p.writerPools[sender.WriterPool]
-
-				senderInstance.SetTranslator(translatorInstance)
-				senderInstance.SetWriterPool(writerPool)
-				senderInstance.SetDeliveryGetter(outboxInstance)
-
-				outboxInstance.AddSender(senderInstance)
+				switch sdr := senderInstance.(type) {
+				case WriteSender:
+					{
+						translatorInstance := p.outputTranslators[sender.Translator]
+						writerPool := p.writerPools[sender.WriterPool]
+						sdr.SetTranslator(translatorInstance)
+						sdr.SetWriterPool(writerPool)
+						sdr.SetDeliveryGetter(outboxInstance)
+					}
+				case Sender:
+					{
+						sdr.SetDeliveryGetter(outboxInstance)
+					}
+				default:
+					{
+						err = ErrReceiverTypeNotSupport
+						logger.WithField("module", "spirit").
+							WithField("event", "build sender").
+							WithField("actor", "sender").
+							Errorln(err)
+					}
+				}
 			}
 		}
 	}

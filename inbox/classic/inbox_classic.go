@@ -122,20 +122,20 @@ func (p *ClassicInbox) Status() (status spirit.Status) {
 	return p.status
 }
 
-func (p *ClassicInbox) AddReceiver(receiver spirit.Receiver) (err error) {
-	p.receiverLock.Lock()
-	defer p.receiverLock.Unlock()
+// func (p *ClassicInbox) AddReceiver(receiver spirit.Receiver) (err error) {
+// 	p.receiverLock.Lock()
+// 	defer p.receiverLock.Unlock()
 
-	receiver.SetDeliveryPutter(p)
-	p.receivers = append(p.receivers, receiver)
+// 	receiver.SetDeliveryPutter(p)
+// 	p.receivers = append(p.receivers, receiver)
 
-	spirit.Logger().WithField("actor", "inbox").
-		WithField("urn", inboxURN).
-		WithField("event", "add receiver").
-		Debugln("receiver added")
+// 	spirit.Logger().WithField("actor", "inbox").
+// 		WithField("urn", inboxURN).
+// 		WithField("event", "add receiver").
+// 		Debugln("receiver added")
 
-	return
-}
+// 	return
+// }
 
 func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 	if deliveries == nil || len(deliveries) == 0 {

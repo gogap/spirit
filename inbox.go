@@ -24,7 +24,7 @@ type DeliveryGetter interface {
 type Inbox interface {
 	StartStoper
 
-	AddReceiver(receiver Receiver) (err error)
+	// AddReceiver(receiver Receiver) (err error)
 
 	DeliveryPutter
 	DeliveryGetter

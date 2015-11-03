@@ -7,13 +7,16 @@ import (
 type NewSenderFunc func(options Options) (sender Sender, err error)
 
 type Sender interface {
-	Start() (err error)
-	Stop() (err error)
-	Status() Status
+	StartStoper
+
+	SetDeliveryGetter(getter DeliveryGetter) (err error)
+}
+
+type WriteSender interface {
+	Sender
 
 	SetWriterPool(pool WriterPool) (err error)
 	SetTranslator(translator OutputTranslator) (err error)
-	SetDeliveryGetter(getter DeliveryGetter) (err error)
 }
 
 var (

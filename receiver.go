@@ -9,9 +9,14 @@ type NewReceiverFunc func(options Options) (receiver Receiver, err error)
 type Receiver interface {
 	StartStoper
 
+	SetDeliveryPutter(putter DeliveryPutter) (err error)
+}
+
+type ReadReceiver interface {
+	Receiver
+
 	SetReaderPool(pool ReaderPool) (err error)
 	SetTranslator(translator InputTranslator) (err error)
-	SetDeliveryPutter(putter DeliveryPutter) (err error)
 }
 
 var (

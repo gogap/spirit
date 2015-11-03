@@ -16,8 +16,6 @@ type Outbox interface {
 
 	Labels() Labels
 
-	AddSender(sender Sender) (err error)
-
 	DeliveryGetter
 	DeliveryPutter
 }

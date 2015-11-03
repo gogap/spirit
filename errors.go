@@ -13,6 +13,7 @@ var (
 	ErrReceiverReceiveTimeout       = errors.New("receiver receive timeout")
 	ErrReceiverDeliveryPutterIsNil  = errors.New("receiver delivery putter is nil")
 	ErrReceiverDidNotHaveReaderPool = errors.New("receiver did not have reader pool")
+	ErrReceiverTypeNotSupport       = errors.New("receiver type not support")
 
 	ErrSenderURNNotExist          = errors.New("sender urn not exist")
 	ErrSenderNameDuplicate        = errors.New("sender name duplicate")
@@ -22,6 +23,7 @@ var (
 	ErrSenderDidNotRunning        = errors.New("sender did not running")
 	ErrSenderDeliveryGetterIsNil  = errors.New("sender delivery getter is nil")
 	ErrSenderDidNotHaveWriterPool = errors.New("sender did not have writer pool")
+	ErrSenderTypeNotSupport       = errors.New("sender type not support")
 
 	ErrRouterURNNotExist                     = errors.New("router urn not exist")
 	ErrRouterNameDuplicate                   = errors.New("router name duplicate")
