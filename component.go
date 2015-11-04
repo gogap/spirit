@@ -9,10 +9,15 @@ type ComponentHandler func(payload Payload) (result interface{}, err error)
 type Handlers map[string]ComponentHandler
 
 type Component interface {
-	StartStoper
 	URN() string
 	Labels() Labels
 	Handlers() Handlers
+}
+
+type ServiceComponent interface {
+	StartStoper
+
+	Component
 }
 
 var (

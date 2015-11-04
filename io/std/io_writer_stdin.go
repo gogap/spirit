@@ -1,6 +1,7 @@
 package std
 
 import (
+	"errors"
 	"io"
 	"sync"
 
@@ -9,6 +10,10 @@ import (
 
 const (
 	stdWriterURN = "urn:spirit:io:writer:std"
+)
+
+var (
+	ErrSTDWriterDidNotBindProcess = errors.New("std writer did not bind process")
 )
 
 var _ io.WriteCloser = new(Stdin)
@@ -30,25 +35,22 @@ func NewStdin(options spirit.Options) (w io.WriteCloser, err error) {
 		return
 	}
 
-	w = &Stdin{
-		conf: conf,
+	if proc, e := takeSTDIO(_Output, conf); e != nil {
+		err = e
+	} else {
+		w = &Stdin{
+			conf: conf,
+			proc: proc,
+		}
+		proc.Start()
 	}
+
 	return
 }
 
 func (p *Stdin) Write(data []byte) (n int, err error) {
 	if p.proc == nil {
-		p.onceInit.Do(func() {
-			if proc, e := takeSTDIO(_Output, p.conf); e != nil {
-				err = e
-			} else {
-				p.proc = proc
-				p.proc.Start()
-			}
-		})
-	}
-
-	if p.proc == nil || err != nil {
+		err = ErrSTDWriterDidNotBindProcess
 		return
 	}
 	return p.proc.Write(data)

@@ -14,6 +14,7 @@ const (
 var _ spirit.Router = new(ClassicRouter)
 
 type ClassicRouterConfig struct {
+	AllowNoComponent bool `json:"allow_no_component"`
 }
 
 type ClassicRouter struct {
@@ -308,14 +309,18 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 	var exist bool
 
 	if components, exist = p.components[componentURN]; !exist {
-		err = spirit.ErrRouterComponentNotExist
-		return
+		if !p.conf.AllowNoComponent {
+			err = spirit.ErrRouterComponentNotExist
+			return
+		}
 	}
 
 	lenComps := len(components)
 
 	if lenComps == 0 {
-		err = spirit.ErrRouterToComponentHandlerFailed
+		if !p.conf.AllowNoComponent {
+			err = spirit.ErrRouterToComponentHandlerFailed
+		}
 		return
 	}
 

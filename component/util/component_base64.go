@@ -8,6 +8,8 @@ import (
 	"github.com/gogap/spirit"
 )
 
+var _ spirit.Component = new(Base64Component)
+
 const (
 	base64URN = "urn:spirit:component:util:base64"
 )
@@ -18,8 +20,6 @@ var (
 
 type Base64Component struct {
 	statusLocker sync.Mutex
-
-	status spirit.Status
 }
 
 func init() {
@@ -40,26 +40,6 @@ func (p *Base64Component) Labels() spirit.Labels {
 	return spirit.Labels{
 		"version": "0.0.1",
 	}
-}
-
-func (p *Base64Component) Start() (err error) {
-	p.statusLocker.Lock()
-	defer p.statusLocker.Unlock()
-
-	p.status = spirit.StatusRunning
-
-	return
-}
-
-func (p *Base64Component) Stop() (err error) {
-	p.statusLocker.Lock()
-	defer p.statusLocker.Unlock()
-
-	p.status = spirit.StatusStopped
-	return
-}
-func (p *Base64Component) Status() spirit.Status {
-	return p.status
 }
 
 func (p *Base64Component) Handlers() spirit.Handlers {

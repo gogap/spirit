@@ -20,8 +20,7 @@ type _Deliveries struct {
 }
 
 type PollingSenderConfig struct {
-	Interval       int  `json:"interval"`
-	DisableSession bool `json:"disable_session"`
+	Interval int `json:"interval"`
 }
 
 type PollingSender struct {

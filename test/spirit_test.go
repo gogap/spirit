@@ -29,7 +29,7 @@ var (
             "component": "test",
             "outbox": "test"
         },
-        "components": ["test"],
+        "components": [],
         "inboxes": [{
             "name": "test",
             "receivers": [{
@@ -119,9 +119,7 @@ var (
         "name": "test",
         "urn": "urn:spirit:router:classic",
         "options": {
-            "interval": 0,
-            "buffer_size": 1,
-            "timeout": 1000
+            "allow_no_component":true
         }
     }],
     "outboxes": [{

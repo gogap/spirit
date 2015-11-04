@@ -29,24 +29,20 @@ func NewStdout(options spirit.Options) (w io.ReadCloser, err error) {
 	conf := StdIOConfig{}
 	options.ToObject(&conf)
 
-	w = &Stdout{
-		conf: conf,
+	if proc, e := takeSTDIO(_Input, conf); e != nil {
+		err = e
+	} else {
+		w = &Stdout{
+			conf: conf,
+			proc: proc,
+		}
+		proc.Start()
 	}
+
 	return
 }
 
 func (p *Stdout) Read(data []byte) (n int, err error) {
-	if p.proc == nil {
-		p.onceInit.Do(func() {
-			if proc, e := takeSTDIO(_Input, p.conf); e != nil {
-				err = e
-			} else {
-				p.proc = proc
-				p.proc.Start()
-			}
-		})
-	}
-
 	if p.proc == nil || err != nil {
 		return
 	}

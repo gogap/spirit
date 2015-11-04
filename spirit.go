@@ -1,6 +1,7 @@
 package spirit
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -33,9 +34,17 @@ func Logger() *logrus.Logger {
 	return logger
 }
 
-type StartStoper interface {
+type Starter interface {
 	Start() (err error)
+}
+
+type Stoper interface {
 	Stop() (err error)
+}
+
+type StartStoper interface {
+	Starter
+	Stoper
 	Status() Status
 }
 
@@ -96,39 +105,33 @@ func (p *ClassicSpirit) Start() (err error) {
 
 	p.status = StatusRunning
 
-	for _, components := range p.components {
-		for _, component := range components {
-			if err = component.Start(); err != nil {
-				logger.WithField("module", "spirit").
-					WithField("event", "start component").
-					Panic(err)
-			}
+	for name, components := range p.components {
+		for _, actor := range components {
+			p.startActor(name, ActorComponent, actor)
 		}
 	}
 
-	for _, sender := range p.senders {
-		if err = sender.Start(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "start sender").
-				Panic(err)
-		}
+	for name, actor := range p.outboxes {
+		p.startActor(name, ActorReceiver, actor)
 	}
 
-	for _, receiver := range p.receivers {
-		if err = receiver.Start(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "start receiver").
-				Panic(err)
-		}
+	for name, actor := range p.inboxes {
+		p.startActor(name, ActorReceiver, actor)
+	}
+
+	for name, actor := range p.senders {
+		p.startActor(name, ActorReceiver, actor)
+	}
+
+	for name, actor := range p.receivers {
+		p.startActor(name, ActorReceiver, actor)
+	}
+
+	for name, actor := range p.routers {
+		p.startActor(name, ActorReceiver, actor)
 	}
 
 	for _, router := range p.routers {
-		if err = router.Start(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "start router").
-				Panic(err)
-		}
-
 		go p.loop(router)
 	}
 
@@ -156,9 +159,7 @@ func (p *ClassicSpirit) loop(router Router) {
 					if len(handlers) == 0 {
 						logger.WithField("module", "spirit").
 							WithField("event", "router to handlers").
-							Errorln("no handler found")
-
-						break
+							Debugln("no handler found")
 					}
 
 					for _, handler := range handlers {
@@ -208,6 +209,48 @@ func (p *ClassicSpirit) loop(router Router) {
 	}
 }
 
+func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...interface{}) (err error) {
+	for _, actor := range actors {
+		switch stopper := actor.(type) {
+		case StartStoper:
+			if err = stopper.Stop(); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "stop "+actorType).
+					WithField("name", name).
+					Panicln(err)
+			}
+		default:
+			logger.WithField("module", "spirit").
+				WithField("event", "start "+actorType).
+				WithField("name", name).
+				WithField("type", reflect.TypeOf(actor).Name()).
+				Debugln("non-stopper")
+		}
+	}
+	return
+}
+
+func (p *ClassicSpirit) startActor(name string, actorType ActorType, actors ...interface{}) (err error) {
+	for _, actor := range actors {
+		switch starter := actor.(type) {
+		case StartStoper:
+			if err = starter.Start(); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "start "+actorType).
+					WithField("name", name).
+					Panicln(err)
+			}
+		default:
+			logger.WithField("module", "spirit").
+				WithField("event", "start "+actorType).
+				WithField("name", name).
+				WithField("type", reflect.TypeOf(actor)).
+				Debugln("non-starter")
+		}
+	}
+	return
+}
+
 func (p *ClassicSpirit) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
@@ -217,37 +260,29 @@ func (p *ClassicSpirit) Stop() (err error) {
 		return
 	}
 
-	for _, receiver := range p.receivers {
-		if err = receiver.Start(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop receiver").
-				Errorln(err)
-		}
+	for name, actor := range p.receivers {
+		p.stopActor(name, ActorReceiver, actor)
 	}
 
-	for _, sender := range p.senders {
-		if err = sender.Start(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop sender").
-				Errorln(err)
-		}
+	for name, actor := range p.senders {
+		p.stopActor(name, ActorReceiver, actor)
 	}
 
-	for _, router := range p.routers {
-		if err = router.Stop(); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop router").
-				Errorln(err)
-		}
+	for name, actor := range p.inboxes {
+		p.stopActor(name, ActorReceiver, actor)
 	}
 
-	for _, components := range p.components {
-		for _, component := range components {
-			if err = component.Stop(); err != nil {
-				logger.WithField("module", "spirit").
-					WithField("event", "stop component").
-					Errorln(err)
-			}
+	for name, actor := range p.outboxes {
+		p.stopActor(name, ActorReceiver, actor)
+	}
+
+	for name, actor := range p.routers {
+		p.stopActor(name, ActorReceiver, actor)
+	}
+
+	for name, components := range p.components {
+		for _, actor := range components {
+			p.stopActor(name, ActorComponent, actor)
 		}
 	}
 
@@ -519,9 +554,11 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 				default:
 					{
 						err = ErrReceiverTypeNotSupport
+
 						logger.WithField("module", "spirit").
-							WithField("event", "build receiver").
-							WithField("actor", "receiver").
+							WithField("event", "bind putter to receiver").
+							WithField("inbox_name", inbox.Name).
+							WithField("receiver_name", receiver.Name).
 							Errorln(err)
 					}
 				}
@@ -557,9 +594,11 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 				default:
 					{
 						err = ErrReceiverTypeNotSupport
+
 						logger.WithField("module", "spirit").
-							WithField("event", "build sender").
-							WithField("actor", "sender").
+							WithField("event", "bind getter to sender").
+							WithField("inbox_name", outbox.Name).
+							WithField("receiver_name", sender.Name).
 							Errorln(err)
 					}
 				}
