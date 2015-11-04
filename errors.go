@@ -37,6 +37,8 @@ var (
 	ErrRouterComponentNotExist               = errors.New("router component not exist")
 	ErrRouterDidNotHaveComponentLabelMatcher = errors.New("could not router to component")
 	ErrRouterHandlerCountNotEqualURNsCount   = errors.New("handler's count is not equal delivery urn's count")
+	ErrRouterDeliveryURNFormatError          = errors.New("delivery urn format error")
+	ErrRouterOnlyOneGlobalComponentAllowed   = errors.New("only one same urn global component allowed")
 
 	ErrComponentURNNotExist    = errors.New("component urn not exist")
 	ErrComponentNameDuplicate  = errors.New("component name duplicate")

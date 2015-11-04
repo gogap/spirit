@@ -249,6 +249,11 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	defer p.componentLocker.Unlock()
 
 	namedURN := name + "@" + component.URN()
+	isGlobalInstance := false
+
+	if name[0] == '_' {
+		isGlobalInstance = true
+	}
 
 	if comps, exist := p.components[namedURN]; exist {
 		for _, comp := range comps {
@@ -258,10 +263,19 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 				return
 			}
 		}
-
 		p.components[namedURN] = append(comps, component)
 	} else {
 		p.components[namedURN] = []spirit.Component{component}
+	}
+
+	if isGlobalInstance {
+		if comps, exist := p.components[component.URN()]; exist {
+			if len(comps) > 0 {
+				err = spirit.ErrRouterOnlyOneGlobalComponentAllowed
+				return
+			}
+		}
+		p.components[component.URN()] = p.components[namedURN]
 	}
 
 	return
@@ -306,6 +320,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 		componentName := ""
 		componentURN := ""
 		componentHandlerURN := ""
+		componentIndex := ""
 
 		regURN := regexp.MustCompile("(.*)@(.*)#(.*)")
 		regMatched := regURN.FindAllStringSubmatch(urn, -1)
@@ -315,12 +330,31 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 			componentName = regMatched[0][1]
 			componentURN = regMatched[0][2]
 			componentHandlerURN = regMatched[0][3]
+
+			componentIndex = componentName + "@" + componentURN
+
+		} else {
+			regURN = regexp.MustCompile("(.*)#(.*)")
+			regMatched = regURN.FindAllStringSubmatch(urn, -1)
+
+			if len(regMatched) == 1 &&
+				len(regMatched[0]) == 3 {
+				componentURN = regMatched[0][1]
+				componentHandlerURN = regMatched[0][2]
+
+				componentIndex = componentURN
+			}
+		}
+
+		if componentIndex == "" {
+			err = spirit.ErrRouterDeliveryURNFormatError
+			return
 		}
 
 		var components []spirit.Component
 		var exist bool
 
-		if components, exist = p.components[componentName+"@"+componentURN]; !exist {
+		if components, exist = p.components[componentIndex]; !exist {
 			err = spirit.ErrRouterComponentNotExist
 			return
 		}

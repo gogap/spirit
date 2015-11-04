@@ -29,7 +29,7 @@ var (
             "component": "test",
             "outbox": "test"
         },
-        "components": ["std_base64"],
+        "components": ["_std_base64"],
         "inboxes": [{
             "name": "test",
             "receivers": [{
@@ -86,7 +86,7 @@ var (
         "name": "test",
         "urn": "urn:spirit:translator:in:line",
         "options": {
-            "bind_urn": "std_base64@urn:spirit:component:util:base64#encode|std_base64@urn:spirit:component:util:base64#decode",
+            "bind_urn": "urn:spirit:component:util:base64#encode|urn:spirit:component:util:base64#decode",
             "labels": {
                 "version": "0.0.1"
             }
@@ -139,7 +139,7 @@ var (
         "options": {}
     }],
     "components": [{
-        "name": "std_base64",
+        "name": "_std_base64",
         "urn": "urn:spirit:component:util:base64",
         "options": {}
     }],
