@@ -2,6 +2,7 @@ package classic
 
 import (
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/gogap/spirit"
@@ -247,7 +248,9 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	p.componentLocker.Lock()
 	defer p.componentLocker.Unlock()
 
-	if comps, exist := p.components[component.URN()]; exist {
+	namedURN := name + "@" + component.URN()
+
+	if comps, exist := p.components[namedURN]; exist {
 		for _, comp := range comps {
 			if comp == component ||
 				p.componentLabelMatcher.Match(comp.Labels(), component.Labels()) {
@@ -256,9 +259,9 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 			}
 		}
 
-		p.components[component.URN()] = append(comps, component)
+		p.components[namedURN] = append(comps, component)
 	} else {
-		p.components[component.URN()] = []spirit.Component{component}
+		p.components[namedURN] = []spirit.Component{component}
 	}
 
 	return
@@ -286,71 +289,83 @@ func (p *ClassicRouter) Components() (components map[string][]spirit.Component) 
 }
 
 func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []spirit.ComponentHandler, err error) {
-	urn := delivery.URN()
+	strURNs := delivery.URN()
 
-	if urn == "" {
-		err = spirit.ErrDeliveryURNIsEmpty
-		return
-	}
-
-	componentURN := ""
-	componentHandlerURN := ""
-
-	regURN := regexp.MustCompile("(.*)#(.*)")
-	regMatched := regURN.FindAllStringSubmatch(urn, -1)
-
-	if len(regMatched) == 1 &&
-		len(regMatched[0]) == 3 {
-		componentURN = regMatched[0][1]
-		componentHandlerURN = regMatched[0][2]
-	}
-
-	var components []spirit.Component
-	var exist bool
-
-	if components, exist = p.components[componentURN]; !exist {
+	if strURNs == "" {
 		if !p.conf.AllowNoComponent {
+			err = spirit.ErrDeliveryURNIsEmpty
+			return
+		}
+	}
+
+	urns := strings.Split(strURNs, "|")
+
+	tmpHandlers := []spirit.ComponentHandler{}
+
+	for _, urn := range urns {
+		componentName := ""
+		componentURN := ""
+		componentHandlerURN := ""
+
+		regURN := regexp.MustCompile("(.*)@(.*)#(.*)")
+		regMatched := regURN.FindAllStringSubmatch(urn, -1)
+
+		if len(regMatched) == 1 &&
+			len(regMatched[0]) == 4 {
+			componentName = regMatched[0][1]
+			componentURN = regMatched[0][2]
+			componentHandlerURN = regMatched[0][3]
+		}
+
+		var components []spirit.Component
+		var exist bool
+
+		if components, exist = p.components[componentName+"@"+componentURN]; !exist {
 			err = spirit.ErrRouterComponentNotExist
 			return
 		}
-	}
 
-	lenComps := len(components)
+		lenComps := len(components)
 
-	if lenComps == 0 {
-		if !p.conf.AllowNoComponent {
+		if lenComps == 0 {
 			err = spirit.ErrRouterToComponentHandlerFailed
-		}
-		return
-	}
-
-	if p.componentLabelMatcher == nil {
-		if lenComps > 1 {
-			err = spirit.ErrRouterDidNotHaveComponentLabelMatcher
 			return
 		}
 
-		if h, exist := components[0].Handlers()[componentHandlerURN]; !exist {
-			err = spirit.ErrComponentHandlerNotExit
-			return
-		} else {
-			handlers = []spirit.ComponentHandler{h}
-			return
-		}
-	}
+		if p.componentLabelMatcher == nil {
+			if lenComps > 1 {
+				err = spirit.ErrRouterDidNotHaveComponentLabelMatcher
+				return
+			}
 
-	for _, component := range components {
-		if p.componentLabelMatcher.Match(delivery.Labels(), component.Labels()) {
-			if h, exist := component.Handlers()[componentHandlerURN]; !exist {
+			if h, exist := components[0].Handlers()[componentHandlerURN]; !exist {
 				err = spirit.ErrComponentHandlerNotExit
 				return
 			} else {
-				handlers = []spirit.ComponentHandler{h}
-				return
+				tmpHandlers = append(tmpHandlers, h)
+				continue
+			}
+		}
+
+		for _, component := range components {
+			if p.componentLabelMatcher.Match(delivery.Labels(), component.Labels()) {
+				if h, exist := component.Handlers()[componentHandlerURN]; !exist {
+					err = spirit.ErrComponentHandlerNotExit
+					return
+				} else {
+					tmpHandlers = append(tmpHandlers, h)
+					break
+				}
 			}
 		}
 	}
 
+	if len(tmpHandlers) != len(urns) {
+		err = spirit.ErrRouterHandlerCountNotEqualURNsCount
+		return
+	}
+
+	handlers = tmpHandlers
 	return
 }
 

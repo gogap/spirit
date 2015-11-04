@@ -29,7 +29,7 @@ var (
             "component": "test",
             "outbox": "test"
         },
-        "components": [],
+        "components": ["std_base64"],
         "inboxes": [{
             "name": "test",
             "receivers": [{
@@ -68,7 +68,9 @@ var (
     "writer_pools": [{
         "name": "test",
         "urn": "urn:spirit:io:pool:writer:classic",
-        "options": {},
+        "options": {
+            "enable_session":true
+            },
         "writer": {
             "name": "test",
             "urn": "urn:spirit:io:writer:std",
@@ -84,7 +86,7 @@ var (
         "name": "test",
         "urn": "urn:spirit:translator:in:line",
         "options": {
-            "bind_urn": "urn:spirit:component:util:base64#encode",
+            "bind_urn": "std_base64@urn:spirit:component:util:base64#encode|std_base64@urn:spirit:component:util:base64#decode",
             "labels": {
                 "version": "0.0.1"
             }
@@ -137,7 +139,7 @@ var (
         "options": {}
     }],
     "components": [{
-        "name": "test",
+        "name": "std_base64",
         "urn": "urn:spirit:component:util:base64",
         "options": {}
     }],
