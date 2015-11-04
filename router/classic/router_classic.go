@@ -355,15 +355,21 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 		var exist bool
 
 		if components, exist = p.components[componentIndex]; !exist {
-			err = spirit.ErrRouterComponentNotExist
-			return
+			if !p.conf.AllowNoComponent {
+				err = spirit.ErrRouterComponentNotExist
+				return
+			}
+			continue
 		}
 
 		lenComps := len(components)
 
 		if lenComps == 0 {
-			err = spirit.ErrRouterToComponentHandlerFailed
-			return
+			if !p.conf.AllowNoComponent {
+				err = spirit.ErrRouterToComponentHandlerFailed
+				return
+			}
+			continue
 		}
 
 		if p.componentLabelMatcher == nil {
@@ -392,6 +398,10 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 				}
 			}
 		}
+	}
+
+	if len(tmpHandlers) == 0 && p.conf.AllowNoComponent {
+		return
 	}
 
 	if len(tmpHandlers) != len(urns) {
