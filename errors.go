@@ -52,10 +52,12 @@ var (
 	ErrWriterURNNotExist   = errors.New("writer urn not exist")
 	ErrWriterNameDuplicate = errors.New("writer name duplicate")
 
-	ErrWriterInUse             = errors.New("writer already in use")
-	ErrWriterPoolAlreadyClosed = errors.New("writer pool already closed")
-	ErrWriterPoolNameDuplicate = errors.New("writer pool name duplicate")
-	ErrWriterPoolURNNotExist   = errors.New("writer pool urn not exist")
+	ErrWriterIsNil              = errors.New("writer is nil")
+	ErrWriterInUse              = errors.New("writer already in use")
+	ErrWriterPoolAlreadyClosed  = errors.New("writer pool already closed")
+	ErrWriterPoolNameDuplicate  = errors.New("writer pool name duplicate")
+	ErrWriterPoolURNNotExist    = errors.New("writer pool urn not exist")
+	ErrWriterPoolTooManyWriters = errors.New("writer pool have too many writers")
 
 	ErrReaderIsNil              = errors.New("reader is nil")
 	ErrReaderInUse              = errors.New("reader already in use")

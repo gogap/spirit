@@ -11,6 +11,10 @@ const (
 	readerPoolURN = "urn:spirit:io:pool:reader:classic"
 )
 
+var (
+	DefaultReaderPoolSize = 10
+)
+
 var _ spirit.ReaderPool = new(ClassicReaderPool)
 
 type ClassicReaderPoolConfig struct {
@@ -40,6 +44,10 @@ func NewClassicReaderPool(options spirit.Options) (pool spirit.ReaderPool, err e
 	conf := ClassicReaderPoolConfig{}
 	if err = options.ToObject(&conf); err != nil {
 		return
+	}
+
+	if conf.MaxSize <= 0 {
+		conf.MaxSize = DefaultReaderPoolSize
 	}
 
 	pool = &ClassicReaderPool{
@@ -129,7 +137,7 @@ func (p *ClassicReaderPool) Put(reader io.ReadCloser) (err error) {
 	spirit.Logger().WithField("actor", "reader pool").
 		WithField("urn", readerPoolURN).
 		WithField("event", "put reader").
-		Debugln("a reader put")
+		Debugln("put reader")
 
 	return
 }
