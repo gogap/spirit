@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding/json"
+	"github.com/nu7hatch/gouuid"
 	"io"
 
 	"github.com/gogap/spirit"
@@ -22,7 +23,7 @@ type JSONInputTranslator struct {
 }
 
 func init() {
-	spirit.RegisterInputTranslator(jsonTranslatorURN, NewJSONInputTranslator)
+	spirit.RegisterInputTranslator(jsonTranslatorInURN, NewJSONInputTranslator)
 }
 
 func NewJSONInputTranslator(options spirit.Options) (translator spirit.InputTranslator, err error) {
@@ -66,7 +67,13 @@ func (p *JSONInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err
 			labels[k] = v
 		}
 
+		if jd.Id == "" {
+			deliverId, _ := uuid.NewV4()
+			jd.Id = deliverId.String()
+		}
+
 		delivery := &JSONDelivery{
+			urn:       jd.URN,
 			id:        jd.Id,
 			payload:   &jp,
 			labels:    labels,

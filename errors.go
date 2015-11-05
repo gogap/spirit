@@ -90,7 +90,16 @@ var (
 	ErrSpiritNotBuild         = errors.New("spirit not build")
 	ErrSpiritActorURNNotExist = errors.New("spirit actor urn not exist")
 
-	ErrActorNotExist = errors.New("actor not exist")
+	ErrActorComponentNotExist        = errors.New("actor:component not exist")
+	ErrActorInBoxNotExist            = errors.New("actor:inbox not exist")
+	ErrActorReceiverNotExist         = errors.New("actor:receiver not exist")
+	ErrActorInputTranslatorNotExist  = errors.New("actor:input_translator not exist")
+	ErrActorOutputTranslatorNotExist = errors.New("actor:output_translator not exist")
+	ErrActorReaderPoolNotExist       = errors.New("actor:reader_pool not exist")
+	ErrActorWriterNotExist           = errors.New("actor:writer not exist")
+	ErrActorOutboxNotExist           = errors.New("actor:outbox not exist")
+	ErrActorLabelMatcerNotExist      = errors.New("actor:label_matcher not exist")
+	ErrActorSenderNotExist           = errors.New("actor:sender not exist")
 )
 
 const SPIRIT_ERR_NS = "SPIRIT"

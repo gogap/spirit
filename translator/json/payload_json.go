@@ -34,6 +34,9 @@ func (p JSONPayload) SetData(data interface{}) (err error) {
 
 func (p JSONPayload) GetError() (err error) {
 	v, _ := p["error"]
+	if v == nil {
+		return
+	}
 	err = v.(error)
 	return
 }

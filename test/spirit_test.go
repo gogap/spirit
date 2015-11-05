@@ -40,11 +40,11 @@ var (
         }],
         "outboxes": [{
             "name": "test",
-            "senders": [{
+            "sender": {
                 "name": "test",
                 "translator": "test",
                 "writer_pool": "test"
-            }]
+            }
         }]
     }],
     "reader_pools": [{

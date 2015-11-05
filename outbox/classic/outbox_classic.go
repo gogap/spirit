@@ -22,9 +22,6 @@ type ClassicOutbox struct {
 	statusLocker sync.Mutex
 	status       spirit.Status
 
-	senders    []spirit.Sender
-	senderLock sync.Mutex
-
 	deliveriesChan chan []spirit.Delivery
 
 	conf ClassicOutboxConfig
@@ -65,24 +62,6 @@ func (p *ClassicOutbox) Start() (err error) {
 
 	p.status = spirit.StatusRunning
 
-	for _, sender := range p.senders {
-		go func(sender spirit.Sender) {
-			if sender.Status() == spirit.StatusStopped {
-				if err = sender.Start(); err != nil {
-					spirit.Logger().WithField("actor", "outbox").
-						WithField("urn", outboxURN).
-						WithField("event", "start sender").
-						Errorln(err)
-				}
-
-				spirit.Logger().WithField("actor", "outbox").
-					WithField("urn", outboxURN).
-					WithField("event", "start sender").
-					Debugln("sender started")
-			}
-		}(sender)
-	}
-
 	spirit.Logger().WithField("actor", "outbox").
 		WithField("urn", outboxURN).
 		WithField("event", "start").
@@ -122,21 +101,6 @@ func (p *ClassicOutbox) Status() (status spirit.Status) {
 
 func (p *ClassicOutbox) Labels() (labels spirit.Labels) {
 	labels = p.conf.Labels
-	return
-}
-
-func (p *ClassicOutbox) AddSender(sender spirit.Sender) (err error) {
-	p.senderLock.Lock()
-	defer p.senderLock.Unlock()
-
-	sender.SetDeliveryGetter(p)
-	p.senders = append(p.senders, sender)
-
-	spirit.Logger().WithField("actor", "outbox").
-		WithField("urn", outboxURN).
-		WithField("event", "add sender").
-		Debugln("sender added")
-
 	return
 }
 

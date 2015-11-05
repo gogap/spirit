@@ -8,12 +8,12 @@ type ActorConfig struct {
 
 type WriterPoolActorConfig struct {
 	ActorConfig
-	Writer ActorConfig `json:"writer"`
+	Writer *ActorConfig `json:"writer"`
 }
 
 type ReaderPoolActorConfig struct {
 	ActorConfig
-	Reader ActorConfig `json:"reader"`
+	Reader *ActorConfig `json:"reader"`
 }
 
 type ComposeReceiverConfig struct {
@@ -34,8 +34,8 @@ type ComposeInboxConfig struct {
 }
 
 type ComposeOutboxConfig struct {
-	Name    string                `json:"name"`
-	Senders []ComposeSenderConfig `json:"senders"`
+	Name   string              `json:"name"`
+	Sender ComposeSenderConfig `json:"sender"`
 }
 
 type ComposeLabelMatchConfig struct {
@@ -120,20 +120,22 @@ func (p *SpiritConfig) Validate() (err error) {
 			}
 			actorNames[actorTypedName(ActorReaderPool, pool.Name)] = true
 
-			writerDupCheck := map[string]bool{}
-			if _, exist := newWriterFuncs[pool.Writer.URN]; !exist {
-				err = ErrWriterURNNotExist
-				return
-			}
+			if pool.Writer != nil {
+				writerDupCheck := map[string]bool{}
+				if _, exist := newWriterFuncs[pool.Writer.URN]; !exist {
+					err = ErrWriterURNNotExist
+					return
+				}
 
-			if _, exist := writerDupCheck[pool.Writer.Name]; exist {
-				err = ErrWriterNameDuplicate
-				return
-			} else {
-				writerDupCheck[pool.Writer.Name] = true
-			}
+				if _, exist := writerDupCheck[pool.Writer.Name]; exist {
+					err = ErrWriterNameDuplicate
+					return
+				} else {
+					writerDupCheck[pool.Writer.Name] = true
+				}
 
-			actorNames[actorTypedName(ActorWriter, pool.Writer.Name)] = true
+				actorNames[actorTypedName(ActorWriter, pool.Writer.Name)] = true
+			}
 			actorNames[actorTypedName(ActorWriterPool, pool.Name)] = true
 		}
 	}
@@ -296,64 +298,66 @@ func (p *SpiritConfig) Validate() (err error) {
 	for _, router := range p.Compose {
 		for _, compName := range router.Components {
 			if _, exist := actorNames[actorTypedName(ActorComponent, compName)]; !exist {
-				err = ErrActorNotExist
+				err = ErrActorComponentNotExist
 				return
 			}
 		}
 
 		for _, inbox := range router.Inboxes {
 			if _, exist := actorNames[actorTypedName(ActorInbox, inbox.Name)]; !exist {
-				err = ErrActorNotExist
+				err = ErrActorInBoxNotExist
 				return
 			}
 
 			for _, receiver := range inbox.Receivers {
 				if _, exist := actorNames[actorTypedName(ActorReceiver, receiver.Name)]; !exist {
-					err = ErrActorNotExist
+					err = ErrActorReceiverNotExist
 					return
 				}
 
 				if _, exist := actorNames[actorTypedName(ActorInputTranslator, receiver.Translator)]; !exist {
-					err = ErrActorNotExist
+					err = ErrActorInputTranslatorNotExist
 					return
 				}
 
-				if _, exist := actorNames[actorTypedName(ActorReaderPool, receiver.ReaderPool)]; !exist {
-					err = ErrActorNotExist
-					return
+				if receiver.ReaderPool != "" {
+					if _, exist := actorNames[actorTypedName(ActorReaderPool, receiver.ReaderPool)]; !exist {
+						err = ErrActorReaderPoolNotExist
+						return
+					}
 				}
 			}
 		}
 
 		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, router.LabelMatchers.Component)]; !exist {
-			err = ErrActorNotExist
+			err = ErrActorLabelMatcerNotExist
 			return
 		}
 
 		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, router.LabelMatchers.Outbox)]; !exist {
-			err = ErrActorNotExist
+			err = ErrActorLabelMatcerNotExist
 			return
 		}
 
 		for _, outbox := range router.Outboxes {
 			if _, exist := actorNames[actorTypedName(ActorOutbox, outbox.Name)]; !exist {
-				err = ErrActorNotExist
+				err = ErrActorOutboxNotExist
 				return
 			}
-			for _, sender := range outbox.Senders {
-				if _, exist := actorNames[actorTypedName(ActorSender, sender.Name)]; !exist {
-					err = ErrActorNotExist
-					return
-				}
-				if _, exist := actorNames[actorTypedName(ActorOutputTranslator, sender.Translator)]; !exist {
-					err = ErrActorNotExist
-					return
-				}
 
-				if _, exist := actorNames[actorTypedName(ActorWriterPool, sender.WriterPool)]; !exist {
-					err = ErrActorNotExist
-					return
-				}
+			if _, exist := actorNames[actorTypedName(ActorSender, outbox.Sender.Name)]; !exist {
+				err = ErrActorSenderNotExist
+				return
+			}
+
+			if _, exist := actorNames[actorTypedName(ActorOutputTranslator, outbox.Sender.Translator)]; !exist {
+				err = ErrActorOutputTranslatorNotExist
+				return
+			}
+
+			if _, exist := actorNames[actorTypedName(ActorWriterPool, outbox.Sender.WriterPool)]; !exist {
+				err = ErrActorWriterNotExist
+				return
 			}
 		}
 	}
