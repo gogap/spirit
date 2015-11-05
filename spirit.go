@@ -524,16 +524,16 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 }
 
 func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) {
-	for _, router := range compose {
-		routerInstance := p.routers[router.Name]
-		for _, compName := range router.Components {
+	for _, composeObj := range compose {
+		routerInstance := p.routers[composeObj.Router]
+		for _, compName := range composeObj.Components {
 			componentInstances := p.components[compName]
 			for _, componentInstance := range componentInstances {
 				routerInstance.AddComponent(compName, componentInstance)
 			}
 		}
 
-		for _, inbox := range router.Inboxes {
+		for _, inbox := range composeObj.Inboxes {
 			inboxInstance := p.inboxes[inbox.Name]
 			routerInstance.AddInbox(inboxInstance)
 
@@ -569,13 +569,13 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 			}
 		}
 
-		componentlabelMatcher := p.labelMatchers[router.LabelMatchers.Component]
+		componentlabelMatcher := p.labelMatchers[composeObj.LabelMatchers.Component]
 		routerInstance.SetComponentLabelMatcher(componentlabelMatcher)
 
-		outboxLabelMatcher := p.labelMatchers[router.LabelMatchers.Outbox]
+		outboxLabelMatcher := p.labelMatchers[composeObj.LabelMatchers.Outbox]
 		routerInstance.SetOutboxLabelMatcher(outboxLabelMatcher)
 
-		for _, outbox := range router.Outboxes {
+		for _, outbox := range composeObj.Outboxes {
 			outboxInstance := p.outboxes[outbox.Name]
 			routerInstance.AddOutbox(outboxInstance)
 

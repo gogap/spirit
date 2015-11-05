@@ -45,6 +45,7 @@ type ComposeLabelMatchConfig struct {
 
 type ComposeRouterConfig struct {
 	Name          string                  `json:"name"`
+	Router        string                  `json:"router"`
 	LabelMatchers ComposeLabelMatchConfig `json:"label_matchers"`
 	Components    []string                `json:"components"`
 	Inboxes       []ComposeInboxConfig    `json:"inboxes"`
@@ -295,15 +296,25 @@ func (p *SpiritConfig) Validate() (err error) {
 		}
 	}
 
-	for _, router := range p.Compose {
-		for _, compName := range router.Components {
+	for _, composeObj := range p.Compose {
+		if composeObj.Name == "" {
+			err = ErrComposeNameIsEmpty
+			return
+		}
+
+		if _, exist := actorNames[actorTypedName(ActorRouter, composeObj.Router)]; !exist {
+			err = ErrActorRouterNotExist
+			return
+		}
+
+		for _, compName := range composeObj.Components {
 			if _, exist := actorNames[actorTypedName(ActorComponent, compName)]; !exist {
 				err = ErrActorComponentNotExist
 				return
 			}
 		}
 
-		for _, inbox := range router.Inboxes {
+		for _, inbox := range composeObj.Inboxes {
 			if _, exist := actorNames[actorTypedName(ActorInbox, inbox.Name)]; !exist {
 				err = ErrActorInBoxNotExist
 				return
@@ -329,17 +340,17 @@ func (p *SpiritConfig) Validate() (err error) {
 			}
 		}
 
-		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, router.LabelMatchers.Component)]; !exist {
+		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, composeObj.LabelMatchers.Component)]; !exist {
 			err = ErrActorLabelMatcerNotExist
 			return
 		}
 
-		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, router.LabelMatchers.Outbox)]; !exist {
+		if _, exist := actorNames[actorTypedName(ActorLabelMatcher, composeObj.LabelMatchers.Outbox)]; !exist {
 			err = ErrActorLabelMatcerNotExist
 			return
 		}
 
-		for _, outbox := range router.Outboxes {
+		for _, outbox := range composeObj.Outboxes {
 			if _, exist := actorNames[actorTypedName(ActorOutbox, outbox.Name)]; !exist {
 				err = ErrActorOutboxNotExist
 				return

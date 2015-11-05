@@ -90,6 +90,7 @@ var (
 	ErrSpiritNotBuild         = errors.New("spirit not build")
 	ErrSpiritActorURNNotExist = errors.New("spirit actor urn not exist")
 
+	ErrActorRouterNotExist           = errors.New("actor:router not exist")
 	ErrActorComponentNotExist        = errors.New("actor:component not exist")
 	ErrActorInBoxNotExist            = errors.New("actor:inbox not exist")
 	ErrActorReceiverNotExist         = errors.New("actor:receiver not exist")
@@ -100,6 +101,8 @@ var (
 	ErrActorOutboxNotExist           = errors.New("actor:outbox not exist")
 	ErrActorLabelMatcerNotExist      = errors.New("actor:label_matcher not exist")
 	ErrActorSenderNotExist           = errors.New("actor:sender not exist")
+
+	ErrComposeNameIsEmpty = errors.New("spirit compose name is empty")
 )
 
 const SPIRIT_ERR_NS = "SPIRIT"

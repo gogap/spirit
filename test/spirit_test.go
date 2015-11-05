@@ -24,7 +24,8 @@ import (
 var (
 	testJSONConf = `{
     "compose": [{
-        "name": "test",
+        "name": "ping_to_program",
+        "router":"test",
         "label_matchers": {
             "component": "test",
             "outbox": "test"
