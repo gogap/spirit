@@ -1,4 +1,4 @@
-package util
+package base64
 
 import (
 	"encoding/base64"
@@ -11,7 +11,7 @@ import (
 var _ spirit.Component = new(Base64Component)
 
 const (
-	base64URN = "urn:spirit:component:util:base64"
+	base64URN = "urn:spirit:component:encoding:base64"
 )
 
 var (

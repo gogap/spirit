@@ -1,4 +1,4 @@
-package util
+package base64
 
 import (
 	"testing"

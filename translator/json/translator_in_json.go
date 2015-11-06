@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/nu7hatch/gouuid"
 	"io"
+	"io/ioutil"
+	"time"
 
 	"github.com/gogap/spirit"
 )
@@ -15,7 +17,9 @@ const (
 var _ spirit.InputTranslator = new(JSONInputTranslator)
 
 type JSONInputTranslatorConfig struct {
-	Labels spirit.Labels `json:"labels"`
+	DataOnly bool          `json:"data_only"`
+	Labels   spirit.Labels `json:"labels"`
+	BindURN  string        `json:"bind_urn"`
 }
 
 type JSONInputTranslator struct {
@@ -39,7 +43,30 @@ func NewJSONInputTranslator(options spirit.Options) (translator spirit.InputTran
 	return
 }
 
-func (p *JSONInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err error) {
+func (p *JSONInputTranslator) inDataOnly(r io.Reader) (deliveries []spirit.Delivery, err error) {
+	var data []byte
+
+	if data, err = ioutil.ReadAll(r); err != nil {
+		return
+	}
+
+	jp := JSONPayload{"data": data}
+
+	deliverId, _ := uuid.NewV4()
+
+	delivery := &JSONDelivery{
+		urn:       p.conf.BindURN,
+		id:        deliverId.String(),
+		payload:   &jp,
+		labels:    p.conf.Labels,
+		timestamp: time.Now(),
+	}
+
+	deliveries = append(deliveries, delivery)
+
+	return
+}
+func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.Delivery, err error) {
 	decoder := json.NewDecoder(r)
 
 	var tmpDeliveries []spirit.Delivery
@@ -88,4 +115,11 @@ func (p *JSONInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err
 	}
 
 	return
+}
+
+func (p *JSONInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err error) {
+	if p.conf.DataOnly {
+		return p.inDataOnly(r)
+	}
+	return p.inDeliveryData(r)
 }

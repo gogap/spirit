@@ -13,7 +13,12 @@ const (
 
 var _ spirit.OutputTranslator = new(JSONOutputTranslator)
 
+type JSONOutputTranslatorConfig struct {
+	DataOnly bool `json:"data_only"`
+}
+
 type JSONOutputTranslator struct {
+	conf JSONOutputTranslatorConfig
 }
 
 func init() {
@@ -21,11 +26,43 @@ func init() {
 }
 
 func NewJSONOutputTranslator(options spirit.Options) (translator spirit.OutputTranslator, err error) {
-	translator = &JSONOutputTranslator{}
+	conf := JSONOutputTranslatorConfig{}
+
+	if err = options.ToObject(&conf); err != nil {
+		return
+	}
+
+	translator = &JSONOutputTranslator{
+		conf: conf,
+	}
 	return
 }
 
-func (p *JSONOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+func (p *JSONOutputTranslator) outDataOnly(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+
+	var data interface{}
+	if data, err = delivery.Payload().GetData(); err != nil {
+		return
+	}
+
+	switch d := data.(type) {
+	case []byte:
+		{
+			_, err = w.Write(d)
+		}
+	case string:
+		{
+			_, err = w.Write([]byte(d))
+		}
+	default:
+		encode := json.NewEncoder(w)
+		err = encode.Encode(data)
+	}
+
+	return
+}
+
+func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit.Delivery) (err error) {
 
 	var data interface{}
 	if data, err = delivery.Payload().GetData(); err != nil {
@@ -52,4 +89,13 @@ func (p *JSONOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (
 	err = encoder.Encode(jd)
 
 	return
+}
+
+func (p *JSONOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+
+	if p.conf.DataOnly {
+		return p.outDataOnly(w, delivery)
+	}
+
+	return p.outDeliveryData(w, delivery)
 }

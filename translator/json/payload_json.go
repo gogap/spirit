@@ -18,7 +18,11 @@ type JSONPayload map[string]interface{}
 
 func (p JSONPayload) Id() (id string) {
 	v, _ := p["id"]
-	id = v.(string)
+	if v == nil {
+		id = ""
+	} else {
+		id = v.(string)
+	}
 	return
 }
 

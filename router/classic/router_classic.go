@@ -317,6 +317,10 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 	tmpHandlers := []spirit.ComponentHandler{}
 
 	for _, urn := range urns {
+		if urn == "" {
+			continue
+		}
+
 		componentName := ""
 		componentURN := ""
 		componentHandlerURN := ""

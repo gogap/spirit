@@ -5,12 +5,13 @@ import (
 
 	"github.com/gogap/spirit"
 
-	"github.com/gogap/spirit/inbox/classic"
+	classicInbox "github.com/gogap/spirit/inbox/classic"
+	"github.com/gogap/spirit/io/pool"
 	"github.com/gogap/spirit/io/std"
 	"github.com/gogap/spirit/receiver/polling"
 	"github.com/gogap/spirit/translator/line"
 
-	"github.com/gogap/spirit/component/util"
+	"github.com/gogap/spirit/component/encoding/base64"
 )
 
 func TestRouteToHandler(t *testing.T) {
@@ -30,10 +31,12 @@ func TestRouteToHandler(t *testing.T) {
 		"delim": "\n",
 	}
 
-	receiver.SetNewReaderFunc(std.NewStdout, readerOpts)
+	readerPool, _ := pool.NewClassicReaderPool(nil)
+
+	readerPool.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = line.NewLineInputTranslator(spirit.Options{"urn": "test@urn:spirit:util:base64#encode"}); err != nil {
+	if translator, err = line.NewLineInputTranslator(spirit.Options{"bind_urn": "test@urn:spirit:component:encoding:base64#encode"}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}
@@ -55,13 +58,8 @@ func TestRouteToHandler(t *testing.T) {
 	}
 
 	var box spirit.Inbox
-	if box, err = classic.NewClassicInbox(inboxOpts); err != nil {
+	if box, err = classicInbox.NewClassicInbox(inboxOpts); err != nil {
 		t.Errorf("create new classic inbox error, %s", err.Error())
-		return
-	}
-
-	if err = box.AddReceiver(receiver); err != nil {
-		t.Errorf("add receiver to inbox error, %s", err.Error())
 		return
 	}
 
@@ -89,7 +87,7 @@ func TestRouteToHandler(t *testing.T) {
 	}
 
 	var component spirit.Component
-	if component, err = util.NewBase64Component(spirit.Options{}); err != nil {
+	if component, err = base64.NewBase64Component(spirit.Options{}); err != nil {
 		t.Errorf("create base64 component error: %s", err.Error())
 		return
 	}

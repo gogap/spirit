@@ -9,7 +9,7 @@ import (
 )
 
 import (
-	_ "github.com/gogap/spirit/component/util"
+	_ "github.com/gogap/spirit/component/encoding/base64"
 	_ "github.com/gogap/spirit/inbox/classic"
 	_ "github.com/gogap/spirit/io/pool"
 	_ "github.com/gogap/spirit/io/std"
@@ -87,7 +87,7 @@ var (
         "name": "test",
         "urn": "urn:spirit:translator:in:line",
         "options": {
-            "bind_urn": "urn:spirit:component:util:base64#encode|urn:spirit:component:util:base64#decode",
+            "bind_urn": "urn:spirit:component:encoding:base64#encode|urn:spirit:component:encoding:base64#decode",
             "labels": {
                 "version": "0.0.1"
             }
@@ -141,7 +141,7 @@ var (
     }],
     "components": [{
         "name": "_std_base64",
-        "urn": "urn:spirit:component:util:base64",
+        "urn": "urn:spirit:component:encoding:base64",
         "options": {}
     }],
     "senders": [{
