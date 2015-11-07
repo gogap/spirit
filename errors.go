@@ -40,12 +40,13 @@ var (
 	ErrRouterDeliveryURNFormatError          = errors.New("delivery urn format error")
 	ErrRouterOnlyOneGlobalComponentAllowed   = errors.New("only one same urn global component allowed")
 
-	ErrComponentURNNotExist    = errors.New("component urn not exist")
-	ErrComponentNameDuplicate  = errors.New("component name duplicate")
-	ErrComponentNameIsEmpty    = errors.New("component name is empty")
-	ErrComponentURNIsEmpty     = errors.New("component URN is empty")
-	ErrComponentNotExist       = errors.New("component not exist")
-	ErrComponentHandlerNotExit = errors.New("component handler not exist")
+	ErrComponentURNNotExist       = errors.New("component urn not exist")
+	ErrComponentNameDuplicate     = errors.New("component name duplicate")
+	ErrComponentNameIsEmpty       = errors.New("component name is empty")
+	ErrComponentURNIsEmpty        = errors.New("component URN is empty")
+	ErrComponentNotExist          = errors.New("component not exist")
+	ErrComponentHandlerNotExit    = errors.New("component handler not exist")
+	ErrComponentDidNotHaveHandler = errors.New("component did not have handler")
 
 	ErrDeliveryURNIsEmpty = errors.New("delivery urn is empty")
 

@@ -1,6 +1,7 @@
 package classic
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -9,7 +10,7 @@ import (
 )
 
 const (
-	classicReceiverURN = "urn:spirit:router:classic"
+	classicRouterURN = "urn:spirit:router:classic"
 )
 
 var _ spirit.Router = new(ClassicRouter)
@@ -26,6 +27,9 @@ type ClassicRouter struct {
 
 	components map[string][]spirit.Component
 
+	componentHandlers map[spirit.Component]spirit.Handlers
+	componentLabels   map[spirit.Component]spirit.Labels
+
 	inboxesLocker   sync.Mutex
 	outboxesLocker  sync.Mutex
 	componentLocker sync.Mutex
@@ -38,7 +42,7 @@ type ClassicRouter struct {
 }
 
 func init() {
-	spirit.RegisterRouter(classicReceiverURN, NewClassicRouter)
+	spirit.RegisterRouter(classicRouterURN, NewClassicRouter)
 }
 
 func NewClassicRouter(options spirit.Options) (box spirit.Router, err error) {
@@ -48,8 +52,10 @@ func NewClassicRouter(options spirit.Options) (box spirit.Router, err error) {
 	}
 
 	box = &ClassicRouter{
-		conf:       conf,
-		components: make(map[string][]spirit.Component),
+		conf:              conf,
+		components:        make(map[string][]spirit.Component),
+		componentHandlers: make(map[spirit.Component]spirit.Handlers),
+		componentLabels:   make(map[spirit.Component]spirit.Labels),
 	}
 
 	return
@@ -245,6 +251,14 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 		return
 	}
 
+	handlers := detectComponentHandlers(component)
+	if handlers == nil || len(handlers) == 0 {
+		err = spirit.ErrComponentDidNotHaveHandler
+		return
+	}
+
+	labels := detectComponentLabels(component)
+
 	p.componentLocker.Lock()
 	defer p.componentLocker.Unlock()
 
@@ -257,8 +271,11 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 
 	if comps, exist := p.components[namedURN]; exist {
 		for _, comp := range comps {
+
+			compLabels := detectComponentLabels(comp)
+
 			if comp == component ||
-				p.componentLabelMatcher.Match(comp.Labels(), component.Labels()) {
+				p.componentLabelMatcher.Match(compLabels, labels) {
 				err = spirit.ErrRouterAlreadyHaveThisComponent
 				return
 			}
@@ -278,7 +295,92 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 		p.components[component.URN()] = p.components[namedURN]
 	}
 
+	if _, exist := p.componentHandlers[component]; !exist {
+		p.componentHandlers[component] = handlers
+	} else {
+		spirit.Logger().WithField("actor", spirit.ActorRouter).
+			WithField("urn", classicRouterURN).
+			WithField("event", "bind component handlers").
+			WithField("component_urn", component.URN()).
+			Warnln("component handler already exist")
+	}
+
+	if _, exist := p.componentLabels[component]; !exist {
+		p.componentLabels[component] = labels
+	} else {
+		spirit.Logger().WithField("actor", spirit.ActorRouter).
+			WithField("urn", classicRouterURN).
+			WithField("event", "bind component labels").
+			WithField("component_urn", component.URN()).
+			Warnln("component label already exist")
+	}
+
 	return
+}
+
+func detectComponentHandlers(component spirit.Component) (handlers spirit.Handlers) {
+	compValue := reflect.ValueOf(component)
+	handlers = make(spirit.Handlers)
+
+	switch handlerLister := compValue.Interface().(type) {
+	case spirit.HandlerLister:
+		{
+
+			for name, funcV := range handlerLister.Handlers() {
+				handlers[name] = funcV
+			}
+
+			spirit.Logger().WithField("actor", spirit.ActorRouter).
+				WithField("urn", classicRouterURN).
+				WithField("event", "bind component handlers").
+				WithField("component_urn", component.URN()).
+				Debugln("bind handler's by Handlers()")
+		}
+	default:
+		compType := reflect.TypeOf(component)
+		for i := 0; i < compType.NumMethod(); i++ {
+			if compValue.Method(i).Type().ConvertibleTo(reflect.TypeOf(new(spirit.ComponentHandler)).Elem()) {
+				handler := compValue.Method(i).Convert(reflect.TypeOf(new(spirit.ComponentHandler)).Elem())
+				handlers[compType.Method(i).Name] = handler.Interface().(spirit.ComponentHandler)
+			}
+		}
+
+		spirit.Logger().WithField("actor", spirit.ActorRouter).
+			WithField("urn", classicRouterURN).
+			WithField("event", "bind component handlers").
+			WithField("component_urn", component.URN()).
+			Debugln("bind handler's by Reflact")
+	}
+
+	return
+}
+
+func detectComponentLabels(component spirit.Component) spirit.Labels {
+	compValue := reflect.ValueOf(component)
+	labels := make(spirit.Labels)
+
+	switch labelLister := compValue.Interface().(type) {
+	case spirit.LabelLister:
+		{
+			for name, funcV := range labelLister.Labels() {
+				labels[name] = funcV
+			}
+
+			spirit.Logger().WithField("actor", spirit.ActorRouter).
+				WithField("urn", classicRouterURN).
+				WithField("event", "bind component labels").
+				WithField("component_urn", component.URN()).
+				Debugln("bind label's by Labels()")
+		}
+	default:
+		spirit.Logger().WithField("actor", spirit.ActorRouter).
+			WithField("urn", classicRouterURN).
+			WithField("event", "bind component labels").
+			WithField("component_urn", component.URN()).
+			Debugln("label not exist")
+	}
+
+	return labels
 }
 
 func (p *ClassicRouter) RemoveComponent(urn string) (err error) {
@@ -289,7 +391,11 @@ func (p *ClassicRouter) RemoveComponent(urn string) (err error) {
 	p.componentLocker.Lock()
 	defer p.componentLocker.Unlock()
 
-	if _, exist := p.components[urn]; exist {
+	if components, exist := p.components[urn]; exist {
+		for _, component := range components {
+			delete(p.componentHandlers, component)
+			delete(p.componentLabels, component)
+		}
 		delete(p.components, urn)
 	}
 
@@ -312,93 +418,98 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 		}
 	}
 
-	urns := strings.Split(strURNs, "|")
+	var urns = []string{}
+	var tmpHandlers = []spirit.ComponentHandler{}
 
-	tmpHandlers := []spirit.ComponentHandler{}
+	if strURNs != "" {
+		urns = strings.Split(strURNs, "|")
 
-	for _, urn := range urns {
-		if urn == "" {
-			continue
-		}
+		for _, urn := range urns {
+			componentName := ""
+			componentURN := ""
+			componentHandlerURN := ""
+			componentIndex := ""
 
-		componentName := ""
-		componentURN := ""
-		componentHandlerURN := ""
-		componentIndex := ""
-
-		regURN := regexp.MustCompile("(.*)@(.*)#(.*)")
-		regMatched := regURN.FindAllStringSubmatch(urn, -1)
-
-		if len(regMatched) == 1 &&
-			len(regMatched[0]) == 4 {
-			componentName = regMatched[0][1]
-			componentURN = regMatched[0][2]
-			componentHandlerURN = regMatched[0][3]
-
-			componentIndex = componentName + "@" + componentURN
-
-		} else {
-			regURN = regexp.MustCompile("(.*)#(.*)")
-			regMatched = regURN.FindAllStringSubmatch(urn, -1)
+			regURN := regexp.MustCompile("(.*)@(.*)#(.*)")
+			regMatched := regURN.FindAllStringSubmatch(urn, -1)
 
 			if len(regMatched) == 1 &&
-				len(regMatched[0]) == 3 {
-				componentURN = regMatched[0][1]
-				componentHandlerURN = regMatched[0][2]
+				len(regMatched[0]) == 4 {
+				componentName = regMatched[0][1]
+				componentURN = regMatched[0][2]
+				componentHandlerURN = regMatched[0][3]
 
-				componentIndex = componentURN
-			}
-		}
+				componentIndex = componentName + "@" + componentURN
 
-		if componentIndex == "" {
-			err = spirit.ErrRouterDeliveryURNFormatError
-			return
-		}
-
-		var components []spirit.Component
-		var exist bool
-
-		if components, exist = p.components[componentIndex]; !exist {
-			if !p.conf.AllowNoComponent {
-				err = spirit.ErrRouterComponentNotExist
-				return
-			}
-			continue
-		}
-
-		lenComps := len(components)
-
-		if lenComps == 0 {
-			if !p.conf.AllowNoComponent {
-				err = spirit.ErrRouterToComponentHandlerFailed
-				return
-			}
-			continue
-		}
-
-		if p.componentLabelMatcher == nil {
-			if lenComps > 1 {
-				err = spirit.ErrRouterDidNotHaveComponentLabelMatcher
-				return
-			}
-
-			if h, exist := components[0].Handlers()[componentHandlerURN]; !exist {
-				err = spirit.ErrComponentHandlerNotExit
-				return
 			} else {
-				tmpHandlers = append(tmpHandlers, h)
+				regURN = regexp.MustCompile("(.*)#(.*)")
+				regMatched = regURN.FindAllStringSubmatch(urn, -1)
+
+				if len(regMatched) == 1 &&
+					len(regMatched[0]) == 3 {
+					componentURN = regMatched[0][1]
+					componentHandlerURN = regMatched[0][2]
+
+					componentIndex = componentURN
+				}
+			}
+
+			if componentIndex == "" {
+				err = spirit.ErrRouterDeliveryURNFormatError
+				return
+			}
+
+			var components []spirit.Component
+			var exist bool
+
+			if components, exist = p.components[componentIndex]; !exist {
+				if !p.conf.AllowNoComponent {
+					err = spirit.ErrRouterComponentNotExist
+					return
+				}
 				continue
 			}
-		}
 
-		for _, component := range components {
-			if p.componentLabelMatcher.Match(delivery.Labels(), component.Labels()) {
-				if h, exist := component.Handlers()[componentHandlerURN]; !exist {
-					err = spirit.ErrComponentHandlerNotExit
+			lenComps := len(components)
+
+			if lenComps == 0 {
+				if !p.conf.AllowNoComponent {
+					err = spirit.ErrRouterToComponentHandlerFailed
 					return
-				} else {
-					tmpHandlers = append(tmpHandlers, h)
-					break
+				}
+				continue
+			}
+
+			if p.componentLabelMatcher == nil {
+				if lenComps > 1 {
+					err = spirit.ErrRouterDidNotHaveComponentLabelMatcher
+					return
+				}
+
+				component := components[0]
+
+				if componentHandlers, exist := p.componentHandlers[component]; exist {
+					if h, exist := componentHandlers[componentHandlerURN]; !exist {
+						err = spirit.ErrComponentHandlerNotExit
+						return
+					} else {
+						tmpHandlers = append(tmpHandlers, h)
+						continue
+					}
+				}
+			}
+
+			for _, component := range components {
+				if p.componentLabelMatcher.Match(delivery.Labels(), p.componentLabels[component]) {
+					if componentHandlers, exist := p.componentHandlers[component]; exist {
+						if h, exist := componentHandlers[componentHandlerURN]; !exist {
+							err = spirit.ErrComponentHandlerNotExit
+							return
+						} else {
+							tmpHandlers = append(tmpHandlers, h)
+							break
+						}
+					}
 				}
 			}
 		}

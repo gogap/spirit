@@ -4,6 +4,14 @@ import (
 	"sync"
 )
 
+type FuncLabels func() Labels
+
+const FuncLabelsName string = "Labels"
+
+type LabelLister interface {
+	Labels() Labels
+}
+
 type LabelMatcher interface {
 	Match(la Labels, lb Labels) (matched bool)
 }

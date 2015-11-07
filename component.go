@@ -10,14 +10,10 @@ type Handlers map[string]ComponentHandler
 
 type Component interface {
 	URN() string
-	Labels() Labels
-	Handlers() Handlers
 }
 
-type ServiceComponent interface {
-	StartStoper
-
-	Component
+type HandlerLister interface {
+	Handlers() Handlers
 }
 
 var (

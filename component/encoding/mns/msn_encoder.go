@@ -55,13 +55,6 @@ func (p *MNSEncodingComponent) Labels() spirit.Labels {
 	}
 }
 
-func (p *MNSEncodingComponent) Handlers() spirit.Handlers {
-	return spirit.Handlers{
-		"encode": p.Encode,
-		"decode": p.Decode,
-	}
-}
-
 func (p *MNSEncodingComponent) Encode(payload spirit.Payload) (result interface{}, err error) {
 	var vData interface{}
 	if vData, err = payload.GetData(); err != nil {
