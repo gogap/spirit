@@ -55,13 +55,22 @@ func (p *MNSEncodingComponent) Labels() spirit.Labels {
 	}
 }
 
+func (p *MNSEncodingComponent) Handlers() spirit.Handlers {
+	return spirit.Handlers{
+		"Encode": p.Encode,
+		"Decode": p.Decode,
+	}
+}
+
 func (p *MNSEncodingComponent) Encode(payload spirit.Payload) (result interface{}, err error) {
 	var vData interface{}
 	if vData, err = payload.GetData(); err != nil {
 		return
 	}
 
-	if reflect.TypeOf(vData).Kind() == reflect.Struct {
+	dataKind := reflect.TypeOf(vData).Kind()
+	if dataKind == reflect.Ptr ||
+		dataKind == reflect.Struct {
 		var data []byte
 		data, result = xml.Marshal(vData)
 		result = data
