@@ -57,8 +57,8 @@ func (p *MNSEncodingComponent) Labels() spirit.Labels {
 
 func (p *MNSEncodingComponent) Handlers() spirit.Handlers {
 	return spirit.Handlers{
-		"Encode": p.Encode,
-		"Decode": p.Decode,
+		"encode": p.Encode,
+		"decode": p.Decode,
 	}
 }
 
