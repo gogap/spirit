@@ -132,5 +132,13 @@ func (p *MNSReader) Read(data []byte) (n int, err error) {
 }
 
 func (p *MNSReader) Close() (err error) {
+	p.readLocker.Lock()
+	defer p.readLocker.Unlock()
+
+	if p.tmpReader != nil {
+		p.reading = false
+		p.tmpReader.Close()
+		p.tmpReader = nil
+	}
 	return
 }
