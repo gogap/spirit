@@ -49,7 +49,7 @@ func NewHookURNExpander(options spirit.Options) (expander spirit.URNExpander, er
 			if tmpl, err = template.New(hookURN).Parse(urnTemplate); err != nil {
 				return
 			}
-			tmpl = tmpl.Option("missingkey=error")
+			tmpl = tmpl.Option("missingkey=error").Delims("<?", "?>")
 			tmpTmpls[hookURN] = tmpl
 		}
 	}
