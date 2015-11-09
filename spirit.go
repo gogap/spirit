@@ -28,6 +28,7 @@ var (
 	ActorOutbox           ActorType = "outbox"
 	ActorReaderPool       ActorType = "reader_pool"
 	ActorWriterPool       ActorType = "writer_pool"
+	ActorURNExpander      ActorType = "urn_expander"
 )
 
 func Logger() *logrus.Logger {
@@ -69,6 +70,7 @@ type ClassicSpirit struct {
 	receivers         map[string]Receiver
 	senders           map[string]Sender
 	labelMatchers     map[string]LabelMatcher
+	urnExpanders      map[string]URNExpander
 	routers           map[string]Router
 	components        map[string][]Component
 }
@@ -84,6 +86,7 @@ func NewClassicSpirit() (s Spirit, err error) {
 		receivers:         make(map[string]Receiver),
 		senders:           make(map[string]Sender),
 		labelMatchers:     make(map[string]LabelMatcher),
+		urnExpanders:      make(map[string]URNExpander),
 		routers:           make(map[string]Router),
 		components:        make(map[string][]Component),
 	}, nil
@@ -464,6 +467,21 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 		p.labelMatchers[actorConf.Name] = actor.(LabelMatcher)
 	}
 
+	// urn expander
+	for _, actorConf := range conf.URNExpanders {
+		var actor interface{}
+		if actor, err = p.createActor(ActorURNExpander, actorConf); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "build").
+				WithField("actor_name", actorConf.Name).
+				WithField("actor_urn", actorConf.URN).
+				Error(err)
+
+			return
+		}
+		p.urnExpanders[actorConf.Name] = actor.(URNExpander)
+	}
+
 	// components
 	for _, actorConf := range conf.Components {
 		var actor interface{}
@@ -526,6 +544,14 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) {
 	for _, composeObj := range compose {
 		routerInstance := p.routers[composeObj.Router]
+
+		if composeObj.URNExpander != nil {
+			expander := p.urnExpanders[*composeObj.URNExpander]
+			if err = routerInstance.SetURNExpander(expander); err != nil {
+				return
+			}
+		}
+
 		for _, compName := range composeObj.Components {
 			componentInstances := p.components[compName]
 			for _, componentInstance := range componentInstances {
@@ -659,6 +685,10 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 	case ActorLabelMatcher:
 		{
 			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Options)
+		}
+	case ActorURNExpander:
+		{
+			actor, err = newURNExpanderFuncs[actorConf.URN](actorConf.Options)
 		}
 	case ActorComponent:
 		{

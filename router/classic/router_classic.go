@@ -39,6 +39,8 @@ type ClassicRouter struct {
 
 	outboxLabelMatcher    spirit.LabelMatcher
 	componentLabelMatcher spirit.LabelMatcher
+
+	urnExpander spirit.URNExpander
 }
 
 func init() {
@@ -410,6 +412,11 @@ func (p *ClassicRouter) Components() (components map[string][]spirit.Component) 
 
 func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []spirit.ComponentHandler, err error) {
 	strURNs := delivery.URN()
+	if p.urnExpander != nil {
+		if strURNs, err = p.urnExpander.Expand(delivery); err != nil {
+			return
+		}
+	}
 
 	if strURNs == "" {
 		if !p.conf.AllowNoComponent {
@@ -553,5 +560,10 @@ func (p *ClassicRouter) SetOutboxLabelMatcher(matcher spirit.LabelMatcher) (err 
 
 func (p *ClassicRouter) SetComponentLabelMatcher(matcher spirit.LabelMatcher) (err error) {
 	p.componentLabelMatcher = matcher
+	return
+}
+
+func (p *ClassicRouter) SetURNExpander(expander spirit.URNExpander) (err error) {
+	p.urnExpander = expander
 	return
 }

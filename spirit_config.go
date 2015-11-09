@@ -47,6 +47,7 @@ type ComposeRouterConfig struct {
 	Name          string                  `json:"name"`
 	Router        string                  `json:"router"`
 	LabelMatchers ComposeLabelMatchConfig `json:"label_matchers"`
+	URNExpander   *string                 `json:"urn_expander"`
 	Components    []string                `json:"components"`
 	Inboxes       []ComposeInboxConfig    `json:"inboxes"`
 	Outboxes      []ComposeOutboxConfig   `json:"outboxes"`
@@ -64,6 +65,7 @@ type SpiritConfig struct {
 	Routers           []ActorConfig           `json:"routers"`
 	Components        []ActorConfig           `json:"components"`
 	LabelMatchers     []ActorConfig           `json:"label_matchers"`
+	URNExpanders      []ActorConfig           `json:"urn_expanders"`
 
 	Compose []ComposeRouterConfig `json:"compose"`
 }
@@ -296,6 +298,25 @@ func (p *SpiritConfig) Validate() (err error) {
 		}
 	}
 
+	if p.URNExpanders != nil {
+		dupCheck := map[string]bool{}
+		for _, actor := range p.URNExpanders {
+			if _, exist := newURNExpanderFuncs[actor.URN]; !exist {
+				err = ErrURNExpanderURNNotExist
+				return
+			}
+
+			if _, exist := dupCheck[actor.Name]; exist {
+				err = ErrURNExpanderNameDuplicate
+				return
+			} else {
+				dupCheck[actor.Name] = true
+			}
+
+			actorNames[actorTypedName(ActorURNExpander, actor.Name)] = true
+		}
+	}
+
 	for _, composeObj := range p.Compose {
 		if composeObj.Name == "" {
 			err = ErrComposeNameIsEmpty
@@ -305,6 +326,13 @@ func (p *SpiritConfig) Validate() (err error) {
 		if _, exist := actorNames[actorTypedName(ActorRouter, composeObj.Router)]; !exist {
 			err = ErrActorRouterNotExist
 			return
+		}
+
+		if composeObj.URNExpander != nil {
+			if _, exist := actorNames[actorTypedName(ActorURNExpander, *composeObj.URNExpander)]; !exist {
+				err = ErrActorURNExpanderNotExist
+				return
+			}
 		}
 
 		for _, compName := range composeObj.Components {

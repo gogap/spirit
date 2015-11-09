@@ -36,7 +36,7 @@ var (
 	ErrRouterToComponentFailed               = errors.New("could not router to component")
 	ErrRouterComponentNotExist               = errors.New("router component not exist")
 	ErrRouterDidNotHaveComponentLabelMatcher = errors.New("could not router to component")
-	ErrRouterHandlerCountNotEqualURNsCount   = errors.New("handler's count is not equal delivery urn's count")
+	ErrRouterHandlerCountNotEqualURNsCount   = errors.New("handler's count is not equal delivery urn's count, some component may not add")
 	ErrRouterDeliveryURNFormatError          = errors.New("delivery urn format error")
 	ErrRouterOnlyOneGlobalComponentAllowed   = errors.New("only one same urn global component allowed")
 
@@ -79,6 +79,9 @@ var (
 	ErrLabelMatcherURNNotExist   = errors.New("label matcher urn not exist")
 	ErrLabelMatcherNameDuplicate = errors.New("label matcher name duplicate")
 
+	ErrURNExpanderURNNotExist   = errors.New("urn expander urn not exist")
+	ErrURNExpanderNameDuplicate = errors.New("urn expander name duplicate")
+
 	ErrInputTranslatorURNNotExist   = errors.New("input translator urn not exist")
 	ErrInputTranslatorNameDuplicate = errors.New("input translator name duplicate")
 
@@ -102,6 +105,7 @@ var (
 	ErrActorOutboxNotExist           = errors.New("actor:outbox not exist")
 	ErrActorLabelMatcerNotExist      = errors.New("actor:label_matcher not exist")
 	ErrActorSenderNotExist           = errors.New("actor:sender not exist")
+	ErrActorURNExpanderNotExist      = errors.New("actor:urn_expander not exist")
 
 	ErrComposeNameIsEmpty = errors.New("spirit compose name is empty")
 )
