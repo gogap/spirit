@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	ErrHookURNExpanderTemplateDuplicate = errors.New("hook-urn-expander template dumplicate")
+	ErrHookURNExpanderTemplateDuplicate = errors.New("hook-urn-expander template duplicate")
 )
 
 type HookURNExpanderConfig struct {
