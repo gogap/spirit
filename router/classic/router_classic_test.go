@@ -9,7 +9,7 @@ import (
 	"github.com/gogap/spirit/io/pool"
 	"github.com/gogap/spirit/io/std"
 	"github.com/gogap/spirit/receiver/polling"
-	"github.com/gogap/spirit/translator/line"
+	"github.com/gogap/spirit/translator/lines"
 
 	"github.com/gogap/spirit/component/encoding/base64"
 )
@@ -36,7 +36,7 @@ func TestRouteToHandler(t *testing.T) {
 	readerPool.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = line.NewLineInputTranslator(spirit.Options{"bind_urn": "test@urn:spirit:component:encoding:base64#encode"}); err != nil {
+	if translator, err = lines.NewLinesInputTranslator(spirit.Options{"bind_urn": "test@urn:spirit:component:encoding:base64#encode"}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}

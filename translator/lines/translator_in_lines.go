@@ -1,4 +1,4 @@
-package line
+package lines
 
 import (
 	"bufio"
@@ -9,46 +9,46 @@ import (
 )
 
 const (
-	lineTranslatorInURN = "urn:spirit:translator:in:line"
+	linesTranslatorInURN = "urn:spirit:translator:in:lines"
 )
 
-var _ spirit.InputTranslator = new(LineInputTranslator)
+var _ spirit.InputTranslator = new(LinesInputTranslator)
 
-var ErrLineInputTranslatorNeedDefaultURN = errors.New("line input translator need default urn")
+var ErrLinesInputTranslatorNeedDefaultURN = errors.New("lines input translator need default urn")
 
-type LineInputTranslatorConfig struct {
+type LinesInputTranslatorConfig struct {
 	BindURN string        `json:"bind_urn"`
 	Labels  spirit.Labels `json:"labels"`
 	Delim   string        `json:"delim"`
 }
 
-type LineInputTranslator struct {
-	conf LineInputTranslatorConfig
+type LinesInputTranslator struct {
+	conf LinesInputTranslatorConfig
 }
 
 func init() {
-	spirit.RegisterInputTranslator(lineTranslatorInURN, NewLineInputTranslator)
+	spirit.RegisterInputTranslator(linesTranslatorInURN, NewLinesInputTranslator)
 }
 
-func NewLineInputTranslator(options spirit.Options) (translator spirit.InputTranslator, err error) {
-	conf := LineInputTranslatorConfig{}
+func NewLinesInputTranslator(options spirit.Options) (translator spirit.InputTranslator, err error) {
+	conf := LinesInputTranslatorConfig{}
 
 	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 
 	if conf.BindURN == "" {
-		err = ErrLineInputTranslatorNeedDefaultURN
+		err = ErrLinesInputTranslatorNeedDefaultURN
 		return
 	}
 
-	translator = &LineInputTranslator{
+	translator = &LinesInputTranslator{
 		conf: conf,
 	}
 	return
 }
 
-func (p *LineInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err error) {
+func (p *LinesInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err error) {
 	reader := bufio.NewReader(r)
 
 	txt := ""
@@ -67,10 +67,10 @@ func (p *LineInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err
 		labels[k] = v
 	}
 
-	delivery := &LineDelivery{
+	delivery := &LinesDelivery{
 		urn:    p.conf.BindURN,
 		labels: labels,
-		payload: &LinePayload{
+		payload: &LinesPayload{
 			data: txt,
 		},
 	}

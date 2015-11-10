@@ -28,7 +28,7 @@ var (
 	ActorOutbox           ActorType = "outbox"
 	ActorReaderPool       ActorType = "reader_pool"
 	ActorWriterPool       ActorType = "writer_pool"
-	ActorURNExpander      ActorType = "urn_expander"
+	ActorURNRewriter      ActorType = "urn_rewriter"
 )
 
 func Logger() *logrus.Logger {
@@ -70,7 +70,7 @@ type ClassicSpirit struct {
 	receivers         map[string]Receiver
 	senders           map[string]Sender
 	labelMatchers     map[string]LabelMatcher
-	urnExpanders      map[string]URNExpander
+	urnRewriters      map[string]URNRewriter
 	routers           map[string]Router
 	components        map[string][]Component
 }
@@ -86,7 +86,7 @@ func NewClassicSpirit() (s Spirit, err error) {
 		receivers:         make(map[string]Receiver),
 		senders:           make(map[string]Sender),
 		labelMatchers:     make(map[string]LabelMatcher),
-		urnExpanders:      make(map[string]URNExpander),
+		urnRewriters:      make(map[string]URNRewriter),
 		routers:           make(map[string]Router),
 		components:        make(map[string][]Component),
 	}, nil
@@ -467,10 +467,10 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 		p.labelMatchers[actorConf.Name] = actor.(LabelMatcher)
 	}
 
-	// urn expander
-	for _, actorConf := range conf.URNExpanders {
+	// urn rewriter
+	for _, actorConf := range conf.URNRewriters {
 		var actor interface{}
-		if actor, err = p.createActor(ActorURNExpander, actorConf); err != nil {
+		if actor, err = p.createActor(ActorURNRewriter, actorConf); err != nil {
 			logger.WithField("module", "spirit").
 				WithField("event", "build").
 				WithField("actor_name", actorConf.Name).
@@ -479,7 +479,7 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 
 			return
 		}
-		p.urnExpanders[actorConf.Name] = actor.(URNExpander)
+		p.urnRewriters[actorConf.Name] = actor.(URNRewriter)
 	}
 
 	// components
@@ -545,9 +545,9 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 	for _, composeObj := range compose {
 		routerInstance := p.routers[composeObj.Router]
 
-		if composeObj.URNExpander != nil {
-			expander := p.urnExpanders[*composeObj.URNExpander]
-			if err = routerInstance.SetURNExpander(expander); err != nil {
+		if composeObj.URNRewriter != nil {
+			rewriter := p.urnRewriters[*composeObj.URNRewriter]
+			if err = routerInstance.SetURNRewriter(rewriter); err != nil {
 				return
 			}
 		}
@@ -686,9 +686,9 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 		{
 			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Options)
 		}
-	case ActorURNExpander:
+	case ActorURNRewriter:
 		{
-			actor, err = newURNExpanderFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newURNRewriterFuncs[actorConf.URN](actorConf.Options)
 		}
 	case ActorComponent:
 		{

@@ -8,7 +8,7 @@ import (
 	"github.com/gogap/spirit"
 
 	"github.com/gogap/spirit/io/std"
-	"github.com/gogap/spirit/translator/line"
+	"github.com/gogap/spirit/translator/lines"
 )
 
 func TestSenderSend(t *testing.T) {
@@ -31,7 +31,7 @@ func TestSenderSend(t *testing.T) {
 	sender.SetNewWriterFunc(std.NewStdin, optsW)
 
 	var translator spirit.OutputTranslator
-	if translator, err = line.NewLineOutputTranslator(spirit.Options{}); err != nil {
+	if translator, err = lines.NewLinesOutputTranslator(spirit.Options{}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}

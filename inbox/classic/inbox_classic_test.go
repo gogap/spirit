@@ -8,7 +8,7 @@ import (
 
 	"github.com/gogap/spirit/io/std"
 	"github.com/gogap/spirit/receiver/polling"
-	"github.com/gogap/spirit/translator/line"
+	"github.com/gogap/spirit/translator/lines"
 )
 
 func TestInboxReceive(t *testing.T) {
@@ -31,7 +31,7 @@ func TestInboxReceive(t *testing.T) {
 	receiver.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = line.NewLineInputTranslator(spirit.Options{}); err != nil {
+	if translator, err = lines.NewLinesInputTranslator(spirit.Options{}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}

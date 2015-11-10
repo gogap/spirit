@@ -41,7 +41,7 @@ func RegisterOutbox(urn string, newFunc NewOutboxFunc) (err error) {
 	logger.WithField("module", "spirit").
 		WithField("event", "register outbox").
 		WithField("urn", urn).
-		Debugln("oubox registered")
+		Debugln("outbox registered")
 
 	return
 }

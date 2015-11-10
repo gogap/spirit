@@ -47,7 +47,7 @@ type ComposeRouterConfig struct {
 	Name          string                  `json:"name"`
 	Router        string                  `json:"router"`
 	LabelMatchers ComposeLabelMatchConfig `json:"label_matchers"`
-	URNExpander   *string                 `json:"urn_expander"`
+	URNRewriter   *string                 `json:"urn_rewriter"`
 	Components    []string                `json:"components"`
 	Inboxes       []ComposeInboxConfig    `json:"inboxes"`
 	Outboxes      []ComposeOutboxConfig   `json:"outboxes"`
@@ -65,7 +65,7 @@ type SpiritConfig struct {
 	Routers           []ActorConfig           `json:"routers"`
 	Components        []ActorConfig           `json:"components"`
 	LabelMatchers     []ActorConfig           `json:"label_matchers"`
-	URNExpanders      []ActorConfig           `json:"urn_expanders"`
+	URNRewriters      []ActorConfig           `json:"urn_rewriters"`
 
 	Compose []ComposeRouterConfig `json:"compose"`
 }
@@ -298,22 +298,22 @@ func (p *SpiritConfig) Validate() (err error) {
 		}
 	}
 
-	if p.URNExpanders != nil {
+	if p.URNRewriters != nil {
 		dupCheck := map[string]bool{}
-		for _, actor := range p.URNExpanders {
-			if _, exist := newURNExpanderFuncs[actor.URN]; !exist {
-				err = ErrURNExpanderURNNotExist
+		for _, actor := range p.URNRewriters {
+			if _, exist := newURNRewriterFuncs[actor.URN]; !exist {
+				err = ErrURNRewriterURNNotExist
 				return
 			}
 
 			if _, exist := dupCheck[actor.Name]; exist {
-				err = ErrURNExpanderNameDuplicate
+				err = ErrURNRewriterNameDuplicate
 				return
 			} else {
 				dupCheck[actor.Name] = true
 			}
 
-			actorNames[actorTypedName(ActorURNExpander, actor.Name)] = true
+			actorNames[actorTypedName(ActorURNRewriter, actor.Name)] = true
 		}
 	}
 
@@ -328,9 +328,9 @@ func (p *SpiritConfig) Validate() (err error) {
 			return
 		}
 
-		if composeObj.URNExpander != nil {
-			if _, exist := actorNames[actorTypedName(ActorURNExpander, *composeObj.URNExpander)]; !exist {
-				err = ErrActorURNExpanderNotExist
+		if composeObj.URNRewriter != nil {
+			if _, exist := actorNames[actorTypedName(ActorURNRewriter, *composeObj.URNRewriter)]; !exist {
+				err = ErrActorURNRewriterNotExist
 				return
 			}
 		}

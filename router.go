@@ -32,7 +32,7 @@ type Router interface {
 	SetOutboxLabelMatcher(matcher LabelMatcher) (err error)
 	SetComponentLabelMatcher(matcher LabelMatcher) (err error)
 
-	SetURNExpander(expander URNExpander) (err error)
+	SetURNRewriter(rewriter URNRewriter) (err error)
 }
 
 func RegisterRouter(urn string, newFunc NewRouterFunc) (err error) {

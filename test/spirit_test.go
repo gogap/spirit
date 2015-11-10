@@ -18,7 +18,7 @@ import (
 	_ "github.com/gogap/spirit/receiver/polling"
 	_ "github.com/gogap/spirit/router/classic"
 	_ "github.com/gogap/spirit/sender/polling"
-	_ "github.com/gogap/spirit/translator/line"
+	_ "github.com/gogap/spirit/translator/lines"
 )
 
 var (
@@ -85,7 +85,7 @@ var (
     }],
     "input_translators": [{
         "name": "test",
-        "urn": "urn:spirit:translator:in:line",
+        "urn": "urn:spirit:translator:in:lines",
         "options": {
             "bind_urn": "urn:spirit:component:encoding:base64#encode|urn:spirit:component:encoding:base64#decode",
             "labels": {
@@ -95,7 +95,7 @@ var (
     }],
     "output_translators": [{
         "name": "test",
-        "urn": "urn:spirit:translator:out:line",
+        "urn": "urn:spirit:translator:out:lines",
         "options": {
             "delim": "\n"
         }
