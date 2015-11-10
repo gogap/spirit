@@ -2,44 +2,72 @@ package spirit
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
-	"strconv"
-
-	"github.com/gogap/errors"
 )
 
 type Options map[string]interface{}
 
-func (p Options) Serialize() (str string, err error) {
-	var data []byte
-	if data, err = json.MarshalIndent(&p, "", "    "); err != nil {
+func (p Options) String(key string) (val string, err error) {
+	if v, exist := p[key]; !exist {
+		err = fmt.Errorf("option of %s not exist", key)
+		return
+	} else if strV, ok := v.(string); ok {
+		val = strV
+		return
+	} else {
+		err = fmt.Errorf("option of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-
-	str = string(data)
-
 	return
 }
 
-func (p Options) ToObject(v interface{}) (err error) {
-	var data []byte
-	if data, err = json.Marshal(p); err != nil {
-		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err})
+func (p Options) Int(key string) (val int, err error) {
+	if v, exist := p[key]; !exist {
+		err = fmt.Errorf("option of %s not exist", key)
+		return
+	} else if intV, ok := v.(int); ok {
+		val = intV
+		return
+	} else {
+		err = fmt.Errorf("option of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-
-	if err = json.Unmarshal(data, v); err != nil {
-		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err})
-		return
-	}
-
 	return
 }
 
-func (p Options) GetObject(key string, v interface{}) (err error) {
+func (p Options) Bool(key string) (val bool, err error) {
+	if v, exist := p[key]; !exist {
+		err = fmt.Errorf("option of %s not exist", key)
+		return
+	} else if boolV, ok := v.(bool); ok {
+		val = boolV
+		return
+	} else {
+		err = fmt.Errorf("option of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
+		return
+	}
+	return
+}
+
+func (p Options) Float64(key string) (val float64, err error) {
+	if v, exist := p[key]; !exist {
+		err = fmt.Errorf("option of %s not exist", key)
+		return
+	} else if floatV, ok := v.(float64); ok {
+		val = floatV
+		return
+	} else {
+		err = fmt.Errorf("option of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
+		return
+	}
+	return
+}
+
+func (p Options) Object(key string, v interface{}) (err error) {
 	var obj interface{}
 	if val, exist := p[key]; !exist {
-		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
+		err = fmt.Errorf("option of %s not exist", key)
 		return
 	} else {
 		obj = val
@@ -52,87 +80,21 @@ func (p Options) GetObject(key string, v interface{}) (err error) {
 
 	var data []byte
 	if data, err = json.Marshal(obj); err != nil {
-		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err})
 		return
 	}
 
-	if err = json.Unmarshal(data, v); err != nil {
-		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err})
-		return
-	}
+	err = json.Unmarshal(data, v)
 
 	return
 }
 
-func (p Options) GetStringValue(key string) (value string, err error) {
-	if val, exist := p[key]; !exist {
-		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
+func (p Options) ToObject(v interface{}) (err error) {
+	var data []byte
+	if data, err = json.Marshal(p); err != nil {
 		return
-	} else if strVal, ok := val.(string); !ok {
-		err = ERR_OPTIONS_VALUE_TYPE_ERROR.New(errors.Params{"key": key, "value": val, "type": "string", "realType": getValueType(val)})
-		return
-	} else {
-		value = strVal
 	}
-	return
-}
 
-func (p Options) GetBoolValue(key string) (value bool, err error) {
-	if val, exist := p[key]; !exist {
-		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
-		return
-	} else if boolVal, ok := val.(bool); !ok {
-		err = ERR_OPTIONS_VALUE_TYPE_ERROR.New(errors.Params{"key": key, "value": val, "type": "bool", "realType": getValueType(val)})
-		return
-	} else {
-		value = boolVal
-	}
-	return
-}
+	err = json.Unmarshal(data, v)
 
-func (p Options) GetInt64Value(key string) (value int64, err error) {
-	if val, exist := p[key]; !exist {
-		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
-		return
-	} else if intVal, ok := val.(int64); !ok {
-		switch typedVal := val.(type) {
-		case float64:
-			value = int64(typedVal)
-		case int:
-			value = int64(typedVal)
-		case int32:
-			value = int64(typedVal)
-		case string:
-			if intV, e := strconv.Atoi(typedVal); e != nil {
-				err = ERR_OPTIONS_VAL_TYPE_CONV_FAILED.New(errors.Params{"key": key, "value": val, "type": "int64", "realType": getValueType(val), "err": e})
-				return
-			} else {
-				value = int64(intV)
-			}
-		default:
-			err = ERR_OPTIONS_VALUE_TYPE_ERROR.New(errors.Params{"key": key, "value": val, "type": "int64", "realType": getValueType(val)})
-			return
-		}
-		return
-	} else {
-		value = intVal
-	}
 	return
-}
-
-func (p Options) GetFloat64Value(key string) (value float64, err error) {
-	if val, exist := p[key]; !exist {
-		err = ERR_OPTIONS_KEY_NOT_EXIST.New(errors.Params{"key": key})
-		return
-	} else if floatVal, ok := val.(float64); !ok {
-		err = ERR_OPTIONS_VALUE_TYPE_ERROR.New(errors.Params{"key": key, "value": val, "type": "float64", "realType": getValueType(val)})
-		return
-	} else {
-		value = floatVal
-	}
-	return
-}
-
-func getValueType(v interface{}) string {
-	return reflect.TypeOf(v).Name()
 }
