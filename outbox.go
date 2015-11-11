@@ -12,7 +12,7 @@ var (
 type NewOutboxFunc func(options Options) (outbox Outbox, err error)
 
 type Outbox interface {
-	StartStoper
+	StartStopper
 
 	Labels() Labels
 

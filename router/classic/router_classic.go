@@ -113,11 +113,9 @@ func (p *ClassicRouter) Stop() (err error) {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go p.stopInboxes()
 
-	wg.Add(1)
-	go p.stopOutboxes()
+	p.stopInboxes(&wg)
+	p.stopOutboxes(&wg)
 
 	wg.Wait()
 
@@ -126,29 +124,35 @@ func (p *ClassicRouter) Stop() (err error) {
 	return
 }
 
-func (p *ClassicRouter) stopInboxes() (err error) {
-	wg := sync.WaitGroup{}
+func (p *ClassicRouter) stopInboxes(wg *sync.WaitGroup) {
 	for _, inbox := range p.inboxes {
 		wg.Add(1)
 		go func(inbox spirit.Inbox) {
 			defer wg.Done()
-			inbox.Stop()
+			if err := inbox.Stop(); err != nil {
+				spirit.Logger().WithField("actor", spirit.ActorRouter).
+					WithField("urn", classicRouterURN).
+					WithField("event", "stop inbox").
+					Errorln(err)
+			}
 		}(inbox)
 	}
-	wg.Wait()
 	return
 }
 
-func (p *ClassicRouter) stopOutboxes() (err error) {
-	wg := sync.WaitGroup{}
+func (p *ClassicRouter) stopOutboxes(wg *sync.WaitGroup) {
 	for _, outbox := range p.outboxes {
 		wg.Add(1)
 		go func(outbox spirit.Outbox) {
 			defer wg.Done()
-			outbox.Stop()
+			if err := outbox.Stop(); err != nil {
+				spirit.Logger().WithField("actor", spirit.ActorRouter).
+					WithField("urn", classicRouterURN).
+					WithField("event", "stop outbox").
+					Errorln(err)
+			}
 		}(outbox)
 	}
-	wg.Wait()
 	return
 }
 

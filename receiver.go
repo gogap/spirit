@@ -7,7 +7,7 @@ import (
 type NewReceiverFunc func(options Options) (receiver Receiver, err error)
 
 type Receiver interface {
-	StartStoper
+	StartStopper
 
 	SetTranslator(translator InputTranslator) (err error)
 	SetDeliveryPutter(putter DeliveryPutter) (err error)

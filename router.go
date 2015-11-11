@@ -12,7 +12,7 @@ var (
 type NewRouterFunc func(options Options) (router Router, err error)
 
 type Router interface {
-	StartStoper
+	StartStopper
 
 	AddInbox(inbox Inbox) (err error)
 	RemoveInbox(inbox Inbox) (err error)

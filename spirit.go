@@ -1,8 +1,12 @@
 package spirit
 
 import (
+	"os"
+	"os/signal"
 	"reflect"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gogap/logrus_mate"
@@ -39,19 +43,19 @@ type Starter interface {
 	Start() (err error)
 }
 
-type Stoper interface {
+type Stopper interface {
 	Stop() (err error)
 }
 
-type StartStoper interface {
+type StartStopper interface {
 	Starter
-	Stoper
+	Stopper
 	Status() Status
 }
 
 type Spirit interface {
 	Build(conf SpiritConfig) (err error)
-	StartStoper
+	Run() (wg *sync.WaitGroup, err error)
 }
 
 type ClassicSpirit struct {
@@ -92,7 +96,7 @@ func NewClassicSpirit() (s Spirit, err error) {
 	}, nil
 }
 
-func (p *ClassicSpirit) Start() (err error) {
+func (p *ClassicSpirit) Run() (wg *sync.WaitGroup, err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
@@ -105,6 +109,8 @@ func (p *ClassicSpirit) Start() (err error) {
 		err = ErrSpiritNotBuild
 		return
 	}
+
+	wg = new(sync.WaitGroup)
 
 	p.status = StatusRunning
 
@@ -137,6 +143,9 @@ func (p *ClassicSpirit) Start() (err error) {
 	for _, router := range p.routers {
 		go p.loop(router)
 	}
+
+	wg.Add(1)
+	p.waitSignal(wg)
 
 	return
 }
@@ -215,7 +224,7 @@ func (p *ClassicSpirit) loop(router Router) {
 func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...interface{}) (err error) {
 	for _, actor := range actors {
 		switch stopper := actor.(type) {
-		case StartStoper:
+		case Stopper:
 			if err = stopper.Stop(); err != nil {
 				logger.WithField("module", "spirit").
 					WithField("event", "stop "+actorType).
@@ -224,7 +233,7 @@ func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...in
 			}
 		default:
 			logger.WithField("module", "spirit").
-				WithField("event", "start "+actorType).
+				WithField("event", "stop "+actorType).
 				WithField("name", name).
 				WithField("type", reflect.TypeOf(actor).Name()).
 				Debugln("non-stopper")
@@ -236,7 +245,7 @@ func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...in
 func (p *ClassicSpirit) startActor(name string, actorType ActorType, actors ...interface{}) (err error) {
 	for _, actor := range actors {
 		switch starter := actor.(type) {
-		case StartStoper:
+		case Starter:
 			if err = starter.Start(); err != nil {
 				logger.WithField("module", "spirit").
 					WithField("event", "start "+actorType).
@@ -254,38 +263,95 @@ func (p *ClassicSpirit) startActor(name string, actorType ActorType, actors ...i
 	return
 }
 
-func (p *ClassicSpirit) Stop() (err error) {
-	p.statusLocker.Lock()
-	defer p.statusLocker.Unlock()
-
+func (p *ClassicSpirit) stop() (err error) {
 	if p.status == StatusStopped {
 		err = ErrSpiritAlreadyStopped
 		return
 	}
 
 	for name, actor := range p.receivers {
-		p.stopActor(name, ActorReceiver, actor)
+		if err = p.stopActor(name, ActorReceiver, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop receiver").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop receiver").
+				WithField("actor_name", name).
+				Debugln("receiver stopped")
+		}
 	}
 
 	for name, actor := range p.senders {
-		p.stopActor(name, ActorReceiver, actor)
+		if err = p.stopActor(name, ActorSender, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop sender").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop sender").
+				WithField("actor_name", name).
+				Debugln("sender stopped")
+		}
 	}
 
 	for name, actor := range p.inboxes {
-		p.stopActor(name, ActorReceiver, actor)
+		if err = p.stopActor(name, ActorInbox, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop inbox").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop inbox").
+				WithField("actor_name", name).
+				Debugln("inbox stopped")
+		}
 	}
 
 	for name, actor := range p.outboxes {
-		p.stopActor(name, ActorReceiver, actor)
+		if err = p.stopActor(name, ActorOutbox, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop outbox").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop outbox").
+				WithField("actor_name", name).
+				Debugln("outbox stopped")
+		}
 	}
 
 	for name, actor := range p.routers {
-		p.stopActor(name, ActorReceiver, actor)
+		if err = p.stopActor(name, ActorRouter, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop router").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop router").
+				WithField("actor_name", name).
+				Debugln("router stopped")
+		}
 	}
 
 	for name, components := range p.components {
 		for _, actor := range components {
-			p.stopActor(name, ActorComponent, actor)
+			if err = p.stopActor(name, ActorComponent, actor); err != nil {
+				logger.WithField("module", "spirit").
+					WithField("event", "stop component").
+					WithField("actor_name", name).
+					Errorln(err)
+			} else {
+				logger.WithField("module", "spirit").
+					WithField("event", "stop component").
+					WithField("actor_name", name).
+					Debugln("component stopped")
+			}
 		}
 	}
 
@@ -707,4 +773,54 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 	}
 
 	return
+}
+
+func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
+	var err error
+	isStopping := false
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+	for {
+		select {
+		case signal := <-interrupt:
+			{
+				switch signal {
+				case os.Interrupt, syscall.SIGTERM:
+					{
+						if isStopping {
+							logger.WithField("module", "spirit").
+								WithField("event", "stop spirit").
+								Warnln("kill spirit")
+							wg.Done()
+							return
+						}
+
+						isStopping = true
+
+						logger.WithField("module", "spirit").
+							WithField("event", "stop spirit").
+							Info("stopping spirit")
+
+						go func() {
+							if err = p.stop(); err != nil {
+								logger.WithField("module", "spirit").
+									WithField("event", "stop spirit").
+									Errorln(err)
+							}
+							wg.Done()
+							return
+						}()
+					}
+				}
+			}
+		case <-time.After(time.Second):
+			{
+				if isStopping && p.status == StatusStopped {
+					return
+				}
+				continue
+			}
+		}
+	}
 }

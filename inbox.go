@@ -22,7 +22,7 @@ type DeliveryGetter interface {
 }
 
 type Inbox interface {
-	StartStoper
+	StartStopper
 
 	// AddReceiver(receiver Receiver) (err error)
 

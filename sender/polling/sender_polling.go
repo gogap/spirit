@@ -130,22 +130,20 @@ func (p *PollingSender) Start() (err error) {
 				time.Sleep(time.Millisecond * time.Duration(p.conf.Interval))
 			}
 
-			if len(p.terminaled) > 0 {
-				select {
-				case signal := <-p.terminaled:
-					{
-						if signal == true {
-							spirit.Logger().WithField("actor", "sender").
-								WithField("urn", pollingSenderURN).
-								WithField("event", "terminal").
-								Debugln("terminal singal received")
-							return
-						}
+			select {
+			case signal := <-p.terminaled:
+				{
+					if signal == true {
+						spirit.Logger().WithField("actor", "sender").
+							WithField("urn", pollingSenderURN).
+							WithField("event", "terminal").
+							Debugln("terminal singal received")
+						return
 					}
-				case <-time.After(time.Microsecond * 10):
-					{
-						continue
-					}
+				}
+			case <-time.After(time.Microsecond * 10):
+				{
+					continue
 				}
 			}
 		}
