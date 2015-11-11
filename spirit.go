@@ -33,6 +33,7 @@ var (
 	ActorReaderPool       ActorType = "reader_pool"
 	ActorWriterPool       ActorType = "writer_pool"
 	ActorURNRewriter      ActorType = "urn_rewriter"
+	ActorConsole          ActorType = "console"
 )
 
 func Logger() *logrus.Logger {
@@ -76,6 +77,7 @@ type ClassicSpirit struct {
 	labelMatchers     map[string]LabelMatcher
 	urnRewriters      map[string]URNRewriter
 	routers           map[string]Router
+	consoles          map[string]Console
 	components        map[string][]Component
 }
 
@@ -92,6 +94,7 @@ func NewClassicSpirit() (s Spirit, err error) {
 		labelMatchers:     make(map[string]LabelMatcher),
 		urnRewriters:      make(map[string]URNRewriter),
 		routers:           make(map[string]Router),
+		consoles:          make(map[string]Console),
 		components:        make(map[string][]Component),
 	}, nil
 }
@@ -142,6 +145,10 @@ func (p *ClassicSpirit) Run() (wg *sync.WaitGroup, err error) {
 
 	for _, router := range p.routers {
 		go p.loop(router)
+	}
+
+	for name, actor := range p.consoles {
+		p.startActor(name, ActorConsole, actor)
 	}
 
 	wg.Add(1)
@@ -235,7 +242,7 @@ func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...in
 			logger.WithField("module", "spirit").
 				WithField("event", "stop "+actorType).
 				WithField("name", name).
-				WithField("type", reflect.TypeOf(actor).Name()).
+				WithField("type", reflect.TypeOf(actor)).
 				Debugln("non-stopper")
 		}
 	}
@@ -336,6 +343,20 @@ func (p *ClassicSpirit) stop() (err error) {
 				WithField("event", "stop router").
 				WithField("actor_name", name).
 				Debugln("router stopped")
+		}
+	}
+
+	for name, actor := range p.consoles {
+		if err = p.stopActor(name, ActorConsole, actor); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop console").
+				WithField("actor_name", name).
+				Errorln(err)
+		} else {
+			logger.WithField("module", "spirit").
+				WithField("event", "stop console").
+				WithField("actor_name", name).
+				Debugln("console stopped")
 		}
 	}
 
@@ -598,6 +619,21 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 		p.senders[actorConf.Name] = actor.(Sender)
 	}
 
+	// consoles
+	for _, actorConf := range conf.Consoles {
+		var actor interface{}
+		if actor, err = p.createActor(ActorConsole, actorConf); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "build").
+				WithField("actor_name", actorConf.Name).
+				WithField("actor_urn", actorConf.URN).
+				Error(err)
+
+			return
+		}
+		p.consoles[actorConf.Name] = actor.(Console)
+	}
+
 	if err = p.buildCompose(conf.Compose); err != nil {
 		return
 	}
@@ -767,6 +803,10 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 	case ActorWriterPool:
 		{
 			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Options)
+		}
+	case ActorConsole:
+		{
+			actor, err = newConsoleFuncs[actorConf.URN](actorConf.Options)
 		}
 	default:
 		err = ErrSpiritActorURNNotExist

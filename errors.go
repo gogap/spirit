@@ -90,6 +90,9 @@ var (
 	ErrOutputTranslatorURNNotExist   = errors.New("output translator urn not exist")
 	ErrOutputTranslatorNameDuplicate = errors.New("output translator name duplicate")
 
+	ErrConsoleURNNotExist   = errors.New("urn console urn not exist")
+	ErrConsoleNameDuplicate = errors.New("urn console name duplicate")
+
 	ErrSpiritAlreadyRunning   = errors.New("spirit already running")
 	ErrSpiritAlreadyStopped   = errors.New("spirit already stopped")
 	ErrSpiritAlreadyBuilt     = errors.New("spirit already built")
@@ -98,6 +101,7 @@ var (
 
 	ErrActorRouterNotExist           = errors.New("actor:router not exist")
 	ErrActorComponentNotExist        = errors.New("actor:component not exist")
+	ErrActorConsoleNotExist          = errors.New("actor:console not exist")
 	ErrActorInBoxNotExist            = errors.New("actor:inbox not exist")
 	ErrActorReceiverNotExist         = errors.New("actor:receiver not exist")
 	ErrActorInputTranslatorNotExist  = errors.New("actor:input_translator not exist")

@@ -66,6 +66,7 @@ type SpiritConfig struct {
 	Components        []ActorConfig           `json:"components"`
 	LabelMatchers     []ActorConfig           `json:"label_matchers"`
 	URNRewriters      []ActorConfig           `json:"urn_rewriters"`
+	Consoles          []ActorConfig           `json:"consoles"`
 
 	Compose []ComposeRouterConfig `json:"compose"`
 }
@@ -314,6 +315,25 @@ func (p *SpiritConfig) Validate() (err error) {
 			}
 
 			actorNames[actorTypedName(ActorURNRewriter, actor.Name)] = true
+		}
+	}
+
+	if p.Consoles != nil {
+		dupCheck := map[string]bool{}
+		for _, actor := range p.Consoles {
+			if _, exist := newConsoleFuncs[actor.URN]; !exist {
+				err = ErrConsoleURNNotExist
+				return
+			}
+
+			if _, exist := dupCheck[actor.Name]; exist {
+				err = ErrConsoleNameDuplicate
+				return
+			} else {
+				dupCheck[actor.Name] = true
+			}
+
+			actorNames[actorTypedName(ActorConsole, actor.Name)] = true
 		}
 	}
 
