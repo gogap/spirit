@@ -114,4 +114,6 @@ var (
 	ErrActorURNRewriterNotExist      = errors.New("actor:urn_rewriter not exist")
 
 	ErrComposeNameIsEmpty = errors.New("spirit compose name is empty")
+
+	ErrDefaultLogerNotExist = errors.New("defualt logger not exist")
 )

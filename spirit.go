@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	logger = logrus_mate.Logger()
+	logrusMate *logrus_mate.LogrusMate
+	logger     = logrus_mate.Logger()
 )
 
 type ActorType string
@@ -36,8 +37,26 @@ var (
 	ActorConsole          ActorType = "console"
 )
 
-func Logger() *logrus.Logger {
-	return logger
+func init() {
+	initLogLevel := os.Getenv(SpiritInitialLogLevelEnvKey)
+	if initLogLevel == "" {
+		logger.Level = logrus.InfoLevel
+		return
+	}
+	if lvl, err := logrus.ParseLevel(initLogLevel); err != nil {
+		panic(err)
+	} else {
+		logger.Level = lvl
+	}
+}
+
+func Logger(loggerName ...string) *logrus.Logger {
+	if loggerName == nil ||
+		len(loggerName) == 0 ||
+		loggerName[0] == "" {
+		return logger
+	}
+	return logrusMate.Logger(loggerName...)
 }
 
 type Starter interface {
@@ -401,6 +420,26 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 
 	if err = conf.Validate(); err != nil {
 		return
+	}
+
+	var logrusMateConf logrus_mate.LogrusMateConfig
+
+	if conf.Log.ConfigFile != "" {
+		if logrusMateConf, err = logrus_mate.LoadLogrusMateConfig(conf.Log.ConfigFile); err != nil {
+			return
+		}
+
+		if logrusMate, err = logrus_mate.NewLogrusMate(logrusMateConf); err != nil {
+			return
+		}
+
+		defaultLogger := logrusMate.Logger(conf.Log.DefaultLogger)
+
+		if defaultLogger == nil {
+			err = ErrDefaultLogerNotExist
+			return
+		}
+		logger = defaultLogger
 	}
 
 	p.built = true

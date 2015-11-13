@@ -43,6 +43,11 @@ type ComposeLabelMatchConfig struct {
 	Outbox    string `json:"outbox"`
 }
 
+type Log struct {
+	DefaultLogger string `json:"default_logger"`
+	ConfigFile    string `json:"config"`
+}
+
 type ComposeRouterConfig struct {
 	Name          string                  `json:"name"`
 	Router        string                  `json:"router"`
@@ -69,6 +74,7 @@ type SpiritConfig struct {
 	Consoles          []ActorConfig           `json:"consoles"`
 
 	Compose []ComposeRouterConfig `json:"compose"`
+	Log     Log                   `json:"log"`
 }
 
 func (p *SpiritConfig) Validate() (err error) {
