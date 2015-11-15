@@ -9,7 +9,7 @@ var (
 	newOutboxFuncs = make(map[string]NewOutboxFunc)
 )
 
-type NewOutboxFunc func(options Options) (outbox Outbox, err error)
+type NewOutboxFunc func(config Config) (outbox Outbox, err error)
 
 type Outbox interface {
 	StartStopper

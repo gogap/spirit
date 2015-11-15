@@ -13,14 +13,14 @@ import (
 
 func TestSenderSend(t *testing.T) {
 
-	opts := spirit.Options{"interval": 0, "disable_session": true}
+	opts := spirit.Config{"interval": 0, "disable_session": true}
 
 	var err error
 	var sender spirit.Sender
 
 	sender, err = NewPollingSender(opts)
 
-	optsW := spirit.Options{
+	optsW := spirit.Config{
 		"name":  "write",
 		"proc":  "my-program-w",
 		"args":  []string{},
@@ -31,7 +31,7 @@ func TestSenderSend(t *testing.T) {
 	sender.SetNewWriterFunc(std.NewStdin, optsW)
 
 	var translator spirit.OutputTranslator
-	if translator, err = lines.NewLinesOutputTranslator(spirit.Options{}); err != nil {
+	if translator, err = lines.NewLinesOutputTranslator(spirit.Config{}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}

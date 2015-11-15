@@ -34,10 +34,10 @@ func init() {
 	spirit.RegisterComponent(mnsEncodingURN, NewMNSEncodingComponent)
 }
 
-func NewMNSEncodingComponent(options spirit.Options) (component spirit.Component, err error) {
+func NewMNSEncodingComponent(config spirit.Config) (component spirit.Component, err error) {
 	conf := MNSEncodingComponentConfig{}
 
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

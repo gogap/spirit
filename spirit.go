@@ -468,7 +468,7 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 			return
 		}
 
-		readerPool.SetNewReaderFunc(actor.(NewReaderFunc), pool.Reader.Options)
+		readerPool.SetNewReaderFunc(actor.(NewReaderFunc), pool.Reader.Config)
 		p.readerPools[pool.ActorConfig.Name] = readerPool
 	}
 
@@ -497,7 +497,7 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 				return
 			}
 
-			writerPool.SetNewWriterFunc(actor.(NewWriterFunc), pool.Writer.Options)
+			writerPool.SetNewWriterFunc(actor.(NewWriterFunc), pool.Writer.Config)
 		}
 
 		p.writerPools[pool.ActorConfig.Name] = writerPool
@@ -797,55 +797,55 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 		}
 	case ActorInputTranslator:
 		{
-			actor, err = newInputTranslatorFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newInputTranslatorFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorOutputTranslator:
 		{
-			actor, err = newOutputTranslatorFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newOutputTranslatorFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorReceiver:
 		{
-			actor, err = newReceiverFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newReceiverFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorSender:
 		{
-			actor, err = newSenderFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newSenderFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorInbox:
 		{
-			actor, err = newInboxFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newInboxFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorOutbox:
 		{
-			actor, err = newOutboxFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newOutboxFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorRouter:
 		{
-			actor, err = newRouterFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newRouterFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorLabelMatcher:
 		{
-			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorURNRewriter:
 		{
-			actor, err = newURNRewriterFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newURNRewriterFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorComponent:
 		{
-			actor, err = newComponentFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newComponentFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorReaderPool:
 		{
-			actor, err = newReaderPoolFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newReaderPoolFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorWriterPool:
 		{
-			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Config)
 		}
 	case ActorConsole:
 		{
-			actor, err = newConsoleFuncs[actorConf.URN](actorConf.Options)
+			actor, err = newConsoleFuncs[actorConf.URN](actorConf.Config)
 		}
 	default:
 		err = ErrSpiritActorURNNotExist

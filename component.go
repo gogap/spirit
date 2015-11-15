@@ -21,7 +21,7 @@ var (
 	newComponentFuncs = make(map[string]NewComponentFunc)
 )
 
-type NewComponentFunc func(options Options) (component Component, err error)
+type NewComponentFunc func(config Config) (component Component, err error)
 
 func RegisterComponent(urn string, newFunc NewComponentFunc) (err error) {
 	componentsLocker.Lock()

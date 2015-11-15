@@ -25,10 +25,10 @@ func init() {
 	spirit.RegisterOutputTranslator(jsonTranslatorOutURN, NewJSONOutputTranslator)
 }
 
-func NewJSONOutputTranslator(options spirit.Options) (translator spirit.OutputTranslator, err error) {
+func NewJSONOutputTranslator(config spirit.Config) (translator spirit.OutputTranslator, err error) {
 	conf := JSONOutputTranslatorConfig{}
 
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

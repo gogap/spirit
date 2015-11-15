@@ -29,9 +29,9 @@ func init() {
 	spirit.RegisterWriter(stdWriterURN, NewStdin)
 }
 
-func NewStdin(options spirit.Options) (w io.WriteCloser, err error) {
+func NewStdin(config spirit.Config) (w io.WriteCloser, err error) {
 	conf := StdIOConfig{}
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

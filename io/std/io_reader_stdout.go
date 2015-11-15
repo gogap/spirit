@@ -25,9 +25,9 @@ func init() {
 	spirit.RegisterReader(stdReaderURN, NewStdout)
 }
 
-func NewStdout(options spirit.Options) (w io.ReadCloser, err error) {
+func NewStdout(config spirit.Config) (w io.ReadCloser, err error) {
 	conf := StdIOConfig{}
-	options.ToObject(&conf)
+	config.ToObject(&conf)
 
 	if proc, e := takeSTDIO(_Input, conf); e != nil {
 		err = e

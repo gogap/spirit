@@ -10,7 +10,7 @@ var (
 	newWriterFuncs = make(map[string]NewWriterFunc)
 )
 
-type NewWriterFunc func(options Options) (w io.WriteCloser, err error)
+type NewWriterFunc func(config Config) (w io.WriteCloser, err error)
 
 func RegisterWriter(urn string, newFunc NewWriterFunc) (err error) {
 	writersLocker.Lock()

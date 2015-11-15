@@ -52,9 +52,9 @@ func init() {
 	spirit.RegisterReader(mnsReaderURN, NewMNSReader)
 }
 
-func NewMNSReader(options spirit.Options) (r io.ReadCloser, err error) {
+func NewMNSReader(config spirit.Config) (r io.ReadCloser, err error) {
 	conf := MNSReaderConfig{}
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

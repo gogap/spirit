@@ -20,10 +20,10 @@ func init() {
 	spirit.RegisterLabelMatcher(containsMatcherURN, NewContainsLabelMatcher)
 }
 
-func NewContainsLabelMatcher(options spirit.Options) (matcher spirit.LabelMatcher, err error) {
+func NewContainsLabelMatcher(config spirit.Config) (matcher spirit.LabelMatcher, err error) {
 	conf := ContainsLabelMatcherConfig{}
 
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

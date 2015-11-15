@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type NewSenderFunc func(options Options) (sender Sender, err error)
+type NewSenderFunc func(config Config) (sender Sender, err error)
 
 type Sender interface {
 	StartStopper

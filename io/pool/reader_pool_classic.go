@@ -26,7 +26,7 @@ type ClassicReaderPool struct {
 	conf         ClassicReaderPoolConfig
 
 	newReaderFunc spirit.NewReaderFunc
-	readerOptions spirit.Options
+	readerConfig  spirit.Config
 
 	readers      []io.ReadCloser
 	readerLocker sync.Mutex
@@ -40,9 +40,9 @@ func init() {
 	spirit.RegisterReaderPool(readerPoolURN, NewClassicReaderPool)
 }
 
-func NewClassicReaderPool(options spirit.Options) (pool spirit.ReaderPool, err error) {
+func NewClassicReaderPool(config spirit.Config) (pool spirit.ReaderPool, err error) {
 	conf := ClassicReaderPoolConfig{}
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 
@@ -58,9 +58,9 @@ func NewClassicReaderPool(options spirit.Options) (pool spirit.ReaderPool, err e
 	return
 }
 
-func (p *ClassicReaderPool) SetNewReaderFunc(newFunc spirit.NewReaderFunc, options spirit.Options) (err error) {
+func (p *ClassicReaderPool) SetNewReaderFunc(newFunc spirit.NewReaderFunc, config spirit.Config) (err error) {
 	p.newReaderFunc = newFunc
-	p.readerOptions = options
+	p.readerConfig = config
 	return
 }
 
@@ -89,7 +89,7 @@ func (p *ClassicReaderPool) Get() (reader io.ReadCloser, err error) {
 
 		return
 	} else if len(p.readers) < p.conf.MaxSize {
-		if reader, err = p.newReaderFunc(p.readerOptions); err != nil {
+		if reader, err = p.newReaderFunc(p.readerConfig); err != nil {
 			return
 		} else {
 			p.readers = append(p.readers, reader)

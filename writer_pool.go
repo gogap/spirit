@@ -6,7 +6,7 @@ import (
 )
 
 type WriterPool interface {
-	SetNewWriterFunc(newFunc NewWriterFunc, options Options) (err error)
+	SetNewWriterFunc(newFunc NewWriterFunc, config Config) (err error)
 	Get(delivery Delivery) (writer io.WriteCloser, err error)
 	Put(delivery Delivery, writer io.WriteCloser) (err error)
 	Close()
@@ -17,7 +17,7 @@ var (
 	newWriterPoolFuncs = make(map[string]NewWriterPoolFunc)
 )
 
-type NewWriterPoolFunc func(options Options) (pool WriterPool, err error)
+type NewWriterPoolFunc func(config Config) (pool WriterPool, err error)
 
 func RegisterWriterPool(urn string, newFunc NewWriterPoolFunc) (err error) {
 	writerPoolsLocker.Lock()

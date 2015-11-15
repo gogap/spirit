@@ -9,7 +9,7 @@ var (
 	newRouterFuncs = make(map[string]NewRouterFunc)
 )
 
-type NewRouterFunc func(options Options) (router Router, err error)
+type NewRouterFunc func(config Config) (router Router, err error)
 
 type Router interface {
 	StartStopper

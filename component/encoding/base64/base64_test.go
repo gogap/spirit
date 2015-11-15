@@ -48,7 +48,7 @@ func (p *_MockPayload) DeleteContext(name string) (err error) {
 }
 
 func TestBase64Encode(t *testing.T) {
-	component, err := NewBase64Component(spirit.Options{})
+	component, err := NewBase64Component(spirit.Config{})
 	if err != nil {
 		t.Error("create component error")
 		return
@@ -73,7 +73,7 @@ func TestBase64Encode(t *testing.T) {
 }
 
 func TestBase64Decode(t *testing.T) {
-	component, err := NewBase64Component(spirit.Options{})
+	component, err := NewBase64Component(spirit.Config{})
 	if err != nil {
 		t.Error("create component error")
 		return

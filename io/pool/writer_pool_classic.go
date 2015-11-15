@@ -33,7 +33,7 @@ type ClassicWriterPool struct {
 	conf         ClassicWriterPoolConfig
 
 	newWriterFunc spirit.NewWriterFunc
-	writerOptions spirit.Options
+	writerConfig  spirit.Config
 
 	sessionWriters map[string]*writerInPool
 	writerLocker   sync.Mutex
@@ -48,9 +48,9 @@ func init() {
 	spirit.RegisterWriterPool(writerPoolURN, NewClassicWriterPool)
 }
 
-func NewClassicWriterPool(options spirit.Options) (pool spirit.WriterPool, err error) {
+func NewClassicWriterPool(config spirit.Config) (pool spirit.WriterPool, err error) {
 	conf := ClassicWriterPoolConfig{}
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 
@@ -67,9 +67,9 @@ func NewClassicWriterPool(options spirit.Options) (pool spirit.WriterPool, err e
 	return
 }
 
-func (p *ClassicWriterPool) SetNewWriterFunc(newFunc spirit.NewWriterFunc, options spirit.Options) (err error) {
+func (p *ClassicWriterPool) SetNewWriterFunc(newFunc spirit.NewWriterFunc, config spirit.Config) (err error) {
 	p.newWriterFunc = newFunc
-	p.writerOptions = options
+	p.writerConfig = config
 	return
 }
 
@@ -91,7 +91,7 @@ func (p *ClassicWriterPool) getNonSessionWriter(delivery spirit.Delivery) (write
 
 		return
 	} else if len(p.writers) < p.conf.MaxSize {
-		if writer, err = p.newWriterFunc(p.writerOptions); err != nil {
+		if writer, err = p.newWriterFunc(p.writerConfig); err != nil {
 			return
 		} else {
 			p.writers = append(p.writers, writer)
@@ -127,7 +127,7 @@ func (p *ClassicWriterPool) getSessionWriter(delivery spirit.Delivery) (writer i
 			return
 		}
 	} else {
-		if writer, err = p.newWriterFunc(p.writerOptions); err != nil {
+		if writer, err = p.newWriterFunc(p.writerConfig); err != nil {
 			return
 		} else {
 			p.sessionWriters[delivery.SessionId()] = &writerInPool{InUse: true, Writer: writer}

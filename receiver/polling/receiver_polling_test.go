@@ -28,14 +28,14 @@ func (p *_MockPutter) Put(deliveries []spirit.Delivery) (err error) {
 
 func TestReceiverReceive(t *testing.T) {
 
-	opts := spirit.Options{"interval": 0, "buffer_size": 1, "timeout": 5000}
+	opts := spirit.Config{"interval": 0, "buffer_size": 1, "timeout": 5000}
 
 	var err error
 	var receiver spirit.Receiver
 
 	receiver, err = NewPollingReceiver(opts)
 
-	readerOpts := spirit.Options{
+	readerOpts := spirit.Config{
 		"name":  "ping",
 		"proc":  "ping",
 		"args":  []string{"-c", "1", "baidu.com"},
@@ -46,7 +46,7 @@ func TestReceiverReceive(t *testing.T) {
 	receiver.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = lines.NewLinesInputTranslator(spirit.Options{}); err != nil {
+	if translator, err = lines.NewLinesInputTranslator(spirit.Config{}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}

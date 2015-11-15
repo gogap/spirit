@@ -30,10 +30,10 @@ func init() {
 	spirit.RegisterInputTranslator(jsonTranslatorInURN, NewJSONInputTranslator)
 }
 
-func NewJSONInputTranslator(options spirit.Options) (translator spirit.InputTranslator, err error) {
+func NewJSONInputTranslator(config spirit.Config) (translator spirit.InputTranslator, err error) {
 	conf := JSONInputTranslatorConfig{}
 
-	if err = options.ToObject(&conf); err != nil {
+	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 

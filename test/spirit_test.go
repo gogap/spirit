@@ -51,13 +51,13 @@ var (
     "reader_pools": [{
         "name": "test",
         "urn": "urn:spirit:io:pool:reader:classic",
-        "options": {
+        "config": {
             "max_size": 100
         },
         "reader": {
             "name": "test",
             "urn": "urn:spirit:io:reader:std",
-            "options": {
+            "config": {
                 "name": "ping",
                 "proc": "ping",
                 "args": ["-c", "10", "baidu.com"],
@@ -69,13 +69,13 @@ var (
     "writer_pools": [{
         "name": "test",
         "urn": "urn:spirit:io:pool:writer:classic",
-        "options": {
+        "config": {
             "enable_session":true
             },
         "writer": {
             "name": "test",
             "urn": "urn:spirit:io:writer:std",
-            "options": {
+            "config": {
                 "name": "write",
                 "proc": "my-program-w",
                 "args": [],
@@ -86,7 +86,7 @@ var (
     "input_translators": [{
         "name": "test",
         "urn": "urn:spirit:translator:in:lines",
-        "options": {
+        "config": {
             "bind_urn": "urn:spirit:component:encoding:base64#encode|urn:spirit:component:encoding:base64#decode",
             "labels": {
                 "version": "0.0.1"
@@ -96,14 +96,14 @@ var (
     "output_translators": [{
         "name": "test",
         "urn": "urn:spirit:translator:out:lines",
-        "options": {
+        "config": {
             "delim": "\n"
         }
     }],
     "receivers": [{
         "name": "test",
         "urn": "urn:spirit:receiver:polling",
-        "options": {
+        "config": {
             "interval": 0,
             "buffer_size": 1,
             "timeout": 5000
@@ -112,7 +112,7 @@ var (
     "inboxes": [{
         "name": "test",
         "urn": "urn:spirit:inbox:classic",
-        "options": {
+        "config": {
             "size": 100,
             "put_timeout": 1000,
             "get_timeout": 1000
@@ -121,14 +121,14 @@ var (
     "routers": [{
         "name": "test",
         "urn": "urn:spirit:router:classic",
-        "options": {
+        "config": {
             "allow_no_component":true
         }
     }],
     "outboxes": [{
         "name": "test",
         "urn": "urn:spirit:outbox:classic",
-        "options": {
+        "config": {
             "size": 100,
             "get_timeout": -1,
             "labels": {"version":"0.0.1"}
@@ -137,17 +137,17 @@ var (
     "label_matchers": [{
         "name": "test",
         "urn": "urn:spirit:matcher:label:equal",
-        "options": {}
+        "config": {}
     }],
     "components": [{
         "name": "_std_base64",
         "urn": "urn:spirit:component:encoding:base64",
-        "options": {}
+        "config": {}
     }],
     "senders": [{
         "name": "test",
         "urn": "urn:spirit:sender:polling",
-        "options": {
+        "config": {
             "interval": 0
         }
     }]

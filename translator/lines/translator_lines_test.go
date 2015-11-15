@@ -8,7 +8,7 @@ import (
 )
 
 func TestTranslateRead(t *testing.T) {
-	trans, err := NewLinesInputTranslator(spirit.Options{"urn": "componentA:handlerA", "labels": map[string]string{"a": "b"}})
+	trans, err := NewLinesInputTranslator(spirit.Config{"urn": "componentA:handlerA", "labels": map[string]string{"a": "b"}})
 
 	if err != nil {
 		t.Error(err)

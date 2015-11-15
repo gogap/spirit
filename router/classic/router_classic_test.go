@@ -16,14 +16,14 @@ import (
 
 func TestRouteToHandler(t *testing.T) {
 
-	opts := spirit.Options{"interval": 0, "buffer_size": 1, "timeout": 1000}
+	opts := spirit.Config{"interval": 0, "buffer_size": 1, "timeout": 1000}
 
 	var err error
 	var receiver spirit.Receiver
 
 	receiver, err = polling.NewPollingReceiver(opts)
 
-	readerOpts := spirit.Options{
+	readerOpts := spirit.Config{
 		"name":  "ping",
 		"proc":  "ping",
 		"args":  []string{"-c", "10", "baidu.com"},
@@ -36,7 +36,7 @@ func TestRouteToHandler(t *testing.T) {
 	readerPool.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = lines.NewLinesInputTranslator(spirit.Options{"bind_urn": "test@urn:spirit:component:encoding:base64#encode"}); err != nil {
+	if translator, err = lines.NewLinesInputTranslator(spirit.Config{"bind_urn": "test@urn:spirit:component:encoding:base64#encode"}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}
@@ -51,7 +51,7 @@ func TestRouteToHandler(t *testing.T) {
 		return
 	}
 
-	inboxOpts := spirit.Options{
+	inboxOpts := spirit.Config{
 		"size":        100,
 		"put_timeout": -1,
 		"get_timeout": -1,
@@ -81,13 +81,13 @@ func TestRouteToHandler(t *testing.T) {
 	}
 
 	var router spirit.Router
-	if router, err = NewClassicRouter(spirit.Options{}); err != nil {
+	if router, err = NewClassicRouter(spirit.Config{}); err != nil {
 		t.Errorf("create router error: %s", err.Error())
 		return
 	}
 
 	var component spirit.Component
-	if component, err = base64.NewBase64Component(spirit.Options{}); err != nil {
+	if component, err = base64.NewBase64Component(spirit.Config{}); err != nil {
 		t.Errorf("create base64 component error: %s", err.Error())
 		return
 	}
