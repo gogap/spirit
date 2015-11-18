@@ -108,6 +108,7 @@ var (
 	ErrActorOutputTranslatorNotExist = errors.New("actor:output_translator not exist")
 	ErrActorReaderPoolNotExist       = errors.New("actor:reader_pool not exist")
 	ErrActorWriterNotExist           = errors.New("actor:writer not exist")
+	ErrActorWriterPoolNotExist       = errors.New("actor:writer_pool not exist")
 	ErrActorOutboxNotExist           = errors.New("actor:outbox not exist")
 	ErrActorLabelMatcerNotExist      = errors.New("actor:label_matcher not exist")
 	ErrActorSenderNotExist           = errors.New("actor:sender not exist")

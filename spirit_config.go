@@ -380,9 +380,11 @@ func (p *SpiritConfig) Validate() (err error) {
 					return
 				}
 
-				if _, exist := actorNames[actorTypedName(ActorInputTranslator, receiver.Translator)]; !exist {
-					err = ErrActorInputTranslatorNotExist
-					return
+				if receiver.Translator != "" {
+					if _, exist := actorNames[actorTypedName(ActorInputTranslator, receiver.Translator)]; !exist {
+						err = ErrActorInputTranslatorNotExist
+						return
+					}
 				}
 
 				if receiver.ReaderPool != "" {
@@ -415,14 +417,18 @@ func (p *SpiritConfig) Validate() (err error) {
 				return
 			}
 
-			if _, exist := actorNames[actorTypedName(ActorOutputTranslator, outbox.Sender.Translator)]; !exist {
-				err = ErrActorOutputTranslatorNotExist
-				return
+			if outbox.Sender.Translator != "" {
+				if _, exist := actorNames[actorTypedName(ActorOutputTranslator, outbox.Sender.Translator)]; !exist {
+					err = ErrActorOutputTranslatorNotExist
+					return
+				}
 			}
 
-			if _, exist := actorNames[actorTypedName(ActorWriterPool, outbox.Sender.WriterPool)]; !exist {
-				err = ErrActorWriterNotExist
-				return
+			if outbox.Sender.WriterPool != "" {
+				if _, exist := actorNames[actorTypedName(ActorWriterPool, outbox.Sender.WriterPool)]; !exist {
+					err = ErrActorWriterPoolNotExist
+					return
+				}
 			}
 		}
 	}

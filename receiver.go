@@ -9,13 +9,13 @@ type NewReceiverFunc func(config Config) (receiver Receiver, err error)
 type Receiver interface {
 	StartStopper
 
-	SetTranslator(translator InputTranslator) (err error)
 	SetDeliveryPutter(putter DeliveryPutter) (err error)
 }
 
 type ReadReceiver interface {
 	Receiver
 
+	SetTranslator(translator InputTranslator) (err error)
 	SetReaderPool(pool ReaderPool) (err error)
 }
 

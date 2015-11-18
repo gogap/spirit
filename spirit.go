@@ -706,12 +706,12 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 
 			for _, receiver := range inbox.Receivers {
 				receiverInstance := p.receivers[receiver.Name]
-				translatorInstance := p.inputTranslators[receiver.Translator]
 
 				switch rcver := receiverInstance.(type) {
 				case ReadReceiver:
 					{
 						readerPool := p.readerPools[receiver.ReaderPool]
+						translatorInstance := p.inputTranslators[receiver.Translator]
 
 						rcver.SetTranslator(translatorInstance)
 						rcver.SetReaderPool(readerPool)
@@ -719,7 +719,6 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 					}
 				case Receiver:
 					{
-						rcver.SetTranslator(translatorInstance)
 						rcver.SetDeliveryPutter(inboxInstance)
 					}
 				default:
