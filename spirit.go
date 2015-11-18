@@ -859,6 +859,8 @@ func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
+	stopingLocker := sync.Mutex{}
+
 	for {
 		select {
 		case signal := <-interrupt:
@@ -866,15 +868,17 @@ func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
 				switch signal {
 				case os.Interrupt, syscall.SIGTERM:
 					{
+						stopingLocker.Lock()
 						if isStopping {
 							logger.WithField("module", "spirit").
 								WithField("event", "stop spirit").
 								Warnln("kill spirit")
 							wg.Done()
+							stopingLocker.Unlock()
 							return
 						}
-
 						isStopping = true
+						stopingLocker.Unlock()
 
 						logger.WithField("module", "spirit").
 							WithField("event", "stop spirit").
