@@ -55,6 +55,8 @@ func (p *Base64Component) Encode(payload spirit.Payload) (result interface{}, er
 		return
 	} else if data, ok := vData.(string); ok {
 		result = base64.StdEncoding.EncodeToString([]byte(data))
+	} else if data, ok := vData.([]byte); ok {
+		result = base64.StdEncoding.EncodeToString(data)
 	} else {
 		err = ErrDataTypeIsNotString
 		return
@@ -65,19 +67,20 @@ func (p *Base64Component) Encode(payload spirit.Payload) (result interface{}, er
 
 func (p *Base64Component) Decode(payload spirit.Payload) (result interface{}, err error) {
 	var vData interface{}
+	var strData string
 	if vData, err = payload.GetData(); err != nil {
 		return
 	} else if data, ok := vData.(string); ok {
-		if ret, e := base64.StdEncoding.DecodeString(data); e != nil {
-			err = e
-			return
-		} else {
-			result = string(ret)
-		}
+		strData = data
+	} else if data, ok := vData.([]byte); ok {
+		strData = string(data)
 	} else {
 		err = ErrDataTypeIsNotString
 		return
 	}
 
+	if result, err = base64.StdEncoding.DecodeString(strData); err != nil {
+		return
+	}
 	return
 }

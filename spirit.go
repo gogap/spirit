@@ -143,15 +143,15 @@ func (p *ClassicSpirit) Run() (wg *sync.WaitGroup, err error) {
 	}
 
 	for name, actor := range p.outboxes {
-		p.startActor(name, ActorReceiver, actor)
+		p.startActor(name, ActorOutbox, actor)
 	}
 
 	for name, actor := range p.inboxes {
-		p.startActor(name, ActorReceiver, actor)
+		p.startActor(name, ActorInbox, actor)
 	}
 
 	for name, actor := range p.senders {
-		p.startActor(name, ActorReceiver, actor)
+		p.startActor(name, ActorSender, actor)
 	}
 
 	for name, actor := range p.receivers {
@@ -159,7 +159,7 @@ func (p *ClassicSpirit) Run() (wg *sync.WaitGroup, err error) {
 	}
 
 	for name, actor := range p.routers {
-		p.startActor(name, ActorReceiver, actor)
+		p.startActor(name, ActorRouter, actor)
 	}
 
 	for _, router := range p.routers {

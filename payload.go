@@ -8,6 +8,7 @@ type Payload interface {
 
 	GetData() (data interface{}, err error)
 	SetData(data interface{}) (err error)
+	DataToObject(v interface{}) (err error)
 
 	GetError() (err error)
 	SetError(err error)
