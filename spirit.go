@@ -208,7 +208,6 @@ func (p *ClassicSpirit) loop(router Router) {
 								WithField("event", "set payload error").
 								Debugln(e)
 
-							break
 						} else {
 							if e := delivery.Payload().SetData(ret); e != nil {
 								logger.WithField("module", "spirit").

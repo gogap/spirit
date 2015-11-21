@@ -39,10 +39,6 @@ func (p *ContainsLabelMatcher) Match(la spirit.Labels, lb spirit.Labels) bool {
 		return true
 	}
 
-	if len(la) != len(lb) {
-		return false
-	}
-
 	if !p.conf.Reverse {
 		equalCount := 0
 		for ka, va := range la {
