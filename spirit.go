@@ -856,6 +856,7 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
 	var err error
 	isStopping := false
+	isStopped := false
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
@@ -873,7 +874,12 @@ func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
 							logger.WithField("module", "spirit").
 								WithField("event", "stop spirit").
 								Warnln("kill spirit")
-							wg.Done()
+
+							if !isStopped {
+								wg.Done()
+								isStopped = true
+							}
+
 							stopingLocker.Unlock()
 							return
 						}
@@ -890,7 +896,14 @@ func (p *ClassicSpirit) waitSignal(wg *sync.WaitGroup) {
 									WithField("event", "stop spirit").
 									Errorln(err)
 							}
-							wg.Done()
+
+							stopingLocker.Lock()
+							if !isStopped {
+								wg.Done()
+								isStopped = true
+							}
+							stopingLocker.Unlock()
+
 							return
 						}()
 					}
