@@ -7,6 +7,10 @@ import (
 const SpiritErrNamespace = "SPIRIT"
 
 var (
+	ErrComponentHandlerError = errors.TN(SpiritErrNamespace, 1000, "component handler return error")
+)
+
+var (
 	ErrReceiverURNNotExist          = errors.New("receiver urn not exist")
 	ErrReceiverNameDuplicate        = errors.New("receiver name duplicate")
 	ErrReceiverAlreadyRunning       = errors.New("receiver already running")

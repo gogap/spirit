@@ -1,7 +1,20 @@
 package spirit
 
-type Metadata map[string][]interface{}
+type Metadata map[string]interface{}
 type Contexts map[string]interface{}
+
+type Error struct {
+	Code       uint64
+	Id         string
+	Namespace  string
+	Message    string
+	StackTrace string
+	Contexts   Contexts
+}
+
+func (p Error) Error() string {
+	return p.Message
+}
 
 type Payload interface {
 	Id() (id string)
@@ -10,12 +23,10 @@ type Payload interface {
 	SetData(data interface{}) (err error)
 	DataToObject(v interface{}) (err error)
 
-	GetError() (err error)
-	SetError(err error)
-
-	AppendMetadata(name string, values ...interface{}) (err error)
-	GetMetadata(name string) (values []interface{}, exist bool)
-	Metadata() (metadata Metadata)
+	Errors() (err []*Error)
+	AppendError(err ...*Error)
+	LastError() (err *Error)
+	ClearErrors()
 
 	GetContext(name string) (v interface{}, exist bool)
 	SetContext(name string, v interface{}) (err error)

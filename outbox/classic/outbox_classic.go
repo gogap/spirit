@@ -113,14 +113,17 @@ func (p *ClassicOutbox) Get() (deliveries []spirit.Delivery, err error) {
 	if p.conf.GetTimeout < 0 {
 		deliveries = <-p.deliveriesChan
 	} else {
+		more := false
 		select {
-		case deliveries = <-p.deliveriesChan:
+		case deliveries, more = <-p.deliveriesChan:
 			{
-				spirit.Logger().WithField("actor", "outbox").
-					WithField("urn", outboxURN).
-					WithField("event", "get deliveries").
-					WithField("length", len(deliveries)).
-					Debugln("deliveries received from deliveries chan")
+				if more {
+					spirit.Logger().WithField("actor", "outbox").
+						WithField("urn", outboxURN).
+						WithField("event", "get deliveries").
+						WithField("length", len(deliveries)).
+						Debugln("deliveries received from deliveries chan")
+				}
 			}
 		case <-time.After(time.Duration(p.conf.GetTimeout) * time.Millisecond):
 			{

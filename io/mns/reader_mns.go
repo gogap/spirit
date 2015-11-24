@@ -1,6 +1,7 @@
 package mns
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -45,7 +46,7 @@ type MNSReader struct {
 	readLocker sync.Mutex
 	reading    bool
 
-	tmpReader io.ReadCloser
+	tmpReader io.Reader
 }
 
 func init() {
@@ -100,6 +101,7 @@ func NewMNSReader(config spirit.Config) (r io.ReadCloser, err error) {
 func (p *MNSReader) Read(data []byte) (n int, err error) {
 	p.readLocker.Lock()
 	defer p.readLocker.Unlock()
+
 	if !p.reading {
 		resource := fmt.Sprintf("queues/%s/%s?numOfMessages=%d", p.conf.Queue, "messages", p.conf.MaxReadCount)
 
@@ -112,19 +114,70 @@ func (p *MNSReader) Read(data []byte) (n int, err error) {
 			return
 		}
 
+		defer resp.Body.Close()
+
 		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusNoContent {
+
+				spirit.Logger().WithField("actor", spirit.ActorReader).
+					WithField("urn", mnsReaderURN).
+					WithField("url", p.conf.URL).
+					WithField("queue", p.conf.Queue).
+					WithField("status_code", resp.StatusCode).
+					Debugln("no content")
+
+				return
+			}
+
+			mnsDecoder := ali_mns.NewAliMNSDecoder()
+			errResp := ali_mns.ErrorMessageResponse{}
+
+			if e := mnsDecoder.Decode(resp.Body, &errResp); e == nil {
+				spirit.Logger().WithField("actor", spirit.ActorReader).
+					WithField("urn", mnsReaderURN).
+					WithField("event", "read").
+					WithField("url", p.conf.URL).
+					WithField("queue", p.conf.Queue).
+					WithField("status_code", resp.StatusCode).
+					WithField("code", errResp.Code).
+					WithField("host_id", errResp.HostId).
+					WithField("request_id", errResp.RequestId).
+					Errorln(errors.New(errResp.Message))
+			} else {
+				spirit.Logger().WithField("actor", spirit.ActorReader).
+					WithField("urn", mnsReaderURN).
+					WithField("event", "decode mns error response").
+					WithField("url", p.conf.URL).
+					WithField("queue", p.conf.Queue).
+					WithField("status_code", resp.StatusCode).
+					Errorln(e)
+			}
+
 			err = ErrAliMNSResponseError
 			return
 		}
 
+		decoder := ali_mns.NewAliMNSDecoder()
+		batchMessages := ali_mns.BatchMessageReceiveResponse{}
+		if err = decoder.Decode(resp.Body, &batchMessages); err != nil {
+			return
+		}
+
+		var buf bytes.Buffer
+		for _, message := range batchMessages.Messages {
+			if _, err = buf.Write(message.MessageBody); err != nil {
+				return
+			}
+		}
+
 		p.reading = true
-		p.tmpReader = resp.Body
+		p.tmpReader = &buf
 	}
 
 	n, err = p.tmpReader.Read(data)
-	if err == io.EOF {
+
+	if err != nil {
 		p.reading = false
-		p.tmpReader.Close()
 		p.tmpReader = nil
 	}
 
@@ -137,7 +190,6 @@ func (p *MNSReader) Close() (err error) {
 
 	if p.tmpReader != nil {
 		p.reading = false
-		p.tmpReader.Close()
 		p.tmpReader = nil
 	}
 	return

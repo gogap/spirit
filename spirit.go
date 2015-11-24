@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gogap/errors"
 	"github.com/gogap/logrus_mate"
 )
 
@@ -202,7 +203,39 @@ func (p *ClassicSpirit) loop(router Router) {
 
 					for _, handler := range handlers {
 						if ret, e := handler(delivery.Payload()); e != nil {
-							delivery.Payload().SetError(e)
+							switch retErr := e.(type) {
+							case *Error:
+								{
+									delivery.Payload().AppendError(retErr)
+								}
+							case Error:
+								{
+									delivery.Payload().AppendError(&retErr)
+								}
+							case errors.ErrCode:
+								{
+									e := &Error{
+										Code:       retErr.Code(),
+										Id:         retErr.Id(),
+										Namespace:  retErr.Namespace(),
+										Message:    retErr.Error(),
+										StackTrace: retErr.StackTrace(),
+										Contexts:   Contexts(retErr.Context()),
+									}
+									delivery.Payload().AppendError(e)
+								}
+							default:
+								errCode := ErrComponentHandlerError.New().Append(e)
+								errRet := &Error{
+									Code:       errCode.Code(),
+									Id:         errCode.Id(),
+									Namespace:  errCode.Namespace(),
+									Message:    errCode.Error(),
+									StackTrace: errCode.StackTrace(),
+									Contexts:   map[string]interface{}(errCode.Context()),
+								}
+								delivery.Payload().AppendError(errRet)
+							}
 
 							logger.WithField("module", "spirit").
 								WithField("event", "set payload error").

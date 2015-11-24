@@ -72,8 +72,7 @@ func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit
 	payload := _JSONPayload{
 		Id:       delivery.Payload().Id(),
 		Data:     data,
-		Error:    delivery.Payload().GetError(),
-		Metadata: delivery.Payload().Metadata(),
+		Errors:   delivery.Payload().Errors(),
 		Contexts: delivery.Payload().Contexts(),
 	}
 
@@ -83,6 +82,7 @@ func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit
 		SessionId: delivery.SessionId(),
 		Payload:   payload,
 		Timestamp: delivery.Timestamp(),
+		Metadata:  delivery.Metadata(),
 	}
 
 	encoder := json.NewEncoder(w)

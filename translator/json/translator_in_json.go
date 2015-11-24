@@ -2,10 +2,11 @@ package json
 
 import (
 	"encoding/json"
-	"github.com/nu7hatch/gouuid"
 	"io"
 	"io/ioutil"
 	"time"
+
+	"github.com/rs/xid"
 
 	"github.com/gogap/spirit"
 )
@@ -50,14 +51,14 @@ func (p *JSONInputTranslator) inDataOnly(r io.Reader) (deliveries []spirit.Deliv
 		return
 	}
 
-	jp := JSONPayload{"data": data}
+	jp := NewJSONPayload()
 
-	deliverId, _ := uuid.NewV4()
+	jp.SetData(data)
 
 	delivery := &JSONDelivery{
 		urn:       p.conf.BindURN,
-		id:        deliverId.String(),
-		payload:   &jp,
+		id:        xid.New().String(),
+		payload:   jp,
 		labels:    p.conf.Labels,
 		timestamp: time.Now(),
 	}
@@ -81,13 +82,13 @@ func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.D
 			return
 		}
 
-		jp := JSONPayload{}
+		jp := NewJSONPayload()
 
-		jp["id"] = jd.Payload.Id
-		jp["data"] = jd.Payload.Data
-		jp["error"] = jd.Payload.Error
-		jp["metadata"] = jd.Payload.Metadata
-		jp["contexts"] = jd.Payload.Contexts
+		jp.id = jd.Payload.Id
+		jp.data = jd.Payload.Data
+		jp.errs = jd.Payload.Errors
+		jp.metadata = jd.Payload.Metadata
+		jp.contexts = jd.Payload.Contexts
 
 		labels := spirit.Labels{}
 		for k, v := range p.conf.Labels {
@@ -95,14 +96,13 @@ func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.D
 		}
 
 		if jd.Id == "" {
-			deliverId, _ := uuid.NewV4()
-			jd.Id = deliverId.String()
+			jd.Id = xid.New().String()
 		}
 
 		delivery := &JSONDelivery{
 			urn:       jd.URN,
 			id:        jd.Id,
-			payload:   &jp,
+			payload:   jp,
 			labels:    labels,
 			timestamp: jd.Timestamp,
 		}
