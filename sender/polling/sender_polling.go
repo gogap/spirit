@@ -92,7 +92,7 @@ func (p *PollingSender) Start() (err error) {
 	go func() {
 		for {
 			if deliveries, err := p.getter.Get(); err != nil {
-				spirit.Logger().WithField("actor", "sender").
+				spirit.Logger().WithField("actor", spirit.ActorSender).
 					WithField("urn", pollingSenderURN).
 					WithField("event", "get delivery from getter").
 					Errorln(err)
@@ -100,19 +100,19 @@ func (p *PollingSender) Start() (err error) {
 				var writer io.WriteCloser
 				for _, delivery := range deliveries {
 					if writer, err = p.writerPool.Get(delivery); err != nil {
-						spirit.Logger().WithField("actor", "sender").
+						spirit.Logger().WithField("actor", spirit.ActorSender).
 							WithField("urn", pollingSenderURN).
 							WithField("event", "get session writer").
 							WithField("session_id", delivery.SessionId()).
 							Errorln(err)
 					} else if err = p.translator.Out(writer, delivery); err != nil {
-						spirit.Logger().WithField("actor", "sender").
+						spirit.Logger().WithField("actor", spirit.ActorSender).
 							WithField("urn", pollingSenderURN).
 							WithField("event", "translate deliveries to writer").
 							WithField("session_id", delivery.SessionId()).
 							Errorln(err)
 					} else if p.writerPool.Put(delivery, writer); err != nil {
-						spirit.Logger().WithField("actor", "sender").
+						spirit.Logger().WithField("actor", spirit.ActorSender).
 							WithField("urn", pollingSenderURN).
 							WithField("event", "put writer back to pool").
 							WithField("session_id", delivery.SessionId()).
@@ -122,7 +122,7 @@ func (p *PollingSender) Start() (err error) {
 			}
 
 			if p.conf.Interval > 0 {
-				spirit.Logger().WithField("actor", "sender").
+				spirit.Logger().WithField("actor", spirit.ActorSender).
 					WithField("urn", pollingSenderURN).
 					WithField("event", "sleep").
 					WithField("interval", p.conf.Interval).
@@ -134,7 +134,7 @@ func (p *PollingSender) Start() (err error) {
 			case signal := <-p.terminaled:
 				{
 					if signal == true {
-						spirit.Logger().WithField("actor", "sender").
+						spirit.Logger().WithField("actor", spirit.ActorSender).
 							WithField("urn", pollingSenderURN).
 							WithField("event", "terminal").
 							Debugln("terminal singal received")
