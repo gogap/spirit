@@ -410,8 +410,6 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 				err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
 			}
 
-			p.hookMessages(inPortName, HookEventAfterCallHandler, &message)
-
 			if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
 				errCode := err.(errors.ErrCode)
 				message.payload.err.AddressId = message.currentGraphIndex
@@ -421,6 +419,8 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 				message.payload.err.Message = errCode.Error()
 
 				nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
+
+				p.hookMessages(inPortName, HookEventAfterCallHandler, &message)
 			} else {
 				return
 			}
