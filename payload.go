@@ -13,11 +13,13 @@ type ComponentCommands map[string][]interface{}
 type ComponentContext map[string]interface{}
 
 type Error struct {
-	Id        string `json:"id,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Code      uint64 `json:"code,omitempty"`
-	AddressId int32  `json:"address_id,omitempty"`
-	Message   string `json:"message,omitempty"`
+	Id         string                 `json:"id,omitempty"`
+	Namespace  string                 `json:"namespace,omitempty"`
+	Code       uint64                 `json:"code,omitempty"`
+	AddressId  int32                  `json:"address_id,omitempty"`
+	Message    string                 `json:"message,omitempty"`
+	Context    map[string]interface{} `json:"context,omitempty"`
+	StackTrace string                 `json:"stack_trace,omitempty"`
 }
 
 type Payload struct {

@@ -417,6 +417,8 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 				message.payload.err.Namespace = errCode.Namespace()
 				message.payload.err.Code = errCode.Code()
 				message.payload.err.Message = errCode.Error()
+				message.payload.err.StackTrace = errCode.StackTrace()
+				message.payload.err.Context = errCode.Context()
 
 				nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
 
@@ -436,6 +438,8 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 					message.payload.err.Namespace = errCode.Namespace()
 					message.payload.err.Code = errCode.Code()
 					message.payload.err.Message = errCode.Error()
+					message.payload.err.StackTrace = errCode.StackTrace()
+					message.payload.err.Context = errCode.Context()
 
 					nextGraphIndex = ERROR_MSG_ADDR_INT //forword to the error port
 				} else {
