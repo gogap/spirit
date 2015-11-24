@@ -12,7 +12,7 @@ const (
 	pollingSenderURN = "urn:spirit:sender:polling"
 )
 
-var _ spirit.Sender = new(PollingSender)
+var _ spirit.WriteSender = new(PollingSender)
 
 type _Deliveries struct {
 	Deliveries []spirit.Delivery
