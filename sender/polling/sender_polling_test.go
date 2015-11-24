@@ -164,6 +164,6 @@ func (p *_MockPayload) DeleteContext(name string) (err error) {
 	return
 }
 
-func (p *_MockPayload) Contexts() (contexts spirit.Contexts) {
+func (p *_MockPayload) Context() (context spirit.Context) {
 	return
 }

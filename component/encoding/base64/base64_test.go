@@ -40,7 +40,7 @@ func (p *_MockPayload) GetContext(name string) (v interface{}, exist bool) {
 func (p *_MockPayload) SetContext(name string, v interface{}) (err error) {
 	return
 }
-func (p *_MockPayload) Contexts() (contexts spirit.Contexts) {
+func (p *_MockPayload) Context() (context spirit.Context) {
 	return
 }
 func (p *_MockPayload) DeleteContext(name string) (err error) {

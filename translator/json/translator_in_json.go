@@ -88,7 +88,7 @@ func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.D
 		jp.data = jd.Payload.Data
 		jp.errs = jd.Payload.Errors
 		jp.metadata = jd.Payload.Metadata
-		jp.contexts = jd.Payload.Contexts
+		jp.context = jd.Payload.Context
 
 		labels := spirit.Labels{}
 		for k, v := range p.conf.Labels {

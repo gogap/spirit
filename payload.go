@@ -1,7 +1,7 @@
 package spirit
 
 type Metadata map[string]interface{}
-type Contexts map[string]interface{}
+type Context map[string]interface{}
 
 type Error struct {
 	Code       uint64
@@ -9,7 +9,7 @@ type Error struct {
 	Namespace  string
 	Message    string
 	StackTrace string
-	Contexts   Contexts
+	Context    Context
 }
 
 func (p Error) Error() string {
@@ -30,6 +30,6 @@ type Payload interface {
 
 	GetContext(name string) (v interface{}, exist bool)
 	SetContext(name string, v interface{}) (err error)
-	Contexts() (contexts Contexts)
+	Context() (context Context)
 	DeleteContext(name string) (err error)
 }

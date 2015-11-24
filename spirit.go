@@ -220,7 +220,7 @@ func (p *ClassicSpirit) loop(router Router) {
 										Namespace:  retErr.Namespace(),
 										Message:    retErr.Error(),
 										StackTrace: retErr.StackTrace(),
-										Contexts:   Contexts(retErr.Context()),
+										Context:    Context(retErr.Context()),
 									}
 									delivery.Payload().AppendError(e)
 								}
@@ -232,7 +232,7 @@ func (p *ClassicSpirit) loop(router Router) {
 									Namespace:  errCode.Namespace(),
 									Message:    errCode.Error(),
 									StackTrace: errCode.StackTrace(),
-									Contexts:   map[string]interface{}(errCode.Context()),
+									Context:    map[string]interface{}(errCode.Context()),
 								}
 								delivery.Payload().AppendError(errRet)
 							}

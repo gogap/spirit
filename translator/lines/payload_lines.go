@@ -56,6 +56,6 @@ func (p *LinesPayload) DeleteContext(name string) (err error) {
 	return
 }
 
-func (p *LinesPayload) Contexts() (contexts spirit.Contexts) {
+func (p *LinesPayload) Context() (context spirit.Context) {
 	return
 }

@@ -14,7 +14,7 @@ type _JSONPayload struct {
 	Data     interface{}     `json:"data"`
 	Errors   []*spirit.Error `json:"error"`
 	Metadata spirit.Metadata `json:"metadata"`
-	Contexts spirit.Contexts `json:"contexts"`
+	Context  spirit.Context  `json:"context"`
 }
 
 type JSONPayload struct {
@@ -22,13 +22,13 @@ type JSONPayload struct {
 	errs     []*spirit.Error
 	data     interface{}
 	metadata spirit.Metadata
-	contexts spirit.Contexts
+	context  spirit.Context
 }
 
 func NewJSONPayload() *JSONPayload {
 	return &JSONPayload{
 		metadata: make(spirit.Metadata),
-		contexts: make(spirit.Contexts),
+		context:  make(spirit.Context),
 	}
 }
 
@@ -114,20 +114,20 @@ func (p *JSONPayload) DataToObject(v interface{}) (err error) {
 }
 
 func (p *JSONPayload) GetContext(name string) (v interface{}, exist bool) {
-	v, exist = p.contexts[strings.ToUpper(name)]
+	v, exist = p.context[strings.ToUpper(name)]
 	return
 }
 
 func (p *JSONPayload) SetContext(name string, v interface{}) (err error) {
-	p.contexts[strings.ToUpper(name)] = v
+	p.context[strings.ToUpper(name)] = v
 	return
 }
 
-func (p *JSONPayload) Contexts() (contexts spirit.Contexts) {
-	return p.contexts
+func (p *JSONPayload) Context() (context spirit.Context) {
+	return p.context
 }
 
 func (p *JSONPayload) DeleteContext(name string) (err error) {
-	delete(p.contexts, strings.ToUpper(name))
+	delete(p.context, strings.ToUpper(name))
 	return
 }

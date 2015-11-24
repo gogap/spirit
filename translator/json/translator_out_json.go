@@ -70,10 +70,10 @@ func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit
 	}
 
 	payload := _JSONPayload{
-		Id:       delivery.Payload().Id(),
-		Data:     data,
-		Errors:   delivery.Payload().Errors(),
-		Contexts: delivery.Payload().Contexts(),
+		Id:      delivery.Payload().Id(),
+		Data:    data,
+		Errors:  delivery.Payload().Errors(),
+		Context: delivery.Payload().Context(),
 	}
 
 	jd := _JSONDelivery{
