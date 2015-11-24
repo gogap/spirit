@@ -410,7 +410,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 				err = ERR_COMPONENT_HANDLER_RETURN_ERROR.New(errors.Params{"err": err, "name": p.name, "port": inPortName})
 			}
 
-			logs.Error(err)
+			p.hookMessages(inPortName, HookEventAfterCallHandler, &message)
 
 			if address, exist = message.graph[ERROR_MSG_ADDR]; exist {
 				errCode := err.(errors.ErrCode)
@@ -424,6 +424,7 @@ func (p *BaseComponent) handleComponentMessage(inPortName string, context interf
 			} else {
 				return
 			}
+
 		} else {
 			message.payload.SetContent(content)
 
