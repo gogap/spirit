@@ -34,21 +34,19 @@ type PollingSender struct {
 
 	translator spirit.OutputTranslator
 	getter     spirit.DeliveryGetter
-
-	WriterLocker sync.Mutex
 }
 
 func init() {
 	spirit.RegisterSender(pollingSenderURN, NewPollingSender)
 }
 
-func NewPollingSender(config spirit.Map) (receiver spirit.Sender, err error) {
+func NewPollingSender(config spirit.Map) (sender spirit.Sender, err error) {
 	conf := PollingSenderConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 
-	receiver = &PollingSender{
+	sender = &PollingSender{
 		conf:       conf,
 		terminaled: make(chan bool),
 	}
