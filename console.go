@@ -13,7 +13,7 @@ var (
 	newConsoleFuncs = make(map[string]NewConsoleFunc)
 )
 
-type NewConsoleFunc func(config Config) (console Console, err error)
+type NewConsoleFunc func(config Map) (console Console, err error)
 
 func RegisterConsole(urn string, newFunc NewConsoleFunc) (err error) {
 	consolesLocker.Lock()

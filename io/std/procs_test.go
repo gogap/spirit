@@ -10,7 +10,7 @@ import (
 
 func TestStdReadAndWrite(t *testing.T) {
 
-	optsR := spirit.Config{
+	optsR := spirit.Map{
 		"name":  "ping",
 		"proc":  "ping",
 		"args":  []string{"-c", "10", "www.baidu.com"},
@@ -18,7 +18,7 @@ func TestStdReadAndWrite(t *testing.T) {
 		"delim": "\n",
 	}
 
-	optsW := spirit.Config{
+	optsW := spirit.Map{
 		"name":  "write",
 		"proc":  "my-program-w",
 		"args":  []string{},

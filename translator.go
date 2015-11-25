@@ -15,15 +15,15 @@ var (
 	newOutputTranslatorFuncs = make(map[string]NewOutputTranslatorFunc)
 )
 
-type NewInputTranslatorFunc func(config Config) (translator InputTranslator, err error)
-type NewOutputTranslatorFunc func(config Config) (translator OutputTranslator, err error)
+type NewInputTranslatorFunc func(config Map) (translator InputTranslator, err error)
+type NewOutputTranslatorFunc func(config Map) (translator OutputTranslator, err error)
 
 type InputTranslator interface {
 	In(r io.Reader) (delivery []Delivery, err error)
 }
 
 type OutputTranslator interface {
-	Out(w io.WriteCloser, delivery Delivery) (err error)
+	Out(w io.Writer, delivery Delivery) (err error)
 }
 
 func RegisterInputTranslator(urn string, newFunc NewInputTranslatorFunc) (err error) {

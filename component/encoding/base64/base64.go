@@ -26,7 +26,7 @@ func init() {
 	spirit.RegisterComponent(base64URN, NewBase64Component)
 }
 
-func NewBase64Component(config spirit.Config) (component spirit.Component, err error) {
+func NewBase64Component(config spirit.Map) (component spirit.Component, err error) {
 	component = &Base64Component{}
 
 	return

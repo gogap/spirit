@@ -25,7 +25,7 @@ func init() {
 	spirit.RegisterReader(stdReaderURN, NewStdout)
 }
 
-func NewStdout(config spirit.Config) (w io.ReadCloser, err error) {
+func NewStdout(config spirit.Map) (w io.ReadCloser, err error) {
 	conf := StdIOConfig{}
 	config.ToObject(&conf)
 

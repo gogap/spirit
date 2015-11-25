@@ -47,7 +47,7 @@ func init() {
 	spirit.RegisterRouter(classicRouterURN, NewClassicRouter)
 }
 
-func NewClassicRouter(config spirit.Config) (box spirit.Router, err error) {
+func NewClassicRouter(config spirit.Map) (box spirit.Router, err error) {
 	conf := ClassicRouterConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return

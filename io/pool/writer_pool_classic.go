@@ -33,7 +33,7 @@ type ClassicWriterPool struct {
 	conf         ClassicWriterPoolConfig
 
 	newWriterFunc spirit.NewWriterFunc
-	writerConfig  spirit.Config
+	writerConfig  spirit.Map
 
 	sessionWriters map[string]*writerInPool
 	writerLocker   sync.Mutex
@@ -48,7 +48,7 @@ func init() {
 	spirit.RegisterWriterPool(writerPoolURN, NewClassicWriterPool)
 }
 
-func NewClassicWriterPool(config spirit.Config) (pool spirit.WriterPool, err error) {
+func NewClassicWriterPool(config spirit.Map) (pool spirit.WriterPool, err error) {
 	conf := ClassicWriterPoolConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
@@ -67,7 +67,7 @@ func NewClassicWriterPool(config spirit.Config) (pool spirit.WriterPool, err err
 	return
 }
 
-func (p *ClassicWriterPool) SetNewWriterFunc(newFunc spirit.NewWriterFunc, config spirit.Config) (err error) {
+func (p *ClassicWriterPool) SetNewWriterFunc(newFunc spirit.NewWriterFunc, config spirit.Map) (err error) {
 	p.newWriterFunc = newFunc
 	p.writerConfig = config
 	return

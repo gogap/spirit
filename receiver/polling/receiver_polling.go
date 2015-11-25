@@ -44,7 +44,7 @@ func init() {
 	spirit.RegisterReceiver(pollingReceiverURN, NewPollingReceiver)
 }
 
-func NewPollingReceiver(config spirit.Config) (receiver spirit.Receiver, err error) {
+func NewPollingReceiver(config spirit.Map) (receiver spirit.Receiver, err error) {
 	conf := PollingReceiverConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return

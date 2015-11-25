@@ -26,7 +26,7 @@ type ClassicReaderPool struct {
 	conf         ClassicReaderPoolConfig
 
 	newReaderFunc spirit.NewReaderFunc
-	readerConfig  spirit.Config
+	readerConfig  spirit.Map
 
 	readers      []io.ReadCloser
 	readerLocker sync.Mutex
@@ -40,7 +40,7 @@ func init() {
 	spirit.RegisterReaderPool(readerPoolURN, NewClassicReaderPool)
 }
 
-func NewClassicReaderPool(config spirit.Config) (pool spirit.ReaderPool, err error) {
+func NewClassicReaderPool(config spirit.Map) (pool spirit.ReaderPool, err error) {
 	conf := ClassicReaderPoolConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
@@ -58,7 +58,7 @@ func NewClassicReaderPool(config spirit.Config) (pool spirit.ReaderPool, err err
 	return
 }
 
-func (p *ClassicReaderPool) SetNewReaderFunc(newFunc spirit.NewReaderFunc, config spirit.Config) (err error) {
+func (p *ClassicReaderPool) SetNewReaderFunc(newFunc spirit.NewReaderFunc, config spirit.Map) (err error) {
 	p.newReaderFunc = newFunc
 	p.readerConfig = config
 	return

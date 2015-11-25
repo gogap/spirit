@@ -13,7 +13,7 @@ var (
 	newURNRewriterFuncs = make(map[string]NewURNRewriterFunc)
 )
 
-type NewURNRewriterFunc func(config Config) (rewriter URNRewriter, err error)
+type NewURNRewriterFunc func(config Map) (rewriter URNRewriter, err error)
 
 func RegisterURNRewriter(urn string, newFunc NewURNRewriterFunc) (err error) {
 	rewritersLocker.Lock()

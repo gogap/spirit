@@ -26,7 +26,7 @@ func init() {
 	spirit.RegisterComponent(jsonURN, NewJSONComponent)
 }
 
-func NewJSONComponent(config spirit.Config) (component spirit.Component, err error) {
+func NewJSONComponent(config spirit.Map) (component spirit.Component, err error) {
 	component = &JSONComponent{}
 
 	return

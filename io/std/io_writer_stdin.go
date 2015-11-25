@@ -29,7 +29,7 @@ func init() {
 	spirit.RegisterWriter(stdWriterURN, NewStdin)
 }
 
-func NewStdin(config spirit.Config) (w io.WriteCloser, err error) {
+func NewStdin(config spirit.Map) (w io.WriteCloser, err error) {
 	conf := StdIOConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return

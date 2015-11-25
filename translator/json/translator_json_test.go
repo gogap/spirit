@@ -8,7 +8,7 @@ import (
 )
 
 func TestTranslateRead(t *testing.T) {
-	trans, err := NewJSONInputTranslator(spirit.Config{"labels": map[string]string{"a": "b"}})
+	trans, err := NewJSONInputTranslator(spirit.Map{"labels": map[string]string{"a": "b"}})
 
 	deliveryJSON := `{"payload": {"data":"hello"}}{"payload": {"data":"hello2"}}`
 	testValue1 := "hello"

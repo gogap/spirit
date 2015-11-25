@@ -10,7 +10,7 @@ var (
 	newReaderFuncs = make(map[string]NewReaderFunc)
 )
 
-type NewReaderFunc func(config Config) (r io.ReadCloser, err error)
+type NewReaderFunc func(config Map) (r io.ReadCloser, err error)
 
 func RegisterReader(urn string, newFunc NewReaderFunc) (err error) {
 	readersLocker.Lock()

@@ -38,7 +38,7 @@ func init() {
 	spirit.RegisterURNRewriter(hookURNRewriterURN, NewHookURNRewriter)
 }
 
-func NewHookURNRewriter(config spirit.Config) (rewriter spirit.URNRewriter, err error) {
+func NewHookURNRewriter(config spirit.Map) (rewriter spirit.URNRewriter, err error) {
 	conf := HookURNRewriterConfig{}
 
 	if err = config.ToObject(&conf); err != nil {

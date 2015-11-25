@@ -31,7 +31,7 @@ func init() {
 	spirit.RegisterInputTranslator(jsonTranslatorInURN, NewJSONInputTranslator)
 }
 
-func NewJSONInputTranslator(config spirit.Config) (translator spirit.InputTranslator, err error) {
+func NewJSONInputTranslator(config spirit.Map) (translator spirit.InputTranslator, err error) {
 	conf := JSONInputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -87,7 +87,6 @@ func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.D
 		jp.id = jd.Payload.Id
 		jp.data = jd.Payload.Data
 		jp.errs = jd.Payload.Errors
-		jp.metadata = jd.Payload.Metadata
 		jp.context = jd.Payload.Context
 
 		labels := spirit.Labels{}
@@ -104,6 +103,7 @@ func (p *JSONInputTranslator) inDeliveryData(r io.Reader) (deliveries []spirit.D
 			id:        jd.Id,
 			payload:   jp,
 			labels:    labels,
+			metadata:  jd.Metadata,
 			timestamp: jd.Timestamp,
 		}
 

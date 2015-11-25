@@ -10,25 +10,22 @@ import (
 var _ spirit.Payload = new(JSONPayload)
 
 type _JSONPayload struct {
-	Id       string          `json:"id"`
-	Data     interface{}     `json:"data"`
-	Errors   []*spirit.Error `json:"error"`
-	Metadata spirit.Metadata `json:"metadata"`
-	Context  spirit.Context  `json:"context"`
+	Id      string          `json:"id"`
+	Data    interface{}     `json:"data"`
+	Errors  []*spirit.Error `json:"error"`
+	Context spirit.Map      `json:"context"`
 }
 
 type JSONPayload struct {
-	id       string
-	errs     []*spirit.Error
-	data     interface{}
-	metadata spirit.Metadata
-	context  spirit.Context
+	id      string
+	errs    []*spirit.Error
+	data    interface{}
+	context spirit.Map
 }
 
 func NewJSONPayload() *JSONPayload {
 	return &JSONPayload{
-		metadata: make(spirit.Metadata),
-		context:  make(spirit.Context),
+		context: make(spirit.Map),
 	}
 }
 
@@ -123,7 +120,7 @@ func (p *JSONPayload) SetContext(name string, v interface{}) (err error) {
 	return
 }
 
-func (p *JSONPayload) Context() (context spirit.Context) {
+func (p *JSONPayload) Context() (context spirit.Map) {
 	return p.context
 }
 

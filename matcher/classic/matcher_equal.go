@@ -15,7 +15,7 @@ func init() {
 	spirit.RegisterLabelMatcher(equalMatcherURN, NewContainsLabelMatcher)
 }
 
-func NewEqualLabelMatcher(config spirit.Config) (matcher spirit.LabelMatcher, err error) {
+func NewEqualLabelMatcher(config spirit.Map) (matcher spirit.LabelMatcher, err error) {
 	return &EqualLabelMatcher{}, nil
 }
 

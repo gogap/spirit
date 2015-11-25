@@ -13,14 +13,14 @@ import (
 
 func TestInboxReceive(t *testing.T) {
 
-	opts := spirit.Config{"interval": 0, "buffer_size": 1, "timeout": 1000}
+	opts := spirit.Map{"interval": 0, "buffer_size": 1, "timeout": 1000}
 
 	var err error
 	var receiver spirit.Receiver
 
 	receiver, err = polling.NewPollingReceiver(opts)
 
-	readerOpts := spirit.Config{
+	readerOpts := spirit.Map{
 		"name":  "ping",
 		"proc":  "ping",
 		"args":  []string{"-c", "10", "baidu.com"},
@@ -31,7 +31,7 @@ func TestInboxReceive(t *testing.T) {
 	receiver.SetNewReaderFunc(std.NewStdout, readerOpts)
 
 	var translator spirit.InputTranslator
-	if translator, err = lines.NewLinesInputTranslator(spirit.Config{}); err != nil {
+	if translator, err = lines.NewLinesInputTranslator(spirit.Map{}); err != nil {
 		t.Errorf("create translator error, %s", err.Error())
 		return
 	}
@@ -46,7 +46,7 @@ func TestInboxReceive(t *testing.T) {
 		return
 	}
 
-	inboxOpts := spirit.Config{
+	inboxOpts := spirit.Map{
 		"size":        100,
 		"put_timeout": -1,
 		"get_timeout": -1,

@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type NewReceiverFunc func(config Config) (receiver Receiver, err error)
+type NewReceiverFunc func(config Map) (receiver Receiver, err error)
 
 type Receiver interface {
 	StartStopper

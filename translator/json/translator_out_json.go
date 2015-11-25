@@ -25,7 +25,7 @@ func init() {
 	spirit.RegisterOutputTranslator(jsonTranslatorOutURN, NewJSONOutputTranslator)
 }
 
-func NewJSONOutputTranslator(config spirit.Config) (translator spirit.OutputTranslator, err error) {
+func NewJSONOutputTranslator(config spirit.Map) (translator spirit.OutputTranslator, err error) {
 	conf := JSONOutputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -38,7 +38,7 @@ func NewJSONOutputTranslator(config spirit.Config) (translator spirit.OutputTran
 	return
 }
 
-func (p *JSONOutputTranslator) outDataOnly(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+func (p *JSONOutputTranslator) outDataOnly(w io.Writer, delivery spirit.Delivery) (err error) {
 
 	var data interface{}
 	if data, err = delivery.Payload().GetData(); err != nil {
@@ -62,7 +62,7 @@ func (p *JSONOutputTranslator) outDataOnly(w io.WriteCloser, delivery spirit.Del
 	return
 }
 
-func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+func (p *JSONOutputTranslator) outDeliveryData(w io.Writer, delivery spirit.Delivery) (err error) {
 
 	var data interface{}
 	if data, err = delivery.Payload().GetData(); err != nil {
@@ -91,7 +91,7 @@ func (p *JSONOutputTranslator) outDeliveryData(w io.WriteCloser, delivery spirit
 	return
 }
 
-func (p *JSONOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+func (p *JSONOutputTranslator) Out(w io.Writer, delivery spirit.Delivery) (err error) {
 
 	if p.conf.DataOnly {
 		return p.outDataOnly(w, delivery)

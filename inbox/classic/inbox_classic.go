@@ -35,7 +35,7 @@ func init() {
 	spirit.RegisterInbox(inboxURN, NewClassicInbox)
 }
 
-func NewClassicInbox(config spirit.Config) (box spirit.Inbox, err error) {
+func NewClassicInbox(config spirit.Map) (box spirit.Inbox, err error) {
 	conf := ClassicInboxConfig{}
 
 	if err = config.ToObject(&conf); err != nil {

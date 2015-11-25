@@ -220,8 +220,9 @@ func (p *ClassicSpirit) loop(router Router) {
 										Namespace:  retErr.Namespace(),
 										Message:    retErr.Error(),
 										StackTrace: retErr.StackTrace(),
-										Context:    Context(retErr.Context()),
+										Context:    map[string]interface{}(retErr.Context()),
 									}
+
 									delivery.Payload().AppendError(e)
 								}
 							default:
@@ -234,6 +235,7 @@ func (p *ClassicSpirit) loop(router Router) {
 									StackTrace: errCode.StackTrace(),
 									Context:    map[string]interface{}(errCode.Context()),
 								}
+
 								delivery.Payload().AppendError(errRet)
 							}
 
@@ -263,6 +265,12 @@ func (p *ClassicSpirit) loop(router Router) {
 						}
 
 						for _, outbox := range outboxes {
+
+							logger.WithField("module", "spirit").
+								WithField("event", "router to outboxes").
+								WithField("outbox labels", outbox.Labels()).
+								Debugln("outbox found")
+
 							if e := outbox.Put([]Delivery{delivery}); e != nil {
 								logger.WithField("module", "spirit").
 									WithField("event", "put delivery to outbox").
@@ -786,6 +794,12 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 					writerPool := p.writerPools[outbox.Sender.WriterPool]
 					sdr.SetTranslator(translatorInstance)
 					sdr.SetWriterPool(writerPool)
+					sdr.SetDeliveryGetter(outboxInstance)
+				}
+			case TranslatorSender:
+				{
+					translatorInstance := p.outputTranslators[outbox.Sender.Translator]
+					sdr.SetTranslator(translatorInstance)
 					sdr.SetDeliveryGetter(outboxInstance)
 				}
 			case Sender:

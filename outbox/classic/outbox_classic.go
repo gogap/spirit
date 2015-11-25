@@ -31,7 +31,7 @@ func init() {
 	spirit.RegisterOutbox(outboxURN, NewClassicOutbox)
 }
 
-func NewClassicOutbox(config spirit.Config) (box spirit.Outbox, err error) {
+func NewClassicOutbox(config spirit.Map) (box spirit.Outbox, err error) {
 	conf := ClassicOutboxConfig{}
 
 	if err = config.ToObject(&conf); err != nil {

@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type NewSenderFunc func(config Config) (sender Sender, err error)
+type NewSenderFunc func(config Map) (sender Sender, err error)
 
 type Sender interface {
 	StartStopper
@@ -12,11 +12,17 @@ type Sender interface {
 	SetDeliveryGetter(getter DeliveryGetter) (err error)
 }
 
+type TranslatorSender interface {
+	Sender
+
+	SetTranslator(translator OutputTranslator) (err error)
+}
+
 type WriteSender interface {
 	Sender
 
-	SetWriterPool(pool WriterPool) (err error)
 	SetTranslator(translator OutputTranslator) (err error)
+	SetWriterPool(pool WriterPool) (err error)
 }
 
 var (
