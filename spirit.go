@@ -757,6 +757,13 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 						rcver.SetReaderPool(readerPool)
 						rcver.SetDeliveryPutter(inboxInstance)
 					}
+				case TranslatorReceiver:
+					{
+						translatorInstance := p.inputTranslators[receiver.Translator]
+
+						rcver.SetTranslator(translatorInstance)
+						rcver.SetDeliveryPutter(inboxInstance)
+					}
 				case Receiver:
 					{
 						rcver.SetDeliveryPutter(inboxInstance)

@@ -52,6 +52,7 @@ func (p *JSONPayload) ClearErrors() {
 	p.errs = nil
 	return
 }
+
 func (p *JSONPayload) GetData() (data interface{}, err error) {
 	data = p.data
 	return

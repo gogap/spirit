@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/gogap/spirit"
-
+	"github.com/gogap/spirit/io/pool"
 	"github.com/gogap/spirit/io/std"
 	"github.com/gogap/spirit/receiver/polling"
 	"github.com/gogap/spirit/translator/lines"
@@ -18,17 +18,28 @@ func TestInboxReceive(t *testing.T) {
 	var err error
 	var receiver spirit.Receiver
 
-	receiver, err = polling.NewPollingReceiver(opts)
+	if receiver, err = polling.NewPollingReceiver(opts); err != nil {
+		t.Error(err)
+	}
 
-	readerOpts := spirit.Map{
+	var readerPool spirit.ReaderPool
+	if readerPool, err = pool.NewClassicReaderPool(spirit.Map{"max_size": 100}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	readerConfig := spirit.Map{
 		"name":  "ping",
 		"proc":  "ping",
-		"args":  []string{"-c", "10", "baidu.com"},
+		"args":  []string{"-c", "1", "baidu.com"},
 		"envs":  []string{},
 		"delim": "\n",
 	}
 
-	receiver.SetNewReaderFunc(std.NewStdout, readerOpts)
+	if err = readerPool.SetNewReaderFunc(std.NewStdout, readerConfig); err != nil {
+		t.Error(err)
+		return
+	}
 
 	var translator spirit.InputTranslator
 	if translator, err = lines.NewLinesInputTranslator(spirit.Map{}); err != nil {
@@ -36,9 +47,18 @@ func TestInboxReceive(t *testing.T) {
 		return
 	}
 
-	if err = receiver.SetTranslator(translator); err != nil {
-		t.Errorf("set translator to receiver error, %s", err.Error())
-		return
+	if recv, ok := receiver.(spirit.TranslatorReceiver); ok {
+		if err = recv.SetTranslator(translator); err != nil {
+			t.Errorf("set translator to receiver error, %s", err.Error())
+			return
+		}
+	}
+
+	if recv, ok := receiver.(spirit.ReadReceiver); ok {
+		if err = recv.SetReaderPool(readerPool); err != nil {
+			t.Errorf("set reader pool to receiver error, %s", err.Error())
+			return
+		}
 	}
 
 	if err != nil {
@@ -48,8 +68,8 @@ func TestInboxReceive(t *testing.T) {
 
 	inboxOpts := spirit.Map{
 		"size":        100,
-		"put_timeout": -1,
-		"get_timeout": -1,
+		"put_timeout": 10000,
+		"get_timeout": 10000,
 	}
 
 	var box spirit.Inbox
@@ -58,10 +78,7 @@ func TestInboxReceive(t *testing.T) {
 		return
 	}
 
-	if err = box.AddReceiver(receiver); err != nil {
-		t.Errorf("add receiver to inbox error, %s", err.Error())
-		return
-	}
+	receiver.SetDeliveryPutter(box)
 
 	if err = box.Start(); err != nil {
 		t.Errorf("start inbox error, %s", err.Error())
@@ -76,7 +93,7 @@ func TestInboxReceive(t *testing.T) {
 	}
 
 	if len(deliveries) == 0 {
-		t.Errorf("deliveries is empty, %s", err.Error())
+		t.Errorf("deliveries is empty")
 		return
 	}
 

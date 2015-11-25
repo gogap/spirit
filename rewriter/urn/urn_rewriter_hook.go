@@ -80,13 +80,13 @@ func NewHookURNRewriter(config spirit.Map) (rewriter spirit.URNRewriter, err err
 	return
 }
 
-func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (newURN string, err error) {
+func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (err error) {
 
 	originalURN := delivery.URN()
 	originalURN = strings.Trim(originalURN, "|")
 
 	if p.tmpls == nil || originalURN == "" {
-		return delivery.URN(), nil
+		return
 	}
 
 	tmpURNs := []string{}
@@ -104,7 +104,7 @@ func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (newURN
 		tmpURNs = append(tmpURNs, buf.String())
 	}
 
-	newURN = strings.Join(tmpURNs, "|")
+	newURN := strings.Join(tmpURNs, "|")
 
 	if newURN != originalURN {
 		spirit.Logger().WithField("actor", spirit.ActorURNRewriter).
@@ -116,15 +116,17 @@ func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (newURN
 			Debugln("rewrite delivery urn")
 	}
 
+	delivery.SetURN(newURN)
+
 	return
 }
 
-func (p *HookURNRewriter) splitMatchRewrite(delivery spirit.Delivery) (newURN string, err error) {
+func (p *HookURNRewriter) splitMatchRewrite(delivery spirit.Delivery) (err error) {
 	originalURN := delivery.URN()
 	originalURN = strings.Trim(originalURN, "|")
 
 	if p.tmpls == nil || originalURN == "" {
-		return delivery.URN(), nil
+		return
 	}
 
 	urns := strings.Split(originalURN, "|")
@@ -150,7 +152,7 @@ func (p *HookURNRewriter) splitMatchRewrite(delivery spirit.Delivery) (newURN st
 		}
 	}
 
-	newURN = strings.Join(tmpURNs, "|")
+	newURN := strings.Join(tmpURNs, "|")
 
 	if newURN != originalURN {
 		spirit.Logger().WithField("actor", spirit.ActorURNRewriter).
@@ -165,7 +167,7 @@ func (p *HookURNRewriter) splitMatchRewrite(delivery spirit.Delivery) (newURN st
 	return
 }
 
-func (p *HookURNRewriter) Rewrite(delivery spirit.Delivery) (newURN string, err error) {
+func (p *HookURNRewriter) Rewrite(delivery spirit.Delivery) (err error) {
 	if p.conf.WholeMatching {
 		return p.wholeMatchingRewrite(delivery)
 	} else {

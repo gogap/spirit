@@ -415,12 +415,14 @@ func (p *ClassicRouter) Components() (components map[string][]spirit.Component) 
 }
 
 func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []spirit.ComponentHandler, err error) {
-	strURNs := delivery.URN()
+
 	if p.urnRewriter != nil {
-		if strURNs, err = p.urnRewriter.Rewrite(delivery); err != nil {
+		if err = p.urnRewriter.Rewrite(delivery); err != nil {
 			return
 		}
 	}
+
+	strURNs := delivery.URN()
 
 	if strURNs == "" {
 		if !p.conf.AllowNoComponent {

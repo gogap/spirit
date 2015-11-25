@@ -2,7 +2,6 @@ package lines
 
 import (
 	"bufio"
-	"errors"
 	"io"
 
 	"github.com/gogap/spirit"
@@ -13,8 +12,6 @@ const (
 )
 
 var _ spirit.InputTranslator = new(LinesInputTranslator)
-
-var ErrLinesInputTranslatorNeedDefaultURN = errors.New("lines input translator need default urn")
 
 type LinesInputTranslatorConfig struct {
 	BindURN string        `json:"bind_urn"`
@@ -34,11 +31,6 @@ func NewLinesInputTranslator(config spirit.Map) (translator spirit.InputTranslat
 	conf := LinesInputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
-		return
-	}
-
-	if conf.BindURN == "" {
-		err = ErrLinesInputTranslatorNeedDefaultURN
 		return
 	}
 

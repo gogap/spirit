@@ -12,6 +12,12 @@ type Receiver interface {
 	SetDeliveryPutter(putter DeliveryPutter) (err error)
 }
 
+type TranslatorReceiver interface {
+	Receiver
+
+	SetTranslator(translator InputTranslator) (err error)
+}
+
 type ReadReceiver interface {
 	Receiver
 

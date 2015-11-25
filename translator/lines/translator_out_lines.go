@@ -68,7 +68,7 @@ func NewLinesOutputTranslator(config spirit.Map) (translator spirit.OutputTransl
 	return
 }
 
-func (p *LinesOutputTranslator) Out(w io.WriteCloser, delivery spirit.Delivery) (err error) {
+func (p *LinesOutputTranslator) Out(w io.Writer, delivery spirit.Delivery) (err error) {
 	newWriter := bufio.NewWriter(w)
 
 	if err = p.tmpl.Execute(newWriter, map[string]interface{}{"delivery": delivery}); err != nil {

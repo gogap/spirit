@@ -5,7 +5,7 @@ import (
 )
 
 type URNRewriter interface {
-	Rewrite(delivery Delivery) (newURN string, err error)
+	Rewrite(delivery Delivery) (err error)
 }
 
 var (
