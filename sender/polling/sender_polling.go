@@ -63,7 +63,7 @@ func (p *PollingSender) Start() (err error) {
 		return
 	}
 
-	spirit.Logger().WithField("actor", "polling").
+	spirit.Logger().WithField("actor", spirit.ActorSender).
 		WithField("urn", pollingSenderURN).
 		WithField("event", "start").
 		Infoln("enter start")
@@ -154,15 +154,15 @@ func (p *PollingSender) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
+	spirit.Logger().WithField("actor", spirit.ActorSender).
+		WithField("urn", pollingSenderURN).
+		WithField("event", "stop").
+		Debugln("enter stop")
+
 	if p.status == spirit.StatusStopped {
 		err = spirit.ErrSenderDidNotRunning
 		return
 	}
-
-	spirit.Logger().WithField("actor", "polling").
-		WithField("urn", pollingSenderURN).
-		WithField("event", "stop").
-		Infoln("enter stop")
 
 	p.terminaled <- true
 
@@ -170,7 +170,7 @@ func (p *PollingSender) Stop() (err error) {
 
 	p.writerPool.Close()
 
-	spirit.Logger().WithField("actor", "polling").
+	spirit.Logger().WithField("actor", spirit.ActorSender).
 		WithField("urn", pollingSenderURN).
 		WithField("event", "stop").
 		Infoln("stopped")

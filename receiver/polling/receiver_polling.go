@@ -63,7 +63,7 @@ func (p *PollingReceiver) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
-	spirit.Logger().WithField("actor", "receiver").
+	spirit.Logger().WithField("actor", spirit.ActorReceiver).
 		WithField("urn", pollingReceiverURN).
 		WithField("event", "start").
 		Debugln("enter start")
@@ -98,14 +98,14 @@ func (p *PollingReceiver) Start() (err error) {
 
 		for {
 			if reader, err = p.readerPool.Get(); err != nil {
-				spirit.Logger().WithField("actor", "receiver").
+				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
 					WithField("event", "get reader from reader pool").
 					Errorln(err)
 			}
 
 			if deliveries, err := p.translator.In(reader); err != nil {
-				spirit.Logger().WithField("actor", "receiver").
+				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
 					WithField("event", "translate reader").
 					WithField("length", len(deliveries)).
@@ -113,7 +113,7 @@ func (p *PollingReceiver) Start() (err error) {
 
 				reader.Close()
 
-				spirit.Logger().WithField("actor", "receiver").
+				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
 					WithField("event", "receiver deliveries").
 					WithField("length", len(deliveries)).
@@ -121,14 +121,14 @@ func (p *PollingReceiver) Start() (err error) {
 
 			} else {
 				if err = p.putter.Put(deliveries); err != nil {
-					spirit.Logger().WithField("actor", "receiver").
+					spirit.Logger().WithField("actor", spirit.ActorReceiver).
 						WithField("urn", pollingReceiverURN).
 						WithField("event", "put deliveries").
 						Errorln(err)
 				}
 
 				if err = p.readerPool.Put(reader); err != nil {
-					spirit.Logger().WithField("actor", "receiver").
+					spirit.Logger().WithField("actor", spirit.ActorReceiver).
 						WithField("urn", pollingReceiverURN).
 						WithField("event", "put reader back to pool").
 						Errorln(err)
@@ -155,10 +155,10 @@ func (p *PollingReceiver) Start() (err error) {
 
 	}()
 
-	spirit.Logger().WithField("actor", "receiver").
+	spirit.Logger().WithField("actor", spirit.ActorReceiver).
 		WithField("urn", pollingReceiverURN).
 		WithField("event", "start").
-		Debugln("started")
+		Infoln("started")
 
 	return
 }
@@ -166,6 +166,11 @@ func (p *PollingReceiver) Start() (err error) {
 func (p *PollingReceiver) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
+
+	spirit.Logger().WithField("actor", spirit.ActorReceiver).
+		WithField("urn", pollingReceiverURN).
+		WithField("event", "stop").
+		Debugln("enter stop")
 
 	if p.status == spirit.StatusStopped {
 		err = spirit.ErrReceiverDidNotRunning
@@ -178,6 +183,11 @@ func (p *PollingReceiver) Stop() (err error) {
 
 	close(p.deliveriesChan)
 	close(p.terminaled)
+
+	spirit.Logger().WithField("actor", spirit.ActorRouter).
+		WithField("urn", pollingReceiverURN).
+		WithField("event", "stop").
+		Infoln("stopped")
 
 	return
 }

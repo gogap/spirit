@@ -53,14 +53,14 @@ func (p *ClassicInbox) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
+	spirit.Logger().WithField("actor", spirit.ActorInbox).
+		WithField("urn", inboxURN).
+		WithField("event", "start").
+		Debugln("enter start")
+
 	if p.status == spirit.StatusRunning {
 		return
 	}
-
-	spirit.Logger().WithField("actor", "inbox").
-		WithField("urn", inboxURN).
-		WithField("event", "start").
-		Infoln("enter start")
 
 	p.deliveriesChan = make(chan []spirit.Delivery, p.conf.Size)
 
@@ -71,13 +71,13 @@ func (p *ClassicInbox) Start() (err error) {
 		go func(receiver spirit.Receiver) {
 			if receiver.Status() == spirit.StatusStopped {
 				if err = receiver.Start(); err != nil {
-					spirit.Logger().WithField("actor", "inbox").
+					spirit.Logger().WithField("actor", spirit.ActorInbox).
 						WithField("urn", inboxURN).
 						WithField("event", "start receiver").
 						Errorln(err)
 				}
 
-				spirit.Logger().WithField("actor", "inbox").
+				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
 					WithField("event", "start receiver").
 					Debugln("receiver started")
@@ -85,7 +85,7 @@ func (p *ClassicInbox) Start() (err error) {
 		}(receiver)
 	}
 
-	spirit.Logger().WithField("actor", "inbox").
+	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
 		WithField("event", "start").
 		Infoln("started")
@@ -97,20 +97,20 @@ func (p *ClassicInbox) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
+	spirit.Logger().WithField("actor", spirit.ActorInbox).
+		WithField("urn", inboxURN).
+		WithField("event", "stop").
+		Debugln("enter stop")
+
 	if p.status == spirit.StatusStopped {
 		return
 	}
-
-	spirit.Logger().WithField("actor", "inbox").
-		WithField("urn", inboxURN).
-		WithField("event", "stop").
-		Infoln("enter stop")
 
 	p.status = spirit.StatusStopped
 
 	close(p.deliveriesChan)
 
-	spirit.Logger().WithField("actor", "inbox").
+	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
 		WithField("event", "stop").
 		Infoln("stopped")
@@ -133,7 +133,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 		select {
 		case p.deliveriesChan <- deliveries:
 			{
-				spirit.Logger().WithField("actor", "inbox").
+				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
 					WithField("event", "put deliveries").
 					WithField("length", len(deliveries)).
@@ -143,7 +143,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 			}
 		case <-time.After(time.Duration(p.conf.PutTimeout) * time.Millisecond):
 			{
-				spirit.Logger().WithField("actor", "inbox").
+				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
 					WithField("event", "put deliveries").
 					WithField("chan_size", len(p.deliveriesChan)).
@@ -166,7 +166,7 @@ func (p *ClassicInbox) Get() (deliveries []spirit.Delivery, err error) {
 			}
 		case <-time.After(time.Duration(p.conf.GetTimeout) * time.Millisecond):
 			{
-				spirit.Logger().WithField("actor", "inbox").
+				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
 					WithField("event", "get deliveries").
 					Debugln("get deliveries timeout")

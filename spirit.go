@@ -287,24 +287,31 @@ func (p *ClassicSpirit) loop(router Router) {
 	}
 }
 
-func (p *ClassicSpirit) stopActor(name string, actorType ActorType, actors ...interface{}) (err error) {
-	for _, actor := range actors {
-		switch stopper := actor.(type) {
-		case Stopper:
-			if err = stopper.Stop(); err != nil {
+func (p *ClassicSpirit) stopActor(actorType ActorType, actors map[string]Stopper) (err error) {
+	wg := sync.WaitGroup{}
+	for name, actor := range actors {
+		wg.Add(1)
+		go func(name string, actorType ActorType, actor interface{}) {
+			defer wg.Done()
+
+			switch stopper := actor.(type) {
+			case Stopper:
+				if err = stopper.Stop(); err != nil {
+					logger.WithField("module", "spirit").
+						WithField("event", "stop "+actorType).
+						WithField("name", name).
+						Panicln(err)
+				}
+			default:
 				logger.WithField("module", "spirit").
 					WithField("event", "stop "+actorType).
 					WithField("name", name).
-					Panicln(err)
+					WithField("type", reflect.TypeOf(actor)).
+					Debugln("non-stopper")
 			}
-		default:
-			logger.WithField("module", "spirit").
-				WithField("event", "stop "+actorType).
-				WithField("name", name).
-				WithField("type", reflect.TypeOf(actor)).
-				Debugln("non-stopper")
-		}
+		}(name, actorType, actor)
 	}
+	wg.Wait()
 	return
 }
 
@@ -335,104 +342,125 @@ func (p *ClassicSpirit) stop() (err error) {
 		return
 	}
 
+	receivers := map[string]Stopper{}
 	for name, actor := range p.receivers {
-		if err = p.stopActor(name, ActorReceiver, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop receiver").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop receiver").
-				WithField("actor_name", name).
-				Debugln("receiver stopped")
+		if stopper, ok := actor.(Stopper); ok {
+			receivers[name] = stopper
 		}
 	}
 
-	for name, actor := range p.senders {
-		if err = p.stopActor(name, ActorSender, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop sender").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop sender").
-				WithField("actor_name", name).
-				Debugln("sender stopped")
-		}
+	if err = p.stopActor(ActorReceiver, receivers); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop receivers").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop receivers").
+			Infoln("receivers stopped")
 	}
 
+	inboxes := map[string]Stopper{}
 	for name, actor := range p.inboxes {
-		if err = p.stopActor(name, ActorInbox, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop inbox").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop inbox").
-				WithField("actor_name", name).
-				Debugln("inbox stopped")
+		if stopper, ok := actor.(Stopper); ok {
+			inboxes[name] = stopper
 		}
 	}
 
+	if err = p.stopActor(ActorReceiver, inboxes); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop inboxes").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop inboxes").
+			Infoln("inboxes stopped")
+	}
+
+	senders := map[string]Stopper{}
+	for name, actor := range p.senders {
+		if stopper, ok := actor.(Stopper); ok {
+			senders[name] = stopper
+		}
+	}
+
+	if err = p.stopActor(ActorReceiver, senders); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop senders").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop senders").
+			Infoln("senders stopped")
+	}
+
+	outboxes := map[string]Stopper{}
 	for name, actor := range p.outboxes {
-		if err = p.stopActor(name, ActorOutbox, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop outbox").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop outbox").
-				WithField("actor_name", name).
-				Debugln("outbox stopped")
+		if stopper, ok := actor.(Stopper); ok {
+			outboxes[name] = stopper
 		}
 	}
 
+	if err = p.stopActor(ActorReceiver, outboxes); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop outboxes").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop outboxes").
+			Infoln("outboxes stopped")
+	}
+
+	routers := map[string]Stopper{}
 	for name, actor := range p.routers {
-		if err = p.stopActor(name, ActorRouter, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop router").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop router").
-				WithField("actor_name", name).
-				Debugln("router stopped")
+		if stopper, ok := actor.(Stopper); ok {
+			routers[name] = stopper
 		}
 	}
 
+	if err = p.stopActor(ActorReceiver, routers); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop routers").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop routers").
+			Infoln("routers stopped")
+	}
+
+	consoles := map[string]Stopper{}
 	for name, actor := range p.consoles {
-		if err = p.stopActor(name, ActorConsole, actor); err != nil {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop console").
-				WithField("actor_name", name).
-				Errorln(err)
-		} else {
-			logger.WithField("module", "spirit").
-				WithField("event", "stop console").
-				WithField("actor_name", name).
-				Debugln("console stopped")
+		if stopper, ok := actor.(Stopper); ok {
+			consoles[name] = stopper
 		}
 	}
 
-	for name, components := range p.components {
-		for _, actor := range components {
-			if err = p.stopActor(name, ActorComponent, actor); err != nil {
-				logger.WithField("module", "spirit").
-					WithField("event", "stop component").
-					WithField("actor_name", name).
-					Errorln(err)
-			} else {
-				logger.WithField("module", "spirit").
-					WithField("event", "stop component").
-					WithField("actor_name", name).
-					Debugln("component stopped")
+	if err = p.stopActor(ActorReceiver, consoles); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop consoles").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop consoles").
+			Infoln("consoles stopped")
+	}
+
+	components := map[string]Stopper{}
+	for name, comps := range p.components {
+		for _, actor := range comps {
+			if stopper, ok := actor.(Stopper); ok {
+				components[name] = stopper
 			}
 		}
+	}
+
+	if err = p.stopActor(ActorReceiver, components); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop components").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop components").
+			Infoln("components stopped")
 	}
 
 	p.status = StatusStopped

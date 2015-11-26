@@ -67,6 +67,11 @@ func (p *ClassicRouter) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
+	spirit.Logger().WithField("actor", spirit.ActorRouter).
+		WithField("urn", classicRouterURN).
+		WithField("event", "start").
+		Debugln("enter start")
+
 	if p.status == spirit.StatusRunning {
 		err = spirit.ErrRouterAlreadyRunning
 		return
@@ -81,6 +86,11 @@ func (p *ClassicRouter) Start() (err error) {
 	}
 
 	p.status = spirit.StatusRunning
+
+	spirit.Logger().WithField("actor", spirit.ActorRouter).
+		WithField("urn", classicRouterURN).
+		WithField("event", "start").
+		Infoln("started")
 
 	return
 }
@@ -107,6 +117,11 @@ func (p *ClassicRouter) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
+	spirit.Logger().WithField("actor", spirit.ActorRouter).
+		WithField("urn", classicRouterURN).
+		WithField("event", "stop").
+		Debugln("enter stop")
+
 	if p.status == spirit.StatusStopped {
 		err = spirit.ErrRouterDidNotRunning
 		return
@@ -120,6 +135,11 @@ func (p *ClassicRouter) Stop() (err error) {
 	wg.Wait()
 
 	p.status = spirit.StatusStopped
+
+	spirit.Logger().WithField("actor", spirit.ActorRouter).
+		WithField("urn", classicRouterURN).
+		WithField("event", "stop").
+		Infoln("stopped")
 
 	return
 }
