@@ -29,10 +29,10 @@ func init() {
 	spirit.RegisterInputTranslator(linesTranslatorInURN, NewLinesInputTranslator)
 }
 
-func NewLinesInputTranslator(name string, config spirit.Map) (translator spirit.InputTranslator, err error) {
+func NewLinesInputTranslator(name string, options spirit.Map) (translator spirit.InputTranslator, err error) {
 	conf := LinesInputTranslatorConfig{}
 
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

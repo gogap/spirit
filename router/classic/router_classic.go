@@ -49,9 +49,9 @@ func init() {
 	spirit.RegisterRouter(classicRouterURN, NewClassicRouter)
 }
 
-func NewClassicRouter(name string, config spirit.Map) (box spirit.Router, err error) {
+func NewClassicRouter(name string, options spirit.Map) (box spirit.Router, err error) {
 	conf := ClassicRouterConfig{}
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 
@@ -294,13 +294,13 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 		return
 	}
 
-	handlers := detectComponentHandlers(component)
+	handlers := p.detectComponentHandlers(component)
 	if handlers == nil || len(handlers) == 0 {
 		err = spirit.ErrComponentDidNotHaveHandler
 		return
 	}
 
-	labels := detectComponentLabels(component)
+	labels := p.detectComponentLabels(component)
 
 	p.componentLocker.Lock()
 	defer p.componentLocker.Unlock()
@@ -315,7 +315,7 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	if comps, exist := p.components[namedURN]; exist {
 		for _, comp := range comps {
 
-			compLabels := detectComponentLabels(comp)
+			compLabels := p.detectComponentLabels(comp)
 
 			if comp == component ||
 				p.componentLabelMatcher.Match(compLabels, labels) {
@@ -363,7 +363,7 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	return
 }
 
-func detectComponentHandlers(component spirit.Component) (handlers spirit.Handlers) {
+func (p *ClassicRouter) detectComponentHandlers(component spirit.Component) (handlers spirit.Handlers) {
 	compValue := reflect.ValueOf(component)
 	handlers = make(spirit.Handlers)
 
@@ -402,7 +402,7 @@ func detectComponentHandlers(component spirit.Component) (handlers spirit.Handle
 	return
 }
 
-func detectComponentLabels(component spirit.Component) spirit.Labels {
+func (p *ClassicRouter) detectComponentLabels(component spirit.Component) spirit.Labels {
 	compValue := reflect.ValueOf(component)
 	labels := make(spirit.Labels)
 

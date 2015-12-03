@@ -23,10 +23,10 @@ func init() {
 	spirit.RegisterConsole(consoleURN, NewCMDConsole)
 }
 
-func NewCMDConsole(name string, config spirit.Map) (console spirit.Console, err error) {
+func NewCMDConsole(name string, options spirit.Map) (console spirit.Console, err error) {
 	conf := CMDConsoleConfig{}
 
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

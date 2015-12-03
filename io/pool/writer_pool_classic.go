@@ -55,9 +55,9 @@ func init() {
 	spirit.RegisterWriterPool(writerPoolURN, NewClassicWriterPool)
 }
 
-func NewClassicWriterPool(name string, config spirit.Map) (pool spirit.WriterPool, err error) {
+func NewClassicWriterPool(name string, options spirit.Map) (pool spirit.WriterPool, err error) {
 	conf := ClassicWriterPoolConfig{}
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

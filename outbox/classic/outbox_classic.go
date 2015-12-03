@@ -34,10 +34,10 @@ func init() {
 	spirit.RegisterOutbox(outboxURN, NewClassicOutbox)
 }
 
-func NewClassicOutbox(name string, config spirit.Map) (box spirit.Outbox, err error) {
+func NewClassicOutbox(name string, options spirit.Map) (box spirit.Outbox, err error) {
 	conf := ClassicOutboxConfig{}
 
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

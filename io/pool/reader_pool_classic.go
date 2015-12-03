@@ -47,9 +47,9 @@ func init() {
 	spirit.RegisterReaderPool(readerPoolURN, NewClassicReaderPool)
 }
 
-func NewClassicReaderPool(name string, config spirit.Map) (pool spirit.ReaderPool, err error) {
+func NewClassicReaderPool(name string, options spirit.Map) (pool spirit.ReaderPool, err error) {
 	conf := ClassicReaderPoolConfig{}
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

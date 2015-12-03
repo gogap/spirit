@@ -1,9 +1,9 @@
 package spirit
 
 type ActorConfig struct {
-	Name   string `json:"name"`
-	URN    string `json:"urn"`
-	Config Map    `json:"config"`
+	Name    string `json:"name"`
+	URN     string `json:"urn"`
+	Options Map    `json:"options"`
 }
 
 type WriterPoolActorConfig struct {

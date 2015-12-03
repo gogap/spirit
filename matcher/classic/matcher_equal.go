@@ -19,7 +19,7 @@ func init() {
 	spirit.RegisterLabelMatcher(equalMatcherURN, NewContainsLabelMatcher)
 }
 
-func NewEqualLabelMatcher(name string, config spirit.Map) (matcher spirit.LabelMatcher, err error) {
+func NewEqualLabelMatcher(name string, options spirit.Map) (matcher spirit.LabelMatcher, err error) {
 	return &EqualLabelMatcher{name: name}, nil
 }
 

@@ -9,7 +9,7 @@ var (
 	newInboxFuncs = make(map[string]NewInboxFunc)
 )
 
-type NewInboxFunc func(name string, config Map) (inbox Inbox, err error)
+type NewInboxFunc func(name string, options Map) (inbox Inbox, err error)
 
 type PutMessageFunc func(deliveries []Delivery) (err error)
 

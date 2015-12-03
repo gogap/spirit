@@ -42,9 +42,9 @@ func init() {
 	spirit.RegisterSender(pollingSenderURN, NewPollingSender)
 }
 
-func NewPollingSender(name string, config spirit.Map) (sender spirit.Sender, err error) {
+func NewPollingSender(name string, options spirit.Map) (sender spirit.Sender, err error) {
 	conf := PollingSenderConfig{}
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 

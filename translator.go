@@ -15,8 +15,8 @@ var (
 	newOutputTranslatorFuncs = make(map[string]NewOutputTranslatorFunc)
 )
 
-type NewInputTranslatorFunc func(name string, config Map) (translator InputTranslator, err error)
-type NewOutputTranslatorFunc func(name string, config Map) (translator OutputTranslator, err error)
+type NewInputTranslatorFunc func(name string, options Map) (translator InputTranslator, err error)
+type NewOutputTranslatorFunc func(name string, options Map) (translator OutputTranslator, err error)
 
 type InputTranslator interface {
 	In(r io.Reader) (delivery []Delivery, err error)

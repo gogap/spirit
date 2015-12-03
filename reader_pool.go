@@ -6,7 +6,7 @@ import (
 )
 
 type ReaderPool interface {
-	SetNewReaderFunc(newFunc NewReaderFunc, config Map) (err error)
+	SetNewReaderFunc(newFunc NewReaderFunc, options Map) (err error)
 	Get() (reader io.ReadCloser, err error)
 	Put(reader io.ReadCloser) (err error)
 	Close()
@@ -17,7 +17,7 @@ var (
 	newReaderPoolFuncs = make(map[string]NewReaderPoolFunc)
 )
 
-type NewReaderPoolFunc func(name string, config Map) (pool ReaderPool, err error)
+type NewReaderPoolFunc func(name string, options Map) (pool ReaderPool, err error)
 
 func RegisterReaderPool(urn string, newFunc NewReaderPoolFunc) (err error) {
 	readerPoolsLocker.Lock()

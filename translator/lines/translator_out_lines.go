@@ -36,10 +36,10 @@ func init() {
 	spirit.RegisterOutputTranslator(linesTranslatorOutURN, NewLinesOutputTranslator)
 }
 
-func NewLinesOutputTranslator(name string, config spirit.Map) (translator spirit.OutputTranslator, err error) {
+func NewLinesOutputTranslator(name string, options spirit.Map) (translator spirit.OutputTranslator, err error) {
 	conf := LinesOutputTranslatorConfig{}
 
-	if err = config.ToObject(&conf); err != nil {
+	if err = options.ToObject(&conf); err != nil {
 		return
 	}
 
