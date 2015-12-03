@@ -11,6 +11,7 @@ const (
 )
 
 var _ spirit.Outbox = new(ClassicOutbox)
+var _ spirit.Actor = new(ClassicOutbox)
 
 type ClassicOutboxConfig struct {
 	Size       int           `json:"size"`
@@ -19,6 +20,8 @@ type ClassicOutboxConfig struct {
 }
 
 type ClassicOutbox struct {
+	name string
+
 	statusLocker sync.Mutex
 	status       spirit.Status
 
@@ -31,7 +34,7 @@ func init() {
 	spirit.RegisterOutbox(outboxURN, NewClassicOutbox)
 }
 
-func NewClassicOutbox(config spirit.Map) (box spirit.Outbox, err error) {
+func NewClassicOutbox(name string, config spirit.Map) (box spirit.Outbox, err error) {
 	conf := ClassicOutboxConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -39,10 +42,19 @@ func NewClassicOutbox(config spirit.Map) (box spirit.Outbox, err error) {
 	}
 
 	box = &ClassicOutbox{
+		name: name,
 		conf: conf,
 	}
 	return
 
+}
+
+func (p *ClassicOutbox) Name() string {
+	return p.name
+}
+
+func (p *ClassicOutbox) URN() string {
+	return outboxURN
 }
 
 func (p *ClassicOutbox) Start() (err error) {
@@ -51,6 +63,7 @@ func (p *ClassicOutbox) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorOutbox).
 		WithField("urn", outboxURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Debugln("enter start")
 
@@ -64,6 +77,7 @@ func (p *ClassicOutbox) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorOutbox).
 		WithField("urn", outboxURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -76,6 +90,7 @@ func (p *ClassicOutbox) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorOutbox).
 		WithField("urn", outboxURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Debugln("enter stop")
 
@@ -89,6 +104,7 @@ func (p *ClassicOutbox) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorOutbox).
 		WithField("urn", outboxURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Infoln("stopped")
 
@@ -120,6 +136,7 @@ func (p *ClassicOutbox) Get() (deliveries []spirit.Delivery, err error) {
 				if more {
 					spirit.Logger().WithField("actor", spirit.ActorOutbox).
 						WithField("urn", outboxURN).
+						WithField("name", p.name).
 						WithField("event", "get deliveries").
 						WithField("length", len(deliveries)).
 						Debugln("deliveries received from deliveries chan")
@@ -129,6 +146,7 @@ func (p *ClassicOutbox) Get() (deliveries []spirit.Delivery, err error) {
 			{
 				spirit.Logger().WithField("actor", spirit.ActorOutbox).
 					WithField("urn", outboxURN).
+					WithField("name", p.name).
 					WithField("event", "get deliveries").
 					Debugln("get deliveries timeout")
 

@@ -21,7 +21,7 @@ var (
 	newLabelMatcherFuncs = make(map[string]NewLabelMatcherFunc)
 )
 
-type NewLabelMatcherFunc func(config Map) (matcher LabelMatcher, err error)
+type NewLabelMatcherFunc func(name string, config Map) (matcher LabelMatcher, err error)
 
 func RegisterLabelMatcher(urn string, newFunc NewLabelMatcherFunc) (err error) {
 	labelMatchersLocker.Lock()

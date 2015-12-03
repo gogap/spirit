@@ -12,6 +12,7 @@ const (
 )
 
 var _ spirit.Inbox = new(ClassicInbox)
+var _ spirit.Actor = new(ClassicInbox)
 
 type ClassicInboxConfig struct {
 	Size       int `json:"size"`
@@ -20,6 +21,8 @@ type ClassicInboxConfig struct {
 }
 
 type ClassicInbox struct {
+	name string
+
 	statusLocker sync.Mutex
 	status       spirit.Status
 
@@ -35,7 +38,7 @@ func init() {
 	spirit.RegisterInbox(inboxURN, NewClassicInbox)
 }
 
-func NewClassicInbox(config spirit.Map) (box spirit.Inbox, err error) {
+func NewClassicInbox(name string, config spirit.Map) (box spirit.Inbox, err error) {
 	conf := ClassicInboxConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -43,10 +46,19 @@ func NewClassicInbox(config spirit.Map) (box spirit.Inbox, err error) {
 	}
 
 	box = &ClassicInbox{
+		name: name,
 		conf: conf,
 	}
 	return
 
+}
+
+func (p *ClassicInbox) Name() string {
+	return p.name
+}
+
+func (p *ClassicInbox) URN() string {
+	return inboxURN
 }
 
 func (p *ClassicInbox) Start() (err error) {
@@ -55,6 +67,7 @@ func (p *ClassicInbox) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Debugln("enter start")
 
@@ -73,12 +86,14 @@ func (p *ClassicInbox) Start() (err error) {
 				if err = receiver.Start(); err != nil {
 					spirit.Logger().WithField("actor", spirit.ActorInbox).
 						WithField("urn", inboxURN).
+						WithField("name", p.name).
 						WithField("event", "start receiver").
 						Errorln(err)
 				}
 
 				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
+					WithField("name", p.name).
 					WithField("event", "start receiver").
 					Debugln("receiver started")
 			}
@@ -87,6 +102,7 @@ func (p *ClassicInbox) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -99,6 +115,7 @@ func (p *ClassicInbox) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Debugln("enter stop")
 
@@ -112,6 +129,7 @@ func (p *ClassicInbox) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorInbox).
 		WithField("urn", inboxURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Infoln("stopped")
 
@@ -135,6 +153,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 			{
 				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
+					WithField("name", p.name).
 					WithField("event", "put deliveries").
 					WithField("length", len(deliveries)).
 					WithField("chan_size", len(p.deliveriesChan)).
@@ -145,6 +164,7 @@ func (p *ClassicInbox) Put(deliveries []spirit.Delivery) (err error) {
 			{
 				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
+					WithField("name", p.name).
 					WithField("event", "put deliveries").
 					WithField("chan_size", len(p.deliveriesChan)).
 					WithField("chan_cap", cap(p.deliveriesChan)).
@@ -168,6 +188,7 @@ func (p *ClassicInbox) Get() (deliveries []spirit.Delivery, err error) {
 			{
 				spirit.Logger().WithField("actor", spirit.ActorInbox).
 					WithField("urn", inboxURN).
+					WithField("name", p.name).
 					WithField("event", "get deliveries").
 					Debugln("get deliveries timeout")
 			}

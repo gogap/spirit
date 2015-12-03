@@ -9,6 +9,7 @@ import (
 )
 
 var _ spirit.Component = new(JSONComponent)
+var _ spirit.Actor = new(JSONComponent)
 
 const (
 	jsonURN = "urn:spirit:component:encoding:json"
@@ -19,6 +20,7 @@ var (
 )
 
 type JSONComponent struct {
+	name         string
 	statusLocker sync.Mutex
 }
 
@@ -26,10 +28,16 @@ func init() {
 	spirit.RegisterComponent(jsonURN, NewJSONComponent)
 }
 
-func NewJSONComponent(config spirit.Map) (component spirit.Component, err error) {
-	component = &JSONComponent{}
+func NewJSONComponent(name string, config spirit.Map) (component spirit.Component, err error) {
+	component = &JSONComponent{
+		name: name,
+	}
 
 	return
+}
+
+func (p *JSONComponent) Name() string {
+	return p.name
 }
 
 func (p *JSONComponent) URN() string {

@@ -17,8 +17,11 @@ var (
 )
 
 var _ io.WriteCloser = new(Stdin)
+var _ spirit.Actor = new(Stdin)
 
 type Stdin struct {
+	name string
+
 	onceInit sync.Once
 	conf     StdIOConfig
 
@@ -29,7 +32,7 @@ func init() {
 	spirit.RegisterWriter(stdWriterURN, NewStdin)
 }
 
-func NewStdin(config spirit.Map) (w io.WriteCloser, err error) {
+func NewStdin(name string, config spirit.Map) (w io.WriteCloser, err error) {
 	conf := StdIOConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
@@ -39,6 +42,7 @@ func NewStdin(config spirit.Map) (w io.WriteCloser, err error) {
 		err = e
 	} else {
 		w = &Stdin{
+			name: name,
 			conf: conf,
 			proc: proc,
 		}
@@ -46,6 +50,14 @@ func NewStdin(config spirit.Map) (w io.WriteCloser, err error) {
 	}
 
 	return
+}
+
+func (p *Stdin) Name() string {
+	return p.name
+}
+
+func (p *Stdin) URN() string {
+	return stdWriterURN
 }
 
 func (p *Stdin) Write(data []byte) (n int, err error) {

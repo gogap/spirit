@@ -12,6 +12,7 @@ const (
 )
 
 var _ spirit.InputTranslator = new(LinesInputTranslator)
+var _ spirit.Actor = new(LinesInputTranslator)
 
 type LinesInputTranslatorConfig struct {
 	BindURN string        `json:"bind_urn"`
@@ -20,6 +21,7 @@ type LinesInputTranslatorConfig struct {
 }
 
 type LinesInputTranslator struct {
+	name string
 	conf LinesInputTranslatorConfig
 }
 
@@ -27,7 +29,7 @@ func init() {
 	spirit.RegisterInputTranslator(linesTranslatorInURN, NewLinesInputTranslator)
 }
 
-func NewLinesInputTranslator(config spirit.Map) (translator spirit.InputTranslator, err error) {
+func NewLinesInputTranslator(name string, config spirit.Map) (translator spirit.InputTranslator, err error) {
 	conf := LinesInputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -35,9 +37,18 @@ func NewLinesInputTranslator(config spirit.Map) (translator spirit.InputTranslat
 	}
 
 	translator = &LinesInputTranslator{
+		name: name,
 		conf: conf,
 	}
 	return
+}
+
+func (p *LinesInputTranslator) Name() string {
+	return p.name
+}
+
+func (p *LinesInputTranslator) URN() string {
+	return linesTranslatorInURN
 }
 
 func (p *LinesInputTranslator) In(r io.Reader) (deliveries []spirit.Delivery, err error) {

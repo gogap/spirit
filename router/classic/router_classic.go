@@ -14,12 +14,14 @@ const (
 )
 
 var _ spirit.Router = new(ClassicRouter)
+var _ spirit.Actor = new(ClassicRouter)
 
 type ClassicRouterConfig struct {
 	AllowNoComponent bool `json:"allow_no_component"`
 }
 
 type ClassicRouter struct {
+	name string
 	conf ClassicRouterConfig
 
 	inboxes  []spirit.Inbox
@@ -47,13 +49,14 @@ func init() {
 	spirit.RegisterRouter(classicRouterURN, NewClassicRouter)
 }
 
-func NewClassicRouter(config spirit.Map) (box spirit.Router, err error) {
+func NewClassicRouter(name string, config spirit.Map) (box spirit.Router, err error) {
 	conf := ClassicRouterConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 
 	box = &ClassicRouter{
+		name:              name,
 		conf:              conf,
 		components:        make(map[string][]spirit.Component),
 		componentHandlers: make(map[spirit.Component]spirit.Handlers),
@@ -63,12 +66,21 @@ func NewClassicRouter(config spirit.Map) (box spirit.Router, err error) {
 	return
 }
 
+func (p *ClassicRouter) Name() string {
+	return p.name
+}
+
+func (p *ClassicRouter) URN() string {
+	return classicRouterURN
+}
+
 func (p *ClassicRouter) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
 	spirit.Logger().WithField("actor", spirit.ActorRouter).
 		WithField("urn", classicRouterURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Debugln("enter start")
 
@@ -89,6 +101,7 @@ func (p *ClassicRouter) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorRouter).
 		WithField("urn", classicRouterURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -119,6 +132,7 @@ func (p *ClassicRouter) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorRouter).
 		WithField("urn", classicRouterURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Debugln("enter stop")
 
@@ -138,6 +152,7 @@ func (p *ClassicRouter) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorRouter).
 		WithField("urn", classicRouterURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Infoln("stopped")
 
@@ -152,6 +167,7 @@ func (p *ClassicRouter) stopInboxes(wg *sync.WaitGroup) {
 			if err := inbox.Stop(); err != nil {
 				spirit.Logger().WithField("actor", spirit.ActorRouter).
 					WithField("urn", classicRouterURN).
+					WithField("name", p.name).
 					WithField("event", "stop inbox").
 					Errorln(err)
 			}
@@ -168,6 +184,7 @@ func (p *ClassicRouter) stopOutboxes(wg *sync.WaitGroup) {
 			if err := outbox.Stop(); err != nil {
 				spirit.Logger().WithField("actor", spirit.ActorRouter).
 					WithField("urn", classicRouterURN).
+					WithField("name", p.name).
 					WithField("event", "stop outbox").
 					Errorln(err)
 			}
@@ -326,6 +343,7 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	} else {
 		spirit.Logger().WithField("actor", spirit.ActorRouter).
 			WithField("urn", classicRouterURN).
+			WithField("name", p.name).
 			WithField("event", "bind component handlers").
 			WithField("component_urn", component.URN()).
 			Warnln("component handler already exist")
@@ -336,6 +354,7 @@ func (p *ClassicRouter) AddComponent(name string, component spirit.Component) (e
 	} else {
 		spirit.Logger().WithField("actor", spirit.ActorRouter).
 			WithField("urn", classicRouterURN).
+			WithField("name", p.name).
 			WithField("event", "bind component labels").
 			WithField("component_urn", component.URN()).
 			Warnln("component label already exist")
@@ -358,6 +377,7 @@ func detectComponentHandlers(component spirit.Component) (handlers spirit.Handle
 
 			spirit.Logger().WithField("actor", spirit.ActorRouter).
 				WithField("urn", classicRouterURN).
+				WithField("name", p.name).
 				WithField("event", "bind component handlers").
 				WithField("component_urn", component.URN()).
 				Debugln("bind handler's by Handlers()")
@@ -373,6 +393,7 @@ func detectComponentHandlers(component spirit.Component) (handlers spirit.Handle
 
 		spirit.Logger().WithField("actor", spirit.ActorRouter).
 			WithField("urn", classicRouterURN).
+			WithField("name", p.name).
 			WithField("event", "bind component handlers").
 			WithField("component_urn", component.URN()).
 			Debugln("bind handler's by Reflact")
@@ -394,6 +415,7 @@ func detectComponentLabels(component spirit.Component) spirit.Labels {
 
 			spirit.Logger().WithField("actor", spirit.ActorRouter).
 				WithField("urn", classicRouterURN).
+				WithField("name", p.name).
 				WithField("event", "bind component labels").
 				WithField("component_urn", component.URN()).
 				Debugln("bind label's by Labels()")
@@ -401,6 +423,7 @@ func detectComponentLabels(component spirit.Component) spirit.Labels {
 	default:
 		spirit.Logger().WithField("actor", spirit.ActorRouter).
 			WithField("urn", classicRouterURN).
+			WithField("name", p.name).
 			WithField("event", "bind component labels").
 			WithField("component_urn", component.URN()).
 			Debugln("label not exist")

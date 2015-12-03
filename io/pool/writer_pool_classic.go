@@ -1,8 +1,10 @@
 package pool
 
 import (
+	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gogap/spirit"
 )
@@ -16,6 +18,7 @@ var (
 )
 
 var _ spirit.WriterPool = new(ClassicWriterPool)
+var _ spirit.Actor = new(ClassicWriterPool)
 
 type ClassicWriterPoolConfig struct {
 	EnableSession bool `json:"enable_session"`
@@ -29,6 +32,8 @@ type writerInPool struct {
 }
 
 type ClassicWriterPool struct {
+	name string
+
 	statusLocker sync.Mutex
 	conf         ClassicWriterPoolConfig
 
@@ -41,6 +46,8 @@ type ClassicWriterPool struct {
 	writers    []io.WriteCloser
 	writersMap map[io.WriteCloser]bool
 
+	writerId int64
+
 	isClosed bool
 }
 
@@ -48,7 +55,7 @@ func init() {
 	spirit.RegisterWriterPool(writerPoolURN, NewClassicWriterPool)
 }
 
-func NewClassicWriterPool(config spirit.Map) (pool spirit.WriterPool, err error) {
+func NewClassicWriterPool(name string, config spirit.Map) (pool spirit.WriterPool, err error) {
 	conf := ClassicWriterPoolConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
@@ -59,12 +66,21 @@ func NewClassicWriterPool(config spirit.Map) (pool spirit.WriterPool, err error)
 	}
 
 	pool = &ClassicWriterPool{
+		name:           name,
 		conf:           conf,
 		sessionWriters: make(map[string]*writerInPool),
 		writersMap:     make(map[io.WriteCloser]bool),
 	}
 
 	return
+}
+
+func (p *ClassicWriterPool) Name() string {
+	return p.name
+}
+
+func (p *ClassicWriterPool) URN() string {
+	return writerPoolURN
 }
 
 func (p *ClassicWriterPool) SetNewWriterFunc(newFunc spirit.NewWriterFunc, config spirit.Map) (err error) {
@@ -86,18 +102,22 @@ func (p *ClassicWriterPool) getNonSessionWriter(delivery spirit.Delivery) (write
 
 		spirit.Logger().WithField("actor", "writer pool").
 			WithField("urn", writerPoolURN).
+			WithField("name", p.name).
 			WithField("event", "get writer").
 			Debugln("get an old non-session writer")
 
 		return
 	} else if len(p.writers) < p.conf.MaxSize {
-		if writer, err = p.newWriterFunc(p.writerConfig); err != nil {
+		writerId := atomic.AddInt64(&p.writerId, 1)
+		writerName := fmt.Sprintf("%s_%d", p.name, writerId)
+		if writer, err = p.newWriterFunc(writerName, p.writerConfig); err != nil {
 			return
 		} else {
 			p.writers = append(p.writers, writer)
 			p.writersMap[writer] = true
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "get writer").
 				Debugln("get a new non-session writer")
 		}
@@ -120,6 +140,7 @@ func (p *ClassicWriterPool) getSessionWriter(delivery spirit.Delivery) (writer i
 
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "get writer").
 				WithField("session_id", delivery.SessionId()).
 				Debugln("get an exist session writer")
@@ -127,13 +148,18 @@ func (p *ClassicWriterPool) getSessionWriter(delivery spirit.Delivery) (writer i
 			return
 		}
 	} else {
-		if writer, err = p.newWriterFunc(p.writerConfig); err != nil {
+
+		writerId := atomic.AddInt64(&p.writerId, 1)
+		writerName := fmt.Sprintf("%s_%d", p.name, writerId)
+
+		if writer, err = p.newWriterFunc(writerName, p.writerConfig); err != nil {
 			return
 		} else {
 			p.sessionWriters[delivery.SessionId()] = &writerInPool{InUse: true, Writer: writer}
 
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "get writer").
 				WithField("session_id", delivery.SessionId()).
 				Debugln("get a new session writer")
@@ -169,6 +195,7 @@ func (p *ClassicWriterPool) putSessionWriter(delivery spirit.Delivery, writer io
 		if sessionWriter.Writer != writer {
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "put writer").
 				WithField("session_id", delivery.SessionId()).
 				Debugln("put session writer")
@@ -196,6 +223,7 @@ func (p *ClassicWriterPool) putNonSessionWriter(delivery spirit.Delivery, writer
 
 		spirit.Logger().WithField("actor", "writer pool").
 			WithField("urn", writerPoolURN).
+			WithField("name", p.name).
 			WithField("event", "put writer").
 			Debugln("put an already exist writer")
 
@@ -207,6 +235,7 @@ func (p *ClassicWriterPool) putNonSessionWriter(delivery spirit.Delivery, writer
 
 	spirit.Logger().WithField("actor", "writer pool").
 		WithField("urn", writerPoolURN).
+		WithField("name", p.name).
 		WithField("event", "put writer").
 		Debugln("put non-session writer")
 
@@ -249,6 +278,7 @@ func (p *ClassicWriterPool) Close() {
 
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "close writer").
 				WithField("session_id", sid).
 				Debugln("writer closed and deleted")
@@ -260,6 +290,7 @@ func (p *ClassicWriterPool) Close() {
 
 			spirit.Logger().WithField("actor", "writer pool").
 				WithField("urn", writerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "close writer").
 				Debugln("writer closed and deleted")
 		}

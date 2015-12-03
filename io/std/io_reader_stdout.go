@@ -12,8 +12,11 @@ const (
 )
 
 var _ io.ReadCloser = new(Stdout)
+var _ spirit.Actor = new(Stdout)
 
 type Stdout struct {
+	name string
+
 	onceInit sync.Once
 	conf     StdIOConfig
 	delim    string
@@ -25,7 +28,7 @@ func init() {
 	spirit.RegisterReader(stdReaderURN, NewStdout)
 }
 
-func NewStdout(config spirit.Map) (w io.ReadCloser, err error) {
+func NewStdout(name string, config spirit.Map) (w io.ReadCloser, err error) {
 	conf := StdIOConfig{}
 	config.ToObject(&conf)
 
@@ -33,6 +36,7 @@ func NewStdout(config spirit.Map) (w io.ReadCloser, err error) {
 		err = e
 	} else {
 		w = &Stdout{
+			name: name,
 			conf: conf,
 			proc: proc,
 		}
@@ -40,6 +44,14 @@ func NewStdout(config spirit.Map) (w io.ReadCloser, err error) {
 	}
 
 	return
+}
+
+func (p *Stdout) Name() string {
+	return p.name
+}
+
+func (p *Stdout) URN() string {
+	return stdReaderURN
 }
 
 func (p *Stdout) Read(data []byte) (n int, err error) {

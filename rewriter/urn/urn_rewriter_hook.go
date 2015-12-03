@@ -13,6 +13,9 @@ const (
 	hookURNRewriterURN = "urn:spirit:rewriter:urn:hook"
 )
 
+var _ spirit.URNRewriter = new(HookURNRewriter)
+var _ spirit.Actor = new(HookURNRewriter)
+
 var (
 	ErrHookURNRewriterTemplateDuplicate = errors.New("hook-urn-rewriter template duplicate")
 )
@@ -29,6 +32,7 @@ type HookURNRewriterConfig struct {
 }
 
 type HookURNRewriter struct {
+	name string
 	conf HookURNRewriterConfig
 
 	tmpls map[string]*template.Template
@@ -38,7 +42,7 @@ func init() {
 	spirit.RegisterURNRewriter(hookURNRewriterURN, NewHookURNRewriter)
 }
 
-func NewHookURNRewriter(config spirit.Map) (rewriter spirit.URNRewriter, err error) {
+func NewHookURNRewriter(name string, config spirit.Map) (rewriter spirit.URNRewriter, err error) {
 	conf := HookURNRewriterConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -73,11 +77,20 @@ func NewHookURNRewriter(config spirit.Map) (rewriter spirit.URNRewriter, err err
 	}
 
 	rewriter = &HookURNRewriter{
+		name:  name,
 		conf:  conf,
 		tmpls: tmpTmpls,
 	}
 
 	return
+}
+
+func (p *HookURNRewriter) Name() string {
+	return p.name
+}
+
+func (p *HookURNRewriter) URN() string {
+	return hookURNRewriterURN
 }
 
 func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (err error) {
@@ -109,6 +122,7 @@ func (p *HookURNRewriter) wholeMatchingRewrite(delivery spirit.Delivery) (err er
 	if newURN != originalURN {
 		spirit.Logger().WithField("actor", spirit.ActorURNRewriter).
 			WithField("urn", hookURNRewriterURN).
+			WithField("name", p.name).
 			WithField("event", "rewrite delivery urn").
 			WithField("mode", "whole matching").
 			WithField("orignial_urn", delivery.URN()).
@@ -157,6 +171,7 @@ func (p *HookURNRewriter) splitMatchRewrite(delivery spirit.Delivery) (err error
 	if newURN != originalURN {
 		spirit.Logger().WithField("actor", spirit.ActorURNRewriter).
 			WithField("urn", hookURNRewriterURN).
+			WithField("name", p.name).
 			WithField("event", "rewrite delivery urn").
 			WithField("mode", "split matching").
 			WithField("orignial_urn", delivery.URN()).

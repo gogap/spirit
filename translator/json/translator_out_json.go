@@ -12,12 +12,14 @@ const (
 )
 
 var _ spirit.OutputTranslator = new(JSONOutputTranslator)
+var _ spirit.Actor = new(JSONOutputTranslator)
 
 type JSONOutputTranslatorConfig struct {
 	DataOnly bool `json:"data_only"`
 }
 
 type JSONOutputTranslator struct {
+	name string
 	conf JSONOutputTranslatorConfig
 }
 
@@ -25,7 +27,7 @@ func init() {
 	spirit.RegisterOutputTranslator(jsonTranslatorOutURN, NewJSONOutputTranslator)
 }
 
-func NewJSONOutputTranslator(config spirit.Map) (translator spirit.OutputTranslator, err error) {
+func NewJSONOutputTranslator(name string, config spirit.Map) (translator spirit.OutputTranslator, err error) {
 	conf := JSONOutputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -33,9 +35,18 @@ func NewJSONOutputTranslator(config spirit.Map) (translator spirit.OutputTransla
 	}
 
 	translator = &JSONOutputTranslator{
+		name: name,
 		conf: conf,
 	}
 	return
+}
+
+func (p *JSONOutputTranslator) Name() string {
+	return p.name
+}
+
+func (p *JSONOutputTranslator) URN() string {
+	return jsonTranslatorOutURN
 }
 
 func (p *JSONOutputTranslator) outDataOnly(w io.Writer, delivery spirit.Delivery) (err error) {

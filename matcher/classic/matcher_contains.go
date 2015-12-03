@@ -8,11 +8,16 @@ const (
 	containsMatcherURN = "urn:spirit:matcher:label:contains"
 )
 
+var _ spirit.LabelMatcher = new(ContainsLabelMatcher)
+var _ spirit.Actor = new(ContainsLabelMatcher)
+
 type ContainsLabelMatcherConfig struct {
 	Reverse bool `json:"reverse"`
 }
 
 type ContainsLabelMatcher struct {
+	name string
+
 	conf ContainsLabelMatcherConfig
 }
 
@@ -20,7 +25,7 @@ func init() {
 	spirit.RegisterLabelMatcher(containsMatcherURN, NewContainsLabelMatcher)
 }
 
-func NewContainsLabelMatcher(config spirit.Map) (matcher spirit.LabelMatcher, err error) {
+func NewContainsLabelMatcher(name string, config spirit.Map) (matcher spirit.LabelMatcher, err error) {
 	conf := ContainsLabelMatcherConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -28,10 +33,19 @@ func NewContainsLabelMatcher(config spirit.Map) (matcher spirit.LabelMatcher, er
 	}
 
 	matcher = &ContainsLabelMatcher{
+		name: name,
 		conf: conf,
 	}
 
 	return
+}
+
+func (p *ContainsLabelMatcher) Name() string {
+	return p.name
+}
+
+func (p *ContainsLabelMatcher) URN() string {
+	return containsMatcherURN
 }
 
 func (p *ContainsLabelMatcher) Match(la spirit.Labels, lb spirit.Labels) bool {

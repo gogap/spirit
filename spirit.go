@@ -38,6 +38,11 @@ var (
 	ActorConsole          ActorType = "console"
 )
 
+type Actor interface {
+	Name() string
+	URN() string
+}
+
 func init() {
 	initLogLevel := os.Getenv(SpiritInitialLogLevelEnvKey)
 	if initLogLevel == "" {
@@ -877,55 +882,55 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 		}
 	case ActorInputTranslator:
 		{
-			actor, err = newInputTranslatorFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newInputTranslatorFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorOutputTranslator:
 		{
-			actor, err = newOutputTranslatorFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newOutputTranslatorFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorReceiver:
 		{
-			actor, err = newReceiverFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newReceiverFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorSender:
 		{
-			actor, err = newSenderFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newSenderFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorInbox:
 		{
-			actor, err = newInboxFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newInboxFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorOutbox:
 		{
-			actor, err = newOutboxFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newOutboxFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorRouter:
 		{
-			actor, err = newRouterFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newRouterFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorLabelMatcher:
 		{
-			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newLabelMatcherFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorURNRewriter:
 		{
-			actor, err = newURNRewriterFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newURNRewriterFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorComponent:
 		{
-			actor, err = newComponentFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newComponentFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorReaderPool:
 		{
-			actor, err = newReaderPoolFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newReaderPoolFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorWriterPool:
 		{
-			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newWriterPoolFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	case ActorConsole:
 		{
-			actor, err = newConsoleFuncs[actorConf.URN](actorConf.Config)
+			actor, err = newConsoleFuncs[actorConf.URN](actorConf.Name, actorConf.Config)
 		}
 	default:
 		err = ErrSpiritActorURNNotExist

@@ -17,7 +17,7 @@ var (
 	newWriterPoolFuncs = make(map[string]NewWriterPoolFunc)
 )
 
-type NewWriterPoolFunc func(config Map) (pool WriterPool, err error)
+type NewWriterPoolFunc func(name string, config Map) (pool WriterPool, err error)
 
 func RegisterWriterPool(urn string, newFunc NewWriterPoolFunc) (err error) {
 	writerPoolsLocker.Lock()

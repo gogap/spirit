@@ -17,7 +17,7 @@ var (
 	newReaderPoolFuncs = make(map[string]NewReaderPoolFunc)
 )
 
-type NewReaderPoolFunc func(config Map) (pool ReaderPool, err error)
+type NewReaderPoolFunc func(name string, config Map) (pool ReaderPool, err error)
 
 func RegisterReaderPool(urn string, newFunc NewReaderPoolFunc) (err error) {
 	readerPoolsLocker.Lock()

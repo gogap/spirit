@@ -19,7 +19,6 @@ func (p Map) String(key string) (val string, err error) {
 		err = fmt.Errorf("key of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-	return
 }
 
 func (p Map) Int(key string) (val int, err error) {
@@ -33,7 +32,6 @@ func (p Map) Int(key string) (val int, err error) {
 		err = fmt.Errorf("key of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-	return
 }
 
 func (p Map) Bool(key string) (val bool, err error) {
@@ -47,7 +45,6 @@ func (p Map) Bool(key string) (val bool, err error) {
 		err = fmt.Errorf("key of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-	return
 }
 
 func (p Map) Float64(key string) (val float64, err error) {
@@ -61,16 +58,13 @@ func (p Map) Float64(key string) (val float64, err error) {
 		err = fmt.Errorf("key of %s's value is not type of %s", key, reflect.TypeOf(val).Name())
 		return
 	}
-	return
 }
 
 func (p Map) Object(key string, v interface{}) (err error) {
-	var obj interface{}
-	if val, exist := p[key]; !exist {
+	obj, exist := p[key]
+	if !exist {
 		err = fmt.Errorf("key of %s not exist", key)
 		return
-	} else {
-		obj = val
 	}
 
 	if obj == nil {

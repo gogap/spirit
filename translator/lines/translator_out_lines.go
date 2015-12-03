@@ -14,6 +14,7 @@ const (
 )
 
 var _ spirit.OutputTranslator = new(LinesOutputTranslator)
+var _ spirit.Actor = new(LinesOutputTranslator)
 
 type TemplateDelims struct {
 	Left  string `json:"left"`
@@ -26,6 +27,7 @@ type LinesOutputTranslatorConfig struct {
 }
 
 type LinesOutputTranslator struct {
+	name string
 	tmpl *template.Template
 	conf LinesOutputTranslatorConfig
 }
@@ -34,7 +36,7 @@ func init() {
 	spirit.RegisterOutputTranslator(linesTranslatorOutURN, NewLinesOutputTranslator)
 }
 
-func NewLinesOutputTranslator(config spirit.Map) (translator spirit.OutputTranslator, err error) {
+func NewLinesOutputTranslator(name string, config spirit.Map) (translator spirit.OutputTranslator, err error) {
 	conf := LinesOutputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -62,10 +64,19 @@ func NewLinesOutputTranslator(config spirit.Map) (translator spirit.OutputTransl
 	}
 
 	translator = &LinesOutputTranslator{
+		name: name,
 		conf: conf,
 		tmpl: tmpl,
 	}
 	return
+}
+
+func (p *LinesOutputTranslator) Name() string {
+	return p.name
+}
+
+func (p *LinesOutputTranslator) URN() string {
+	return linesTranslatorOutURN
 }
 
 func (p *LinesOutputTranslator) Out(w io.Writer, delivery spirit.Delivery) (err error) {

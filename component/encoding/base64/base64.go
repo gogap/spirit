@@ -9,6 +9,7 @@ import (
 )
 
 var _ spirit.Component = new(Base64Component)
+var _ spirit.Actor = new(Base64Component)
 
 const (
 	base64URN = "urn:spirit:component:encoding:base64"
@@ -19,6 +20,7 @@ var (
 )
 
 type Base64Component struct {
+	name         string
 	statusLocker sync.Mutex
 }
 
@@ -26,10 +28,16 @@ func init() {
 	spirit.RegisterComponent(base64URN, NewBase64Component)
 }
 
-func NewBase64Component(config spirit.Map) (component spirit.Component, err error) {
-	component = &Base64Component{}
+func NewBase64Component(name string, config spirit.Map) (component spirit.Component, err error) {
+	component = &Base64Component{
+		name: name,
+	}
 
 	return
+}
+
+func (p *Base64Component) Name() string {
+	return p.name
 }
 
 func (p *Base64Component) URN() string {

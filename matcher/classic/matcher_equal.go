@@ -8,15 +8,27 @@ const (
 	equalMatcherURN = "urn:spirit:matcher:label:equal"
 )
 
+var _ spirit.LabelMatcher = new(EqualLabelMatcher)
+var _ spirit.Actor = new(EqualLabelMatcher)
+
 type EqualLabelMatcher struct {
+	name string
 }
 
 func init() {
 	spirit.RegisterLabelMatcher(equalMatcherURN, NewContainsLabelMatcher)
 }
 
-func NewEqualLabelMatcher(config spirit.Map) (matcher spirit.LabelMatcher, err error) {
-	return &EqualLabelMatcher{}, nil
+func NewEqualLabelMatcher(name string, config spirit.Map) (matcher spirit.LabelMatcher, err error) {
+	return &EqualLabelMatcher{name: name}, nil
+}
+
+func (p *EqualLabelMatcher) Name() string {
+	return p.name
+}
+
+func (p *EqualLabelMatcher) URN() string {
+	return equalMatcherURN
 }
 
 func (p *EqualLabelMatcher) Match(la spirit.Labels, lb spirit.Labels) bool {

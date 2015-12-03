@@ -1,8 +1,10 @@
 package pool
 
 import (
+	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gogap/spirit"
 )
@@ -16,12 +18,15 @@ var (
 )
 
 var _ spirit.ReaderPool = new(ClassicReaderPool)
+var _ spirit.Actor = new(ClassicReaderPool)
 
 type ClassicReaderPoolConfig struct {
 	MaxSize int `json:"max_size"`
 }
 
 type ClassicReaderPool struct {
+	name string
+
 	statusLocker sync.Mutex
 	conf         ClassicReaderPoolConfig
 
@@ -33,6 +38,8 @@ type ClassicReaderPool struct {
 
 	readersMap map[io.ReadCloser]bool
 
+	readerId int64
+
 	isClosed bool
 }
 
@@ -40,7 +47,7 @@ func init() {
 	spirit.RegisterReaderPool(readerPoolURN, NewClassicReaderPool)
 }
 
-func NewClassicReaderPool(config spirit.Map) (pool spirit.ReaderPool, err error) {
+func NewClassicReaderPool(name string, config spirit.Map) (pool spirit.ReaderPool, err error) {
 	conf := ClassicReaderPoolConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
@@ -51,11 +58,20 @@ func NewClassicReaderPool(config spirit.Map) (pool spirit.ReaderPool, err error)
 	}
 
 	pool = &ClassicReaderPool{
+		name:       name,
 		conf:       conf,
 		readersMap: make(map[io.ReadCloser]bool),
 	}
 
 	return
+}
+
+func (p *ClassicReaderPool) Name() string {
+	return p.name
+}
+
+func (p *ClassicReaderPool) URN() string {
+	return readerPoolURN
 }
 
 func (p *ClassicReaderPool) SetNewReaderFunc(newFunc spirit.NewReaderFunc, config spirit.Map) (err error) {
@@ -84,18 +100,22 @@ func (p *ClassicReaderPool) Get() (reader io.ReadCloser, err error) {
 
 		spirit.Logger().WithField("actor", "reader pool").
 			WithField("urn", readerPoolURN).
+			WithField("name", p.name).
 			WithField("event", "get reader").
 			Debugln("get an old reader")
 
 		return
 	} else if len(p.readers) < p.conf.MaxSize {
-		if reader, err = p.newReaderFunc(p.readerConfig); err != nil {
+		readerId := atomic.AddInt64(&p.readerId, 1)
+		readerName := fmt.Sprintf("%s_%d", p.name, readerId)
+		if reader, err = p.newReaderFunc(readerName, p.readerConfig); err != nil {
 			return
 		} else {
 			p.readers = append(p.readers, reader)
 			p.readersMap[reader] = true
 			spirit.Logger().WithField("actor", "reader pool").
 				WithField("urn", readerPoolURN).
+				WithField("name", p.name).
 				WithField("event", "get reader").
 				Debugln("get a new reader")
 		}
@@ -125,6 +145,7 @@ func (p *ClassicReaderPool) Put(reader io.ReadCloser) (err error) {
 
 		spirit.Logger().WithField("actor", "reader pool").
 			WithField("urn", readerPoolURN).
+			WithField("name", p.name).
 			WithField("event", "put reader").
 			Debugln("put an already exist reader")
 
@@ -136,6 +157,7 @@ func (p *ClassicReaderPool) Put(reader io.ReadCloser) (err error) {
 
 	spirit.Logger().WithField("actor", "reader pool").
 		WithField("urn", readerPoolURN).
+		WithField("name", p.name).
 		WithField("event", "put reader").
 		Debugln("put reader")
 
@@ -155,6 +177,7 @@ func (p *ClassicReaderPool) Close() {
 
 		spirit.Logger().WithField("actor", "reader pool").
 			WithField("urn", readerPoolURN).
+			WithField("name", p.name).
 			WithField("event", "close reader").
 			Debugln("reader closed and deleted")
 	}

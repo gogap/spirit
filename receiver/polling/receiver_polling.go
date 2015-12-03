@@ -13,6 +13,7 @@ const (
 )
 
 var _ spirit.ReadReceiver = new(PollingReceiver)
+var _ spirit.Actor = new(PollingReceiver)
 
 type _Deliveries struct {
 	Deliveries []spirit.Delivery
@@ -26,6 +27,8 @@ type PollingReceiverConfig struct {
 }
 
 type PollingReceiver struct {
+	name string
+
 	statusLocker sync.Mutex
 	terminaled   chan bool
 	conf         PollingReceiverConfig
@@ -44,13 +47,14 @@ func init() {
 	spirit.RegisterReceiver(pollingReceiverURN, NewPollingReceiver)
 }
 
-func NewPollingReceiver(config spirit.Map) (receiver spirit.Receiver, err error) {
+func NewPollingReceiver(name string, config spirit.Map) (receiver spirit.Receiver, err error) {
 	conf := PollingReceiverConfig{}
 	if err = config.ToObject(&conf); err != nil {
 		return
 	}
 
 	receiver = &PollingReceiver{
+		name:           name,
 		conf:           conf,
 		terminaled:     make(chan bool),
 		deliveriesChan: make(chan _Deliveries, conf.BufferSize),
@@ -59,12 +63,21 @@ func NewPollingReceiver(config spirit.Map) (receiver spirit.Receiver, err error)
 	return
 }
 
+func (p *PollingReceiver) Name() string {
+	return p.name
+}
+
+func (p *PollingReceiver) URN() string {
+	return pollingReceiverURN
+}
+
 func (p *PollingReceiver) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
 	spirit.Logger().WithField("actor", spirit.ActorReceiver).
 		WithField("urn", pollingReceiverURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Debugln("enter start")
 
@@ -100,6 +113,7 @@ func (p *PollingReceiver) Start() (err error) {
 			if reader, err = p.readerPool.Get(); err != nil {
 				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
+					WithField("name", p.name).
 					WithField("event", "get reader from reader pool").
 					Errorln(err)
 			}
@@ -107,6 +121,7 @@ func (p *PollingReceiver) Start() (err error) {
 			if deliveries, err := p.translator.In(reader); err != nil {
 				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
+					WithField("name", p.name).
 					WithField("event", "translate reader").
 					WithField("length", len(deliveries)).
 					Errorln(err)
@@ -115,6 +130,7 @@ func (p *PollingReceiver) Start() (err error) {
 
 				spirit.Logger().WithField("actor", spirit.ActorReceiver).
 					WithField("urn", pollingReceiverURN).
+					WithField("name", p.name).
 					WithField("event", "receiver deliveries").
 					WithField("length", len(deliveries)).
 					Debugln("translator delivery from reader")
@@ -123,6 +139,7 @@ func (p *PollingReceiver) Start() (err error) {
 				if err = p.putter.Put(deliveries); err != nil {
 					spirit.Logger().WithField("actor", spirit.ActorReceiver).
 						WithField("urn", pollingReceiverURN).
+						WithField("name", p.name).
 						WithField("event", "put deliveries").
 						Errorln(err)
 				}
@@ -130,6 +147,7 @@ func (p *PollingReceiver) Start() (err error) {
 				if err = p.readerPool.Put(reader); err != nil {
 					spirit.Logger().WithField("actor", spirit.ActorReceiver).
 						WithField("urn", pollingReceiverURN).
+						WithField("name", p.name).
 						WithField("event", "put reader back to pool").
 						Errorln(err)
 				}
@@ -157,6 +175,7 @@ func (p *PollingReceiver) Start() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorReceiver).
 		WithField("urn", pollingReceiverURN).
+		WithField("name", p.name).
 		WithField("event", "start").
 		Infoln("started")
 
@@ -169,6 +188,7 @@ func (p *PollingReceiver) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorReceiver).
 		WithField("urn", pollingReceiverURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Debugln("enter stop")
 
@@ -186,6 +206,7 @@ func (p *PollingReceiver) Stop() (err error) {
 
 	spirit.Logger().WithField("actor", spirit.ActorRouter).
 		WithField("urn", pollingReceiverURN).
+		WithField("name", p.name).
 		WithField("event", "stop").
 		Infoln("stopped")
 

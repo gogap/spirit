@@ -16,6 +16,7 @@ const (
 )
 
 var _ spirit.InputTranslator = new(JSONInputTranslator)
+var _ spirit.Actor = new(JSONInputTranslator)
 
 type JSONInputTranslatorConfig struct {
 	DataOnly bool          `json:"data_only"`
@@ -24,6 +25,7 @@ type JSONInputTranslatorConfig struct {
 }
 
 type JSONInputTranslator struct {
+	name string
 	conf JSONInputTranslatorConfig
 }
 
@@ -31,7 +33,7 @@ func init() {
 	spirit.RegisterInputTranslator(jsonTranslatorInURN, NewJSONInputTranslator)
 }
 
-func NewJSONInputTranslator(config spirit.Map) (translator spirit.InputTranslator, err error) {
+func NewJSONInputTranslator(name string, config spirit.Map) (translator spirit.InputTranslator, err error) {
 	conf := JSONInputTranslatorConfig{}
 
 	if err = config.ToObject(&conf); err != nil {
@@ -39,9 +41,18 @@ func NewJSONInputTranslator(config spirit.Map) (translator spirit.InputTranslato
 	}
 
 	translator = &JSONInputTranslator{
+		name: name,
 		conf: conf,
 	}
 	return
+}
+
+func (p *JSONInputTranslator) Name() string {
+	return p.name
+}
+
+func (p *JSONInputTranslator) URN() string {
+	return jsonTranslatorInURN
 }
 
 func (p *JSONInputTranslator) inDataOnly(r io.Reader) (deliveries []spirit.Delivery, err error) {

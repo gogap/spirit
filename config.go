@@ -91,9 +91,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := poolDupCheck[pool.Name]; exist {
 				err = ErrReaderPoolNameDuplicate
 				return
-			} else {
-				poolDupCheck[pool.Name] = true
 			}
+
+			poolDupCheck[pool.Name] = true
+
 			actorNames[actorTypedName(ActorReaderPool, pool.Name)] = true
 
 			readerDupCheck := map[string]bool{}
@@ -105,9 +106,9 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := readerDupCheck[pool.Reader.Name]; exist {
 				err = ErrReaderNameDuplicate
 				return
-			} else {
-				readerDupCheck[pool.Reader.Name] = true
 			}
+
+			readerDupCheck[pool.Reader.Name] = true
 
 			actorNames[actorTypedName(ActorReader, pool.Reader.Name)] = true
 			actorNames[actorTypedName(ActorReaderPool, pool.Name)] = true
@@ -125,9 +126,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := poolDupCheck[pool.Name]; exist {
 				err = ErrWriterPoolNameDuplicate
 				return
-			} else {
-				poolDupCheck[pool.Name] = true
 			}
+
+			poolDupCheck[pool.Name] = true
+
 			actorNames[actorTypedName(ActorReaderPool, pool.Name)] = true
 
 			if pool.Writer != nil {
@@ -140,9 +142,9 @@ func (p *SpiritConfig) Validate() (err error) {
 				if _, exist := writerDupCheck[pool.Writer.Name]; exist {
 					err = ErrWriterNameDuplicate
 					return
-				} else {
-					writerDupCheck[pool.Writer.Name] = true
 				}
+
+				writerDupCheck[pool.Writer.Name] = true
 
 				actorNames[actorTypedName(ActorWriter, pool.Writer.Name)] = true
 			}
@@ -161,9 +163,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrInputTranslatorNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorInputTranslator, actor.Name)] = true
 		}
 	}
@@ -179,9 +182,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrOutputTranslatorNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorOutputTranslator, actor.Name)] = true
 		}
 	}
@@ -197,9 +201,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrReceiverNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorReceiver, actor.Name)] = true
 		}
 	}
@@ -215,9 +220,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrSenderNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorSender, actor.Name)] = true
 		}
 	}
@@ -233,9 +239,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrInboxNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorInbox, actor.Name)] = true
 		}
 	}
@@ -251,9 +258,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrOutboxNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorOutbox, actor.Name)] = true
 		}
 	}
@@ -269,9 +277,10 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrRouterNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
+
 			actorNames[actorTypedName(ActorRouter, actor.Name)] = true
 		}
 	}
@@ -297,9 +306,9 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrLabelMatcherNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
 
 			actorNames[actorTypedName(ActorLabelMatcher, actor.Name)] = true
 		}
@@ -316,9 +325,9 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrURNRewriterNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
 
 			actorNames[actorTypedName(ActorURNRewriter, actor.Name)] = true
 		}
@@ -335,9 +344,9 @@ func (p *SpiritConfig) Validate() (err error) {
 			if _, exist := dupCheck[actor.Name]; exist {
 				err = ErrConsoleNameDuplicate
 				return
-			} else {
-				dupCheck[actor.Name] = true
 			}
+
+			dupCheck[actor.Name] = true
 
 			actorNames[actorTypedName(ActorConsole, actor.Name)] = true
 		}
