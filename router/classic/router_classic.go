@@ -456,7 +456,7 @@ func (p *ClassicRouter) Components() (components map[string][]spirit.Component) 
 	return p.components
 }
 
-func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []spirit.ComponentHandler, err error) {
+func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (routeItems []spirit.RouteItem, err error) {
 
 	if p.urnRewriter != nil {
 		if err = p.urnRewriter.Rewrite(delivery); err != nil {
@@ -474,7 +474,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 	}
 
 	var urns = []string{}
-	var tmpHandlers = []spirit.ComponentHandler{}
+	var tmpRouteItems = []spirit.RouteItem{}
 
 	if strURNs != "" {
 		urns = strings.Split(strURNs, "|")
@@ -548,7 +548,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 						err = spirit.ErrComponentHandlerNotExit
 						return
 					} else {
-						tmpHandlers = append(tmpHandlers, h)
+						tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{false, h})
 						continue
 					}
 				}
@@ -561,7 +561,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 							err = spirit.ErrComponentHandlerNotExit
 							return
 						} else {
-							tmpHandlers = append(tmpHandlers, h)
+							tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{false, h})
 							break
 						}
 					}
@@ -570,16 +570,16 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (handlers []sp
 		}
 	}
 
-	if len(tmpHandlers) == 0 && p.conf.AllowNoComponent {
+	if len(tmpRouteItems) == 0 && p.conf.AllowNoComponent {
 		return
 	}
 
-	if len(tmpHandlers) != len(urns) {
+	if len(tmpRouteItems) != len(urns) {
 		err = spirit.ErrRouterHandlerCountNotEqualURNsCount
 		return
 	}
 
-	handlers = tmpHandlers
+	routeItems = tmpRouteItems
 	return
 }
 

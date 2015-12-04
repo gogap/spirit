@@ -64,7 +64,8 @@ func (p *ClassicMessenger) Start() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
-	spirit.Logger().WithField("actor", spirit.ActorMessenger).
+	spirit.Logger().
+		WithField("actor", spirit.ActorMessenger).
 		WithField("urn", p.URN()).
 		WithField("name", p.Name()).
 		WithField("event", "start").
@@ -86,7 +87,8 @@ func (p *ClassicMessenger) Start() (err error) {
 
 	go p.messageLoop()
 
-	spirit.Logger().WithField("actor", spirit.ActorMessenger).
+	spirit.Logger().
+		WithField("actor", spirit.ActorMessenger).
 		WithField("urn", p.URN()).
 		WithField("name", p.Name()).
 		WithField("event", "start").
@@ -99,7 +101,8 @@ func (p *ClassicMessenger) Stop() (err error) {
 	p.statusLocker.Lock()
 	defer p.statusLocker.Unlock()
 
-	spirit.Logger().WithField("actor", spirit.ActorMessenger).
+	spirit.Logger().
+		WithField("actor", spirit.ActorMessenger).
 		WithField("urn", p.URN()).
 		WithField("name", p.Name()).
 		WithField("event", "stop").
@@ -114,7 +117,8 @@ func (p *ClassicMessenger) Stop() (err error) {
 
 	close(p.terminaled)
 
-	spirit.Logger().WithField("actor", spirit.ActorRouter).
+	spirit.Logger().
+		WithField("actor", spirit.ActorRouter).
 		WithField("urn", p.URN()).
 		WithField("name", p.Name()).
 		WithField("event", "stop").
@@ -133,26 +137,37 @@ func (p *ClassicMessenger) messageLoop() {
 			var deliveries []spirit.Delivery
 			var err error
 			if deliveries, err = inbox.Get(); err != nil {
-				spirit.Logger().WithField("module", "spirit").
+				spirit.Logger().
+					WithField("actor", spirit.ActorMessenger).
+					WithField("urn", p.URN()).
+					WithField("name", p.Name()).
 					WithField("event", "router loop").
 					Errorln(err)
 			}
 
+		next_delivery:
 			for _, delivery := range deliveries {
-				var handlers []spirit.ComponentHandler
-				if handlers, err = p.router.RouteToHandlers(delivery); err != nil {
-					spirit.Logger().WithField("module", "spirit").
-						WithField("event", "router to handlers").
+				var routeItems []spirit.RouteItem
+				if routeItems, err = p.router.RouteToHandlers(delivery); err != nil {
+					spirit.Logger().
+						WithField("actor", spirit.ActorMessenger).
+						WithField("urn", p.URN()).
+						WithField("name", p.Name()).
+						WithField("event", "route item").
 						Errorln(err)
 				} else {
-					if len(handlers) == 0 {
-						spirit.Logger().WithField("module", "spirit").
-							WithField("event", "router to handlers").
-							Debugln("no handler found")
+					if len(routeItems) == 0 {
+						spirit.Logger().
+							WithField("actor", spirit.ActorMessenger).
+							WithField("urn", p.URN()).
+							WithField("name", p.Name()).
+							WithField("event", "route item").
+							Debugln("no route item found")
 					}
 
-					for _, handler := range handlers {
-						if ret, e := handler(delivery.Payload()); e != nil {
+					for _, item := range routeItems {
+						if ret, e := item.Handler(delivery.Payload()); e != nil {
+
 							switch retErr := e.(type) {
 							case *spirit.Error:
 								{
@@ -189,40 +204,63 @@ func (p *ClassicMessenger) messageLoop() {
 								delivery.Payload().AppendError(errRet)
 							}
 
-							spirit.Logger().WithField("module", "spirit").
-								WithField("event", "set payload error").
+							spirit.Logger().
+								WithField("actor", spirit.ActorMessenger).
+								WithField("urn", p.URN()).
+								WithField("name", p.Name()).
+								WithField("event", "route item execute error").
 								Debugln(e)
 
+							if !item.ContinueOnError {
+								break
+							}
 						} else {
 							if e := delivery.Payload().SetData(ret); e != nil {
-								spirit.Logger().WithField("module", "spirit").
-									WithField("event", "set payload data").
+								spirit.Logger().
+									WithField("actor", spirit.ActorMessenger).
+									WithField("urn", p.URN()).
+									WithField("name", p.Name()).
+									WithField("event", "set data to delviery").
 									Errorln(e)
+
+								break next_delivery
 							}
 						}
 					}
 
 					if outboxes, e := p.router.RouteToOutboxes(delivery); e != nil {
-						spirit.Logger().WithField("module", "spirit").
+						spirit.Logger().
+							WithField("actor", spirit.ActorMessenger).
+							WithField("urn", p.URN()).
+							WithField("name", p.Name()).
 							WithField("event", "router to outboxes").
 							Errorln(e)
 					} else {
 						if len(outboxes) == 0 {
-							spirit.Logger().WithField("module", "spirit").
+							spirit.Logger().
+								WithField("actor", spirit.ActorMessenger).
+								WithField("urn", p.URN()).
+								WithField("name", p.Name()).
 								WithField("event", "router to outboxes").
 								Errorln("no outbox found")
-							break
+							break next_delivery
 						}
 
 						for _, outbox := range outboxes {
 
-							spirit.Logger().WithField("module", "spirit").
+							spirit.Logger().
+								WithField("actor", spirit.ActorMessenger).
+								WithField("urn", p.URN()).
+								WithField("name", p.Name()).
 								WithField("event", "router to outboxes").
 								WithField("outbox labels", outbox.Labels()).
 								Debugln("outbox found")
 
 							if e := outbox.Put([]spirit.Delivery{delivery}); e != nil {
-								spirit.Logger().WithField("module", "spirit").
+								spirit.Logger().
+									WithField("actor", spirit.ActorMessenger).
+									WithField("urn", p.URN()).
+									WithField("name", p.Name()).
 									WithField("event", "put delivery to outbox").
 									Errorln(e)
 							}
@@ -232,17 +270,24 @@ func (p *ClassicMessenger) messageLoop() {
 			}
 		}
 
-		select {
-		case signal := <-p.terminaled:
-			{
-				if signal == true {
-					return
-				}
-			}
-		case <-time.After(time.Microsecond * 10):
-			{
-				continue
-			}
+		if p.checkTerminaled() {
+			return
 		}
 	}
+}
+
+func (p *ClassicMessenger) checkTerminaled() bool {
+	select {
+	case signal, more := <-p.terminaled:
+		{
+			if signal == true || more == false {
+				return true
+			}
+		}
+	case <-time.After(time.Microsecond * 10):
+		{
+		}
+	}
+
+	return false
 }

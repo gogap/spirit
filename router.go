@@ -11,6 +11,11 @@ var (
 
 type NewRouterFunc func(name string, options Map) (router Router, err error)
 
+type RouteItem struct {
+	ContinueOnError bool
+	Handler         ComponentHandler
+}
+
 type Router interface {
 	Actor
 	StartStopper
@@ -27,7 +32,7 @@ type Router interface {
 	RemoveComponent(urn string) (err error)
 	Components() (components map[string][]Component)
 
-	RouteToHandlers(delivery Delivery) (handlers []ComponentHandler, err error)
+	RouteToHandlers(delivery Delivery) (items []RouteItem, err error)
 	RouteToOutboxes(delivery Delivery) (outboxes []Outbox, err error)
 
 	SetOutboxLabelMatcher(matcher LabelMatcher) (err error)
