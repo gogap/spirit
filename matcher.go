@@ -9,10 +9,14 @@ type FuncLabels func() Labels
 const FuncLabelsName string = "Labels"
 
 type LabelLister interface {
+	Actor
+
 	Labels() Labels
 }
 
 type LabelMatcher interface {
+	Actor
+
 	Match(la Labels, lb Labels) (matched bool)
 }
 

@@ -14,7 +14,6 @@ const (
 )
 
 var _ spirit.Router = new(ClassicRouter)
-var _ spirit.Actor = new(ClassicRouter)
 
 type ClassicRouterConfig struct {
 	AllowNoComponent bool `json:"allow_no_component"`

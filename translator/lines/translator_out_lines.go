@@ -14,7 +14,6 @@ const (
 )
 
 var _ spirit.OutputTranslator = new(LinesOutputTranslator)
-var _ spirit.Actor = new(LinesOutputTranslator)
 
 type TemplateDelims struct {
 	Left  string `json:"left"`

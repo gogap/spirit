@@ -13,7 +13,6 @@ const (
 )
 
 var _ spirit.ReadReceiver = new(PollingReceiver)
-var _ spirit.Actor = new(PollingReceiver)
 
 type _Deliveries struct {
 	Deliveries []spirit.Delivery

@@ -11,7 +11,6 @@ const (
 )
 
 var _ spirit.Outbox = new(ClassicOutbox)
-var _ spirit.Actor = new(ClassicOutbox)
 
 type ClassicOutboxConfig struct {
 	Size       int           `json:"size"`

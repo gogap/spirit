@@ -97,6 +97,12 @@ var (
 	ErrConsoleURNNotExist   = errors.New("urn console urn not exist")
 	ErrConsoleNameDuplicate = errors.New("urn console name duplicate")
 
+	ErrMessengerDidNotHaveRouter = errors.New("messenger did not have router")
+	ErrMessengerAlreadyRunning   = errors.New("messenger already running")
+	ErrMessengerDidNotRunning    = errors.New("messenger did not running")
+	ErrMessengerURNNotExist      = errors.New("messenger urn not exist")
+	ErrMessengerNameDuplicate    = errors.New("messenger name duplicate")
+
 	ErrSpiritAlreadyRunning   = errors.New("spirit already running")
 	ErrSpiritAlreadyStopped   = errors.New("spirit already stopped")
 	ErrSpiritAlreadyBuilt     = errors.New("spirit already built")
@@ -117,6 +123,7 @@ var (
 	ErrActorLabelMatcerNotExist      = errors.New("actor:label_matcher not exist")
 	ErrActorSenderNotExist           = errors.New("actor:sender not exist")
 	ErrActorURNRewriterNotExist      = errors.New("actor:urn_rewriter not exist")
+	ErrActorMessengerNotExist        = errors.New("actor:messenger not exist")
 
 	ErrComposeNameIsEmpty = errors.New("spirit compose name is empty")
 

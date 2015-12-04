@@ -17,7 +17,6 @@ var (
 )
 
 var _ io.WriteCloser = new(Stdin)
-var _ spirit.Actor = new(Stdin)
 
 type Stdin struct {
 	name string

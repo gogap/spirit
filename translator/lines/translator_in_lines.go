@@ -12,7 +12,6 @@ const (
 )
 
 var _ spirit.InputTranslator = new(LinesInputTranslator)
-var _ spirit.Actor = new(LinesInputTranslator)
 
 type LinesInputTranslatorConfig struct {
 	BindURN string        `json:"bind_urn"`

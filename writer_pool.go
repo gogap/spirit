@@ -6,6 +6,8 @@ import (
 )
 
 type WriterPool interface {
+	Actor
+
 	SetNewWriterFunc(newFunc NewWriterFunc, options Map) (err error)
 	Get(delivery Delivery) (writer io.WriteCloser, err error)
 	Put(delivery Delivery, writer io.WriteCloser) (err error)

@@ -7,6 +7,7 @@ import (
 type NewReceiverFunc func(name string, options Map) (receiver Receiver, err error)
 
 type Receiver interface {
+	Actor
 	StartStopper
 
 	SetDeliveryPutter(putter DeliveryPutter) (err error)

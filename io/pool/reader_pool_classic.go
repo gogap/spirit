@@ -18,7 +18,6 @@ var (
 )
 
 var _ spirit.ReaderPool = new(ClassicReaderPool)
-var _ spirit.Actor = new(ClassicReaderPool)
 
 type ClassicReaderPoolConfig struct {
 	MaxSize int `json:"max_size"`

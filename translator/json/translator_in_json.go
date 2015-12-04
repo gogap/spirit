@@ -16,7 +16,6 @@ const (
 )
 
 var _ spirit.InputTranslator = new(JSONInputTranslator)
-var _ spirit.Actor = new(JSONInputTranslator)
 
 type JSONInputTranslatorConfig struct {
 	DataOnly bool          `json:"data_only"`

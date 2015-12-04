@@ -7,6 +7,7 @@ import (
 type NewSenderFunc func(name string, options Map) (sender Sender, err error)
 
 type Sender interface {
+	Actor
 	StartStopper
 
 	SetDeliveryGetter(getter DeliveryGetter) (err error)

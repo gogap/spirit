@@ -5,6 +5,8 @@ import (
 )
 
 type URNRewriter interface {
+	Actor
+
 	Rewrite(delivery Delivery) (err error)
 }
 

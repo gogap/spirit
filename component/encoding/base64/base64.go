@@ -9,7 +9,6 @@ import (
 )
 
 var _ spirit.Component = new(Base64Component)
-var _ spirit.Actor = new(Base64Component)
 
 const (
 	base64URN = "urn:spirit:component:encoding:base64"

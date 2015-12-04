@@ -19,10 +19,14 @@ type NewInputTranslatorFunc func(name string, options Map) (translator InputTran
 type NewOutputTranslatorFunc func(name string, options Map) (translator OutputTranslator, err error)
 
 type InputTranslator interface {
+	Actor
+
 	In(r io.Reader) (delivery []Delivery, err error)
 }
 
 type OutputTranslator interface {
+	Actor
+
 	Out(w io.Writer, delivery Delivery) (err error)
 }
 

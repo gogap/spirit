@@ -9,7 +9,6 @@ import (
 )
 
 var _ spirit.Component = new(JSONComponent)
-var _ spirit.Actor = new(JSONComponent)
 
 const (
 	jsonURN = "urn:spirit:component:encoding:json"

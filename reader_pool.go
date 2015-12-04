@@ -6,6 +6,8 @@ import (
 )
 
 type ReaderPool interface {
+	Actor
+
 	SetNewReaderFunc(newFunc NewReaderFunc, options Map) (err error)
 	Get() (reader io.ReadCloser, err error)
 	Put(reader io.ReadCloser) (err error)

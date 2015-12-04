@@ -12,6 +12,7 @@ var (
 type NewRouterFunc func(name string, options Map) (router Router, err error)
 
 type Router interface {
+	Actor
 	StartStopper
 
 	AddInbox(inbox Inbox) (err error)

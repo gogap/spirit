@@ -12,6 +12,7 @@ var (
 type NewOutboxFunc func(name string, options Map) (outbox Outbox, err error)
 
 type Outbox interface {
+	Actor
 	StartStopper
 
 	Labels() Labels

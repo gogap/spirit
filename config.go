@@ -48,9 +48,10 @@ type Log struct {
 	ConfigFile    string `json:"config"`
 }
 
-type ComposeRouterConfig struct {
+type ComposeConfig struct {
 	Name          string                  `json:"name"`
 	Router        string                  `json:"router"`
+	Messenger     string                  `json:"messenger"`
 	LabelMatchers ComposeLabelMatchConfig `json:"label_matchers"`
 	URNRewriter   *string                 `json:"urn_rewriter"`
 	Components    []string                `json:"components"`
@@ -72,9 +73,10 @@ type SpiritConfig struct {
 	LabelMatchers     []ActorConfig           `json:"label_matchers"`
 	URNRewriters      []ActorConfig           `json:"urn_rewriters"`
 	Consoles          []ActorConfig           `json:"consoles"`
+	Messengers        []ActorConfig           `json:"messengers"`
 
-	Compose []ComposeRouterConfig `json:"compose"`
-	Log     Log                   `json:"log"`
+	Compose []ComposeConfig `json:"compose"`
+	Log     Log             `json:"log"`
 }
 
 func (p *SpiritConfig) Validate() (err error) {
@@ -285,6 +287,25 @@ func (p *SpiritConfig) Validate() (err error) {
 		}
 	}
 
+	if p.Messengers != nil {
+		dupCheck := map[string]bool{}
+		for _, actor := range p.Messengers {
+			if _, exist := newMessengerFuncs[actor.URN]; !exist {
+				err = ErrMessengerURNNotExist
+				return
+			}
+
+			if _, exist := dupCheck[actor.Name]; exist {
+				err = ErrMessengerNameDuplicate
+				return
+			}
+
+			dupCheck[actor.Name] = true
+
+			actorNames[actorTypedName(ActorMessenger, actor.Name)] = true
+		}
+	}
+
 	if p.Components != nil {
 		for _, actor := range p.Components {
 			if _, exist := newComponentFuncs[actor.URN]; !exist {
@@ -360,6 +381,11 @@ func (p *SpiritConfig) Validate() (err error) {
 
 		if _, exist := actorNames[actorTypedName(ActorRouter, composeObj.Router)]; !exist {
 			err = ErrActorRouterNotExist
+			return
+		}
+
+		if _, exist := actorNames[actorTypedName(ActorMessenger, composeObj.Messenger)]; !exist {
+			err = ErrActorMessengerNotExist
 			return
 		}
 

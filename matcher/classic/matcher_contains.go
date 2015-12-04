@@ -9,7 +9,6 @@ const (
 )
 
 var _ spirit.LabelMatcher = new(ContainsLabelMatcher)
-var _ spirit.Actor = new(ContainsLabelMatcher)
 
 type ContainsLabelMatcherConfig struct {
 	Reverse bool `json:"reverse"`

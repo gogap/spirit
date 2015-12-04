@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/gogap/errors"
 	"github.com/gogap/logrus_mate"
 )
 
@@ -18,51 +17,9 @@ var (
 	logger     = logrus_mate.Logger()
 )
 
-type ActorType string
-
-var (
-	ActorReader           ActorType = "reader"
-	ActorWriter           ActorType = "writer"
-	ActorInputTranslator  ActorType = "input_translator"
-	ActorOutputTranslator ActorType = "output_translator"
-	ActorReceiver         ActorType = "receiver"
-	ActorSender           ActorType = "sender"
-	ActorLabelMatcher     ActorType = "label_matcher"
-	ActorRouter           ActorType = "router"
-	ActorComponent        ActorType = "component"
-	ActorInbox            ActorType = "inbox"
-	ActorOutbox           ActorType = "outbox"
-	ActorReaderPool       ActorType = "reader_pool"
-	ActorWriterPool       ActorType = "writer_pool"
-	ActorURNRewriter      ActorType = "urn_rewriter"
-	ActorConsole          ActorType = "console"
-)
-
 type Actor interface {
 	Name() string
 	URN() string
-}
-
-func init() {
-	initLogLevel := os.Getenv(SpiritInitialLogLevelEnvKey)
-	if initLogLevel == "" {
-		logger.Level = logrus.InfoLevel
-		return
-	}
-	if lvl, err := logrus.ParseLevel(initLogLevel); err != nil {
-		panic(err)
-	} else {
-		logger.Level = lvl
-	}
-}
-
-func Logger(loggerName ...string) *logrus.Logger {
-	if loggerName == nil ||
-		len(loggerName) == 0 ||
-		loggerName[0] == "" {
-		return logger
-	}
-	return logrusMate.Logger(loggerName...)
 }
 
 type Starter interface {
@@ -104,6 +61,29 @@ type ClassicSpirit struct {
 	routers           map[string]Router
 	consoles          map[string]Console
 	components        map[string][]Component
+	messengers        map[string]Messenger
+}
+
+func init() {
+	initLogLevel := os.Getenv(SpiritInitialLogLevelEnvKey)
+	if initLogLevel == "" {
+		logger.Level = logrus.InfoLevel
+		return
+	}
+	if lvl, err := logrus.ParseLevel(initLogLevel); err != nil {
+		panic(err)
+	} else {
+		logger.Level = lvl
+	}
+}
+
+func Logger(loggerName ...string) *logrus.Logger {
+	if loggerName == nil ||
+		len(loggerName) == 0 ||
+		loggerName[0] == "" {
+		return logger
+	}
+	return logrusMate.Logger(loggerName...)
 }
 
 func NewClassicSpirit() (s Spirit, err error) {
@@ -121,6 +101,7 @@ func NewClassicSpirit() (s Spirit, err error) {
 		routers:           make(map[string]Router),
 		consoles:          make(map[string]Console),
 		components:        make(map[string][]Component),
+		messengers:        make(map[string]Messenger),
 	}, nil
 }
 
@@ -144,152 +125,58 @@ func (p *ClassicSpirit) Run() (wg *sync.WaitGroup, err error) {
 
 	for name, components := range p.components {
 		for _, actor := range components {
-			p.startActor(name, ActorComponent, actor)
+			if err = p.startActor(name, ActorComponent, actor); err != nil {
+				return
+			}
 		}
 	}
 
 	for name, actor := range p.outboxes {
-		p.startActor(name, ActorOutbox, actor)
+		if err = p.startActor(name, ActorOutbox, actor); err != nil {
+			return
+		}
 	}
 
 	for name, actor := range p.inboxes {
-		p.startActor(name, ActorInbox, actor)
+		if err = p.startActor(name, ActorInbox, actor); err != nil {
+			return
+		}
 	}
 
 	for name, actor := range p.senders {
-		p.startActor(name, ActorSender, actor)
+		if err = p.startActor(name, ActorSender, actor); err != nil {
+			return
+		}
 	}
 
 	for name, actor := range p.receivers {
-		p.startActor(name, ActorReceiver, actor)
+		if err = p.startActor(name, ActorReceiver, actor); err != nil {
+			return
+		}
 	}
 
 	for name, actor := range p.routers {
-		p.startActor(name, ActorRouter, actor)
-	}
-
-	for _, router := range p.routers {
-		go p.loop(router)
+		if err = p.startActor(name, ActorRouter, actor); err != nil {
+			return
+		}
 	}
 
 	for name, actor := range p.consoles {
-		p.startActor(name, ActorConsole, actor)
+		if err = p.startActor(name, ActorConsole, actor); err != nil {
+			return
+		}
+	}
+
+	for name, actor := range p.messengers {
+		if err = p.startActor(name, ActorMessenger, actor); err != nil {
+			return
+		}
 	}
 
 	wg.Add(1)
 	p.waitSignal(wg)
 
 	return
-}
-
-func (p *ClassicSpirit) loop(router Router) {
-	for {
-		for _, inbox := range router.Inboxes() {
-			var deliveries []Delivery
-			var err error
-			if deliveries, err = inbox.Get(); err != nil {
-				logger.WithField("module", "spirit").
-					WithField("event", "router loop").
-					Errorln(err)
-			}
-
-			for _, delivery := range deliveries {
-				var handlers []ComponentHandler
-				if handlers, err = router.RouteToHandlers(delivery); err != nil {
-					logger.WithField("module", "spirit").
-						WithField("event", "router to handlers").
-						Errorln(err)
-				} else {
-					if len(handlers) == 0 {
-						logger.WithField("module", "spirit").
-							WithField("event", "router to handlers").
-							Debugln("no handler found")
-					}
-
-					for _, handler := range handlers {
-						if ret, e := handler(delivery.Payload()); e != nil {
-							switch retErr := e.(type) {
-							case *Error:
-								{
-									delivery.Payload().AppendError(retErr)
-								}
-							case Error:
-								{
-									delivery.Payload().AppendError(&retErr)
-								}
-							case errors.ErrCode:
-								{
-									e := &Error{
-										Code:       retErr.Code(),
-										Id:         retErr.Id(),
-										Namespace:  retErr.Namespace(),
-										Message:    retErr.Error(),
-										StackTrace: retErr.StackTrace(),
-										Context:    map[string]interface{}(retErr.Context()),
-									}
-
-									delivery.Payload().AppendError(e)
-								}
-							default:
-								errCode := ErrComponentHandlerError.New().Append(e)
-								errRet := &Error{
-									Code:       errCode.Code(),
-									Id:         errCode.Id(),
-									Namespace:  errCode.Namespace(),
-									Message:    errCode.Error(),
-									StackTrace: errCode.StackTrace(),
-									Context:    map[string]interface{}(errCode.Context()),
-								}
-
-								delivery.Payload().AppendError(errRet)
-							}
-
-							logger.WithField("module", "spirit").
-								WithField("event", "set payload error").
-								Debugln(e)
-
-						} else {
-							if e := delivery.Payload().SetData(ret); e != nil {
-								logger.WithField("module", "spirit").
-									WithField("event", "set payload data").
-									Errorln(e)
-							}
-						}
-					}
-
-					if outboxes, e := router.RouteToOutboxes(delivery); e != nil {
-						logger.WithField("module", "spirit").
-							WithField("event", "router to outboxes").
-							Errorln(e)
-					} else {
-						if len(outboxes) == 0 {
-							logger.WithField("module", "spirit").
-								WithField("event", "router to outboxes").
-								Errorln("no outbox found")
-							break
-						}
-
-						for _, outbox := range outboxes {
-
-							logger.WithField("module", "spirit").
-								WithField("event", "router to outboxes").
-								WithField("outbox labels", outbox.Labels()).
-								Debugln("outbox found")
-
-							if e := outbox.Put([]Delivery{delivery}); e != nil {
-								logger.WithField("module", "spirit").
-									WithField("event", "put delivery to outbox").
-									Errorln(e)
-							}
-						}
-					}
-				}
-			}
-		}
-		if p.status == StatusStopped {
-			return
-		}
-	}
 }
 
 func (p *ClassicSpirit) stopActor(actorType ActorType, actors map[string]Stopper) (err error) {
@@ -371,7 +258,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, inboxes); err != nil {
+	if err = p.stopActor(ActorInbox, inboxes); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop inboxes").
 			Errorln(err)
@@ -388,7 +275,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, senders); err != nil {
+	if err = p.stopActor(ActorSender, senders); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop senders").
 			Errorln(err)
@@ -405,7 +292,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, outboxes); err != nil {
+	if err = p.stopActor(ActorOutbox, outboxes); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop outboxes").
 			Errorln(err)
@@ -422,7 +309,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, routers); err != nil {
+	if err = p.stopActor(ActorRouter, routers); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop routers").
 			Errorln(err)
@@ -432,6 +319,23 @@ func (p *ClassicSpirit) stop() (err error) {
 			Infoln("routers stopped")
 	}
 
+	messengers := map[string]Stopper{}
+	for name, actor := range p.messengers {
+		if stopper, ok := actor.(Stopper); ok {
+			messengers[name] = stopper
+		}
+	}
+
+	if err = p.stopActor(ActorMessenger, messengers); err != nil {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop messengers").
+			Errorln(err)
+	} else {
+		logger.WithField("module", "spirit").
+			WithField("event", "stop messengers").
+			Infoln("messengers stopped")
+	}
+
 	consoles := map[string]Stopper{}
 	for name, actor := range p.consoles {
 		if stopper, ok := actor.(Stopper); ok {
@@ -439,7 +343,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, consoles); err != nil {
+	if err = p.stopActor(ActorConsole, consoles); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop consoles").
 			Errorln(err)
@@ -458,7 +362,7 @@ func (p *ClassicSpirit) stop() (err error) {
 		}
 	}
 
-	if err = p.stopActor(ActorReceiver, components); err != nil {
+	if err = p.stopActor(ActorComponent, components); err != nil {
 		logger.WithField("module", "spirit").
 			WithField("event", "stop components").
 			Errorln(err)
@@ -651,6 +555,21 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 		p.routers[actorConf.Name] = actor.(Router)
 	}
 
+	// messengers
+	for _, actorConf := range conf.Messengers {
+		var actor interface{}
+		if actor, err = p.createActor(ActorMessenger, actorConf); err != nil {
+			logger.WithField("module", "spirit").
+				WithField("event", "build").
+				WithField("actor_name", actorConf.Name).
+				WithField("actor_urn", actorConf.URN).
+				Error(err)
+
+			return
+		}
+		p.messengers[actorConf.Name] = actor.(Messenger)
+	}
+
 	// label matchers
 	for _, actorConf := range conf.LabelMatchers {
 		var actor interface{}
@@ -755,25 +674,28 @@ func (p *ClassicSpirit) Build(conf SpiritConfig) (err error) {
 	return
 }
 
-func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) {
-	for _, composeObj := range compose {
-		routerInstance := p.routers[composeObj.Router]
+func (p *ClassicSpirit) buildCompose(compose []ComposeConfig) (err error) {
+	for _, composeConf := range compose {
+		routerInstance := p.routers[composeConf.Router]
 
-		if composeObj.URNRewriter != nil {
-			rewriter := p.urnRewriters[*composeObj.URNRewriter]
+		messenger := p.messengers[composeConf.Messenger]
+		messenger.SetRouter(routerInstance)
+
+		if composeConf.URNRewriter != nil {
+			rewriter := p.urnRewriters[*composeConf.URNRewriter]
 			if err = routerInstance.SetURNRewriter(rewriter); err != nil {
 				return
 			}
 		}
 
-		for _, compName := range composeObj.Components {
+		for _, compName := range composeConf.Components {
 			componentInstances := p.components[compName]
 			for _, componentInstance := range componentInstances {
 				routerInstance.AddComponent(compName, componentInstance)
 			}
 		}
 
-		for _, inbox := range composeObj.Inboxes {
+		for _, inbox := range composeConf.Inboxes {
 			inboxInstance := p.inboxes[inbox.Name]
 			routerInstance.AddInbox(inboxInstance)
 
@@ -815,13 +737,13 @@ func (p *ClassicSpirit) buildCompose(compose []ComposeRouterConfig) (err error) 
 			}
 		}
 
-		componentlabelMatcher := p.labelMatchers[composeObj.LabelMatchers.Component]
+		componentlabelMatcher := p.labelMatchers[composeConf.LabelMatchers.Component]
 		routerInstance.SetComponentLabelMatcher(componentlabelMatcher)
 
-		outboxLabelMatcher := p.labelMatchers[composeObj.LabelMatchers.Outbox]
+		outboxLabelMatcher := p.labelMatchers[composeConf.LabelMatchers.Outbox]
 		routerInstance.SetOutboxLabelMatcher(outboxLabelMatcher)
 
-		for _, outbox := range composeObj.Outboxes {
+		for _, outbox := range composeConf.Outboxes {
 			outboxInstance := p.outboxes[outbox.Name]
 			routerInstance.AddOutbox(outboxInstance)
 
@@ -907,6 +829,10 @@ func (p *ClassicSpirit) createActor(actorType ActorType, actorConf ActorConfig) 
 	case ActorRouter:
 		{
 			actor, err = newRouterFuncs[actorConf.URN](actorConf.Name, actorConf.Options)
+		}
+	case ActorMessenger:
+		{
+			actor, err = newMessengerFuncs[actorConf.URN](actorConf.Name, actorConf.Options)
 		}
 	case ActorLabelMatcher:
 		{

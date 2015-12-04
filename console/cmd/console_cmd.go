@@ -9,7 +9,6 @@ const (
 )
 
 var _ spirit.Console = new(CMDConsole)
-var _ spirit.Actor = new(CMDConsole)
 
 type CMDConsoleConfig struct {
 }

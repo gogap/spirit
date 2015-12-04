@@ -22,6 +22,7 @@ type DeliveryGetter interface {
 }
 
 type Inbox interface {
+	Actor
 	StartStopper
 
 	DeliveryPutter

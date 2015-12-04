@@ -9,7 +9,6 @@ const (
 )
 
 var _ spirit.LabelMatcher = new(EqualLabelMatcher)
-var _ spirit.Actor = new(EqualLabelMatcher)
 
 type EqualLabelMatcher struct {
 	name string

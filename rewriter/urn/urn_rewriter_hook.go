@@ -14,7 +14,6 @@ const (
 )
 
 var _ spirit.URNRewriter = new(HookURNRewriter)
-var _ spirit.Actor = new(HookURNRewriter)
 
 var (
 	ErrHookURNRewriterTemplateDuplicate = errors.New("hook-urn-rewriter template duplicate")

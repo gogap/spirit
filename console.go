@@ -5,6 +5,8 @@ import (
 )
 
 type Console interface {
+	Actor
+
 	AddSpirit(spirit Spirit) (err error)
 }
 

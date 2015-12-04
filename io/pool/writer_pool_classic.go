@@ -18,7 +18,6 @@ var (
 )
 
 var _ spirit.WriterPool = new(ClassicWriterPool)
-var _ spirit.Actor = new(ClassicWriterPool)
 
 type ClassicWriterPoolConfig struct {
 	EnableSession bool `json:"enable_session"`

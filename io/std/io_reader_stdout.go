@@ -12,7 +12,6 @@ const (
 )
 
 var _ io.ReadCloser = new(Stdout)
-var _ spirit.Actor = new(Stdout)
 
 type Stdout struct {
 	name string
