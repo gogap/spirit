@@ -148,6 +148,7 @@ func (p *ClassicMessenger) messageLoop() {
 		next_delivery:
 			for _, delivery := range deliveries {
 				var routeItems []spirit.RouteItem
+
 				if routeItems, err = p.router.RouteToHandlers(delivery); err != nil {
 					spirit.Logger().
 						WithField("actor", spirit.ActorMessenger).
@@ -155,118 +156,121 @@ func (p *ClassicMessenger) messageLoop() {
 						WithField("name", p.Name()).
 						WithField("event", "route item").
 						Errorln(err)
-				} else {
-					if len(routeItems) == 0 {
+				}
+
+				if len(routeItems) == 0 {
+					spirit.Logger().
+						WithField("actor", spirit.ActorMessenger).
+						WithField("urn", p.URN()).
+						WithField("name", p.Name()).
+						WithField("event", "route item").
+						Debugln("no route item found")
+				}
+
+				for _, item := range routeItems {
+					var handlerRet interface{}
+					var execErr error
+					if handlerRet, execErr = item.Handler(delivery.Payload()); execErr != nil {
+
+						switch retErr := execErr.(type) {
+						case *spirit.Error:
+							{
+								delivery.Payload().AppendError(retErr)
+							}
+						case spirit.Error:
+							{
+								delivery.Payload().AppendError(&retErr)
+							}
+						case errors.ErrCode:
+							{
+								e := &spirit.Error{
+									Code:       retErr.Code(),
+									Id:         retErr.Id(),
+									Namespace:  retErr.Namespace(),
+									Message:    retErr.Error(),
+									StackTrace: retErr.StackTrace(),
+									Context:    map[string]interface{}(retErr.Context()),
+								}
+
+								delivery.Payload().AppendError(e)
+							}
+						default:
+							errCode := spirit.ErrComponentHandlerError.New().Append(execErr)
+							errRet := &spirit.Error{
+								Code:       errCode.Code(),
+								Id:         errCode.Id(),
+								Namespace:  errCode.Namespace(),
+								Message:    errCode.Error(),
+								StackTrace: errCode.StackTrace(),
+								Context:    map[string]interface{}(errCode.Context()),
+							}
+
+							delivery.Payload().AppendError(errRet)
+						}
+
 						spirit.Logger().
 							WithField("actor", spirit.ActorMessenger).
 							WithField("urn", p.URN()).
 							WithField("name", p.Name()).
-							WithField("event", "route item").
-							Debugln("no route item found")
-					}
+							WithField("event", "route item execute error").
+							Debugln(execErr)
 
-					for _, item := range routeItems {
-						if ret, e := item.Handler(delivery.Payload()); e != nil {
-
-							switch retErr := e.(type) {
-							case *spirit.Error:
-								{
-									delivery.Payload().AppendError(retErr)
-								}
-							case spirit.Error:
-								{
-									delivery.Payload().AppendError(&retErr)
-								}
-							case errors.ErrCode:
-								{
-									e := &spirit.Error{
-										Code:       retErr.Code(),
-										Id:         retErr.Id(),
-										Namespace:  retErr.Namespace(),
-										Message:    retErr.Error(),
-										StackTrace: retErr.StackTrace(),
-										Context:    map[string]interface{}(retErr.Context()),
-									}
-
-									delivery.Payload().AppendError(e)
-								}
-							default:
-								errCode := spirit.ErrComponentHandlerError.New().Append(e)
-								errRet := &spirit.Error{
-									Code:       errCode.Code(),
-									Id:         errCode.Id(),
-									Namespace:  errCode.Namespace(),
-									Message:    errCode.Error(),
-									StackTrace: errCode.StackTrace(),
-									Context:    map[string]interface{}(errCode.Context()),
-								}
-
-								delivery.Payload().AppendError(errRet)
-							}
-
-							spirit.Logger().
-								WithField("actor", spirit.ActorMessenger).
-								WithField("urn", p.URN()).
-								WithField("name", p.Name()).
-								WithField("event", "route item execute error").
-								Debugln(e)
-
-							if !item.ContinueOnError {
-								break
-							}
-						} else {
-							if e := delivery.Payload().SetData(ret); e != nil {
-								spirit.Logger().
-									WithField("actor", spirit.ActorMessenger).
-									WithField("urn", p.URN()).
-									WithField("name", p.Name()).
-									WithField("event", "set data to delviery").
-									Errorln(e)
-
-								break next_delivery
-							}
+						if !item.ContinueOnError {
+							break
 						}
 					}
 
-					if outboxes, e := p.router.RouteToOutboxes(delivery); e != nil {
+					if e := delivery.Payload().SetData(handlerRet); e != nil {
+						spirit.Logger().
+							WithField("actor", spirit.ActorMessenger).
+							WithField("urn", p.URN()).
+							WithField("name", p.Name()).
+							WithField("event", "set data to delviery").
+							Errorln(e)
+
+						break next_delivery
+					}
+				}
+
+				if outboxes, e := p.router.RouteToOutboxes(delivery); e != nil {
+					spirit.Logger().
+						WithField("actor", spirit.ActorMessenger).
+						WithField("urn", p.URN()).
+						WithField("name", p.Name()).
+						WithField("event", "router to outboxes").
+						Errorln(e)
+				} else {
+					if len(outboxes) == 0 {
 						spirit.Logger().
 							WithField("actor", spirit.ActorMessenger).
 							WithField("urn", p.URN()).
 							WithField("name", p.Name()).
 							WithField("event", "router to outboxes").
-							Errorln(e)
-					} else {
-						if len(outboxes) == 0 {
+							Errorln("no outbox found")
+						break next_delivery
+					}
+
+					for _, outbox := range outboxes {
+
+						spirit.Logger().
+							WithField("actor", spirit.ActorMessenger).
+							WithField("urn", p.URN()).
+							WithField("name", p.Name()).
+							WithField("event", "router to outboxes").
+							WithField("outbox labels", outbox.Labels()).
+							Debugln("outbox found")
+
+						if e := outbox.Put([]spirit.Delivery{delivery}); e != nil {
 							spirit.Logger().
 								WithField("actor", spirit.ActorMessenger).
 								WithField("urn", p.URN()).
 								WithField("name", p.Name()).
-								WithField("event", "router to outboxes").
-								Errorln("no outbox found")
-							break next_delivery
-						}
-
-						for _, outbox := range outboxes {
-
-							spirit.Logger().
-								WithField("actor", spirit.ActorMessenger).
-								WithField("urn", p.URN()).
-								WithField("name", p.Name()).
-								WithField("event", "router to outboxes").
-								WithField("outbox labels", outbox.Labels()).
-								Debugln("outbox found")
-
-							if e := outbox.Put([]spirit.Delivery{delivery}); e != nil {
-								spirit.Logger().
-									WithField("actor", spirit.ActorMessenger).
-									WithField("urn", p.URN()).
-									WithField("name", p.Name()).
-									WithField("event", "put delivery to outbox").
-									Errorln(e)
-							}
+								WithField("event", "put delivery to outbox").
+								Errorln(e)
 						}
 					}
 				}
+
 			}
 		}
 

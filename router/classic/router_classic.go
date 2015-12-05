@@ -473,11 +473,16 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (routeItems []
 		}
 	}
 
-	var urns = []string{}
 	var tmpRouteItems = []spirit.RouteItem{}
 
+	var urns []string
+	var continueOnError map[string]bool
+
 	if strURNs != "" {
-		urns = strings.Split(strURNs, "|")
+
+		if urns, continueOnError, err = parseURN(strURNs); err != nil {
+			return
+		}
 
 		for _, urn := range urns {
 			componentName := ""
@@ -548,7 +553,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (routeItems []
 						err = spirit.ErrComponentHandlerNotExit
 						return
 					} else {
-						tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{false, h})
+						tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{continueOnError[urn], h})
 						continue
 					}
 				}
@@ -561,7 +566,7 @@ func (p *ClassicRouter) RouteToHandlers(delivery spirit.Delivery) (routeItems []
 							err = spirit.ErrComponentHandlerNotExit
 							return
 						} else {
-							tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{false, h})
+							tmpRouteItems = append(tmpRouteItems, spirit.RouteItem{continueOnError[urn], h})
 							break
 						}
 					}
@@ -613,5 +618,40 @@ func (p *ClassicRouter) SetComponentLabelMatcher(matcher spirit.LabelMatcher) (e
 
 func (p *ClassicRouter) SetURNRewriter(rewriter spirit.URNRewriter) (err error) {
 	p.urnRewriter = rewriter
+	return
+}
+
+func parseURN(urn string) (urns []string, continueOnError map[string]bool, err error) {
+	startIndex := 0
+
+	urn = strings.TrimSpace(urn)
+	urn = strings.Replace(urn, "\n", "", -1)
+	urn = strings.Trim(urn, "|")
+	urn = strings.Trim(urn, "&")
+	urn = urn + "|"
+
+	tmpURNs := []string{}
+	tmpOnError := make(map[string]bool)
+
+	for i := 0; i < len(urn); i++ {
+		if urn[i] == '|' {
+			u := urn[startIndex:i]
+			u = strings.TrimSpace(u)
+			tmpURNs = append(tmpURNs, u)
+			startIndex = i + 1
+			tmpOnError[u] = true
+		} else if urn[i] == '&' {
+			u := urn[startIndex:i]
+			u = strings.TrimSpace(u)
+			tmpURNs = append(tmpURNs, u)
+			startIndex = i + 2
+			tmpOnError[u] = false
+			i += 1
+		}
+	}
+
+	urns = tmpURNs
+	continueOnError = tmpOnError
+
 	return
 }
