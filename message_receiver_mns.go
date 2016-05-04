@@ -78,12 +78,13 @@ func (p *MessageReceiverMNS) Init(url string, options Options) (err error) {
 	}
 
 	if v, e := options.GetInt64Value("wait_seconds"); e == nil {
+		if v > 30 {
+			v = 30
+		} else if v < 0 {
+			v = -1
+		}
 		p.waitSeconds = v
-	}
-
-	if p.waitSeconds > 30 {
-		p.waitSeconds = 30
-	} else if p.waitSeconds < -1 {
+	} else {
 		p.waitSeconds = -1
 	}
 
