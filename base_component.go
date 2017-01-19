@@ -354,7 +354,7 @@ func (p *BaseComponent) callHandlerWithRecover(handler ComponentHandler, payload
 		if r := recover(); r != nil {
 			buf := make([]byte, 1024)
 			runtime.Stack(buf, false)
-			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"name": p.name, "err": string(buf)})
+			err = ERR_COMPONENT_HANDLER_PANIC.New(errors.Params{"name": p.name, "err": fmt.Sprintf("%v %s", r, buf)})
 		}
 	}()
 
