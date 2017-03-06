@@ -28,6 +28,29 @@ func (p MessageGraph) AddAddress(addrs ...MessageAddress) int {
 	return lenAddr
 }
 
+func (p MessageGraph) AddAddressToHead(addrs ...MessageAddress) int {
+
+	lAddr := len(addrs)
+	if lAddr == 0 {
+		return 0
+	}
+
+	// move
+	for k, v := range p {
+		i, _ := strconv.Atoi(k)
+		p[strconv.Itoa(i+lAddr)] = v
+	}
+
+	startIndex := 1
+	if addrs != nil {
+		for i, addr := range addrs {
+			p[strconv.Itoa(i+startIndex)] = addr
+		}
+	}
+
+	return lAddr
+}
+
 func (p MessageGraph) SetErrorAddress(address MessageAddress) {
 	p[ERROR_MSG_ADDR] = address
 }
