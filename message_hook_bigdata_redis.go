@@ -1,6 +1,8 @@
 package spirit
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 
@@ -8,10 +10,15 @@ import (
 	"github.com/gogap/errors"
 )
 
+var (
+	_ MessageHook = (*MessageHookBigDataRedis)(nil)
+)
+
 const (
 	BIG_DATA_MESSAGE_ID           = "BIG_DATA_MESSAGE_ID"
 	MAX_DATA_LENGTH               = 1024 * 30 //30k
 	BIG_DATA_REDIS_EXPIRE_SECONDS = 600
+	REDIS_DATA_SIZE               = 1024 * 512 //512K
 )
 
 var redisStorage cache_storages.CacheStorage
@@ -60,30 +67,61 @@ func (p *MessageHookBigDataRedis) HookBefore(
 	contextMetadatas []MessageHookMetadata,
 	payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error) {
 
-	for key, value := range currentMetadata.Context {
-		if key == BIG_DATA_MESSAGE_ID {
-			var data string
-			data, err = redisStorage.Get(value.(string))
-			if err != nil {
-				err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": err.Error()})
-				return
-			}
-
-			if data != "" {
-				var container interface{}
-
-				decoder := json.NewDecoder(strings.NewReader(data))
-				decoder.UseNumber()
-
-				if e := decoder.Decode(&container); e != nil {
-					err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err.Error()})
-					return
-				}
-
-				payload.SetContent(container)
-			}
-		}
+	value, exist := currentMetadata.Context[BIG_DATA_MESSAGE_ID]
+	if !exist {
+		return
 	}
+
+	strMessageIds, _ := value.(string)
+
+	if len(strMessageIds) == 0 {
+		return
+	}
+
+	messageIds := strings.Split(strMessageIds, ",")
+
+	var values map[string]string
+	values, err = redisStorage.GetMulti(messageIds)
+
+	if err != nil {
+		err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": err.Error()})
+		return
+	}
+
+	buf := bytes.NewBuffer(nil)
+	for i := 0; i < len(messageIds); i++ {
+		value, exist := values[messageIds[i]]
+		if !exist {
+			err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": errors.New("redis message dismissed")})
+			return
+		}
+
+		var data []byte
+		data, err = base64.StdEncoding.DecodeString(value)
+		if err != nil {
+			err = ERR_HOOK_BIG_DATA_REDIS_GET.New(errors.Params{"err": err.Error()})
+			return
+		}
+
+		buf.Write(data)
+	}
+
+	if buf.Len() == 0 {
+		return
+	}
+
+	var content interface{}
+
+	decoder := json.NewDecoder(buf)
+	decoder.UseNumber()
+
+	if e := decoder.Decode(&content); e != nil {
+		err = ERR_JSON_UNMARSHAL.New(errors.Params{"err": err.Error()})
+		return
+	}
+
+	payload.SetContent(content)
+
 	return
 }
 
@@ -92,24 +130,40 @@ func (p *MessageHookBigDataRedis) HookAfter(
 	contextMetadatas []MessageHookMetadata,
 	payload *Payload) (ignored bool, newMetaData MessageHookMetadata, err error) {
 
-	bit, err := json.Marshal(payload.GetContent())
+	data, err := json.Marshal(payload.GetContent())
 	if err != nil {
 		err = ERR_JSON_MARSHAL.New(errors.Params{"err": err.Error()})
 		return
 	}
 
-	if len(bit) > MAX_DATA_LENGTH {
-		messageId := getUUID()
-		err = redisStorage.Set(messageId, string(bit), BIG_DATA_REDIS_EXPIRE_SECONDS)
-		if err != nil {
-			err = ERR_HOOK_BIG_DATA_REDIS_SET.New(errors.Params{"err": err.Error()})
-			return
+	if len(data) > MAX_DATA_LENGTH {
+		buf := bytes.NewBuffer(data)
+
+		var messageIds []string
+
+		for {
+			next := buf.Next(REDIS_DATA_SIZE)
+			if len(next) == 0 {
+				break
+			}
+
+			messageId := getUUID()
+
+			err = redisStorage.Set(messageId, base64.StdEncoding.EncodeToString(next), BIG_DATA_REDIS_EXPIRE_SECONDS)
+			if err != nil {
+				err = ERR_HOOK_BIG_DATA_REDIS_SET.New(errors.Params{"err": err.Error()})
+				return
+			}
+
+			messageIds = append(messageIds, messageId)
 		}
+
 		newMetaData.Context = make(map[string]interface{})
-		newMetaData.Context[BIG_DATA_MESSAGE_ID] = messageId
+		newMetaData.Context[BIG_DATA_MESSAGE_ID] = strings.Join(messageIds, ",")
 		payload.SetContent(nil)
 		return
 	}
+
 	ignored = true
 	return
 }

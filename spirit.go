@@ -49,6 +49,18 @@ func init() {
 	RegisterHeartbeaters(new(AliJiankong))
 }
 
+func RegisterMessageReceivers(receivers ...MessageReceiver) {
+	receiverFactory.RegisterMessageReceivers(receivers...)
+}
+
+func RegisterMessageSenders(senders ...MessageSender) {
+	senderFactory.RegisterMessageSenders(senders...)
+}
+
+func RegisterMessageHooks(hooks ...MessageHook) {
+	hookFactory.RegisterMessageHooks(hooks...)
+}
+
 func SetMessageReceiverFactory(factory MessageReceiverFactory) {
 	if factory == nil {
 		panic("message receiver factory could not be nil")
