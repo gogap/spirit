@@ -1,7 +1,7 @@
 package spirit
 
 import (
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 type cliAction func(context *cli.Context)

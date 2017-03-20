@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 	"github.com/gogap/errors"
 	"github.com/gogap/event_center"
 	"github.com/gogap/logs"
