@@ -18,7 +18,7 @@ const (
 	BIG_DATA_MESSAGE_ID           = "BIG_DATA_MESSAGE_ID"
 	MAX_DATA_LENGTH               = 1024 * 30 //30k
 	BIG_DATA_REDIS_EXPIRE_SECONDS = 600
-	REDIS_DATA_SIZE               = 1024 * 512 //512K
+	REDIS_DATA_SIZE               = 1000 * 1000 * 512 //512 MegaBytes
 )
 
 var redisStorage cache_storages.CacheStorage
