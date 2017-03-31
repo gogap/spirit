@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/urfave/cli"
 	"github.com/gogap/errors"
 	"github.com/gogap/event_center"
 	"github.com/gogap/logs"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -117,7 +117,7 @@ func (p *ClassicSpirit) Hosting(component Component, initalFuncs ...InitalFunc) 
 }
 
 func (p *ClassicSpirit) Build() Spirit {
-	p.cliApp.Run(os.Args)
+	p.cliApp.RunAndExitOnError()
 	p.isBuilt = true
 	return p
 }
@@ -150,14 +150,7 @@ func (p *ClassicSpirit) Run() {
 	p.waitSignal()
 }
 
-func (p *ClassicSpirit) cmdStartInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdStartInstance(c *cli.Context) (err error) {
 
 	viewDetails = c.Bool("v")
 
@@ -291,14 +284,7 @@ func (p *ClassicSpirit) startChildInstance(hash string, attach, stdin bool) (exe
 	return
 }
 
-func (p *ClassicSpirit) cmdStopInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdStopInstance(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -344,14 +330,7 @@ func (p *ClassicSpirit) cmdStopInstance(c *cli.Context) {
 	return
 }
 
-func (p *ClassicSpirit) cmdKillInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdKillInstance(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -389,16 +368,11 @@ func (p *ClassicSpirit) cmdKillInstance(c *cli.Context) {
 		err = ERR_SPIRIT_KILL_INSTANCE_FIALED.New(errors.Params{"name": instanceName, "pid": pid, "err": e})
 		return
 	}
+
+	return
 }
 
-func (p *ClassicSpirit) cmdPauseInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdPauseInstance(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -436,16 +410,11 @@ func (p *ClassicSpirit) cmdPauseInstance(c *cli.Context) {
 		err = ERR_SPIRIT_PAUSE_INSTANCE_FIALED.New(errors.Params{"name": instanceName, "pid": pid, "err": e})
 		return
 	}
+
+	return
 }
 
-func (p *ClassicSpirit) cmdRemoveBinary(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdRemoveBinary(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -485,16 +454,11 @@ func (p *ClassicSpirit) cmdRemoveBinary(c *cli.Context) {
 	}
 
 	err = instManager.RemoveBinary(instanceName, hash)
+
+	return
 }
 
-func (p *ClassicSpirit) cmdRemoveInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdRemoveInstance(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -513,16 +477,11 @@ func (p *ClassicSpirit) cmdRemoveInstance(c *cli.Context) {
 	}
 
 	err = instManager.RemoveInstance(instanceName)
+
+	return
 }
 
-func (p *ClassicSpirit) cmdInspectInstance(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdInspectInstance(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -577,16 +536,11 @@ func (p *ClassicSpirit) cmdInspectInstance(c *cli.Context) {
 	}
 
 	fmt.Println(printStr)
+
+	return
 }
 
-func (p *ClassicSpirit) cmdInstanceBins(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdInstanceBins(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -630,20 +584,17 @@ func (p *ClassicSpirit) cmdInstanceBins(c *cli.Context) {
 		strPrint += fmt.Sprintf(strPrintTpl, star, id+1, bin.hash, bin.createTime, bin.message)
 	}
 	fmt.Print(strPrint)
+
+	return
 }
 
-func (p *ClassicSpirit) cmdVersion(c *cli.Context) {
+func (p *ClassicSpirit) cmdVersion(c *cli.Context) (err error) {
 	fmt.Println(getProcBinHash())
+
+	return
 }
 
-func (p *ClassicSpirit) cmdCommit(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdCommit(c *cli.Context) (err error) {
 
 	commitMessage := c.String("message")
 
@@ -679,14 +630,7 @@ func (p *ClassicSpirit) cmdCommit(c *cli.Context) {
 	return
 }
 
-func (p *ClassicSpirit) cmdCheckout(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdCheckout(c *cli.Context) (err error) {
 
 	args := c.Args()
 
@@ -727,16 +671,11 @@ func (p *ClassicSpirit) cmdCheckout(c *cli.Context) {
 	}
 
 	fmt.Println("Commit message:", message)
+
+	return
 }
 
-func (p *ClassicSpirit) cmdRun(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdRun(c *cli.Context) (err error) {
 
 	p.isRunCommand = true
 	p.metadata.Envs = c.StringSlice("env")
@@ -809,16 +748,11 @@ func (p *ClassicSpirit) cmdRun(c *cli.Context) {
 			return
 		}
 	}
+
+	return
 }
 
-func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdCreate(c *cli.Context) (err error) {
 
 	p.metadata.Envs = c.StringSlice("env")
 	p.instanceName = c.String("name")
@@ -892,6 +826,8 @@ func (p *ClassicSpirit) cmdCreate(c *cli.Context) {
 			return
 		}
 	}
+
+	return
 }
 
 func (p *ClassicSpirit) buildEventInspectSubscribers() (err error) {
@@ -931,7 +867,7 @@ func (p *ClassicSpirit) saveMetadata() (err error) {
 	return
 }
 
-func (p *ClassicSpirit) cmdListComponents(c *cli.Context) {
+func (p *ClassicSpirit) cmdListComponents(c *cli.Context) (err error) {
 	viewDetails := c.Bool("v")
 
 	for name, hostingComponent := range p.hostingComponents {
@@ -946,16 +882,11 @@ func (p *ClassicSpirit) cmdListComponents(c *cli.Context) {
 			}
 		}
 	}
+
+	return
 }
 
-func (p *ClassicSpirit) cmdPS(c *cli.Context) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			exitError(err)
-		}
-	}()
+func (p *ClassicSpirit) cmdPS(c *cli.Context) (err error) {
 
 	showAll := c.Bool("all")
 	nameOnly := c.Bool("quiet")

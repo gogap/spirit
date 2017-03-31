@@ -4,9 +4,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-type cliAction func(context *cli.Context)
-
-func commandComponents(action cliAction) cli.Command {
+func commandComponents(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:   "components",
 		Usage:  "List the hosting components",
@@ -20,7 +18,7 @@ func commandComponents(action cliAction) cli.Command {
 	}
 }
 
-func commandRun(action cliAction) cli.Command {
+func commandRun(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:   "run",
 		Usage:  "Run the component",
@@ -52,7 +50,7 @@ func commandRun(action cliAction) cli.Command {
 	}
 }
 
-func commandCreate(action cliAction) cli.Command {
+func commandCreate(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:   "create",
 		Usage:  "Create the component instance",
@@ -81,7 +79,7 @@ func commandCreate(action cliAction) cli.Command {
 	}
 }
 
-func commandCall(action cliAction) cli.Command {
+func commandCall(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:   "call",
 		Usage:  "Call the resgistered function of component",
@@ -107,7 +105,7 @@ func commandCall(action cliAction) cli.Command {
 	}
 }
 
-func commandRemoveInstance(action cliAction) cli.Command {
+func commandRemoveInstance(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "rmi",
 		ShortName: "",
@@ -116,7 +114,7 @@ func commandRemoveInstance(action cliAction) cli.Command {
 	}
 }
 
-func commandRemoveBinary(action cliAction) cli.Command {
+func commandRemoveBinary(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "rm",
 		ShortName: "",
@@ -131,7 +129,7 @@ func commandRemoveBinary(action cliAction) cli.Command {
 	}
 }
 
-func commandStart(action cliAction) cli.Command {
+func commandStart(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "start",
 		ShortName: "",
@@ -155,7 +153,7 @@ func commandStart(action cliAction) cli.Command {
 	}
 }
 
-func commandStop(action cliAction) cli.Command {
+func commandStop(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "stop",
 		ShortName: "",
@@ -164,7 +162,7 @@ func commandStop(action cliAction) cli.Command {
 	}
 }
 
-func commandKill(action cliAction) cli.Command {
+func commandKill(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "kill",
 		ShortName: "",
@@ -173,7 +171,7 @@ func commandKill(action cliAction) cli.Command {
 	}
 }
 
-func commandPause(action cliAction) cli.Command {
+func commandPause(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "pause",
 		ShortName: "",
@@ -182,7 +180,7 @@ func commandPause(action cliAction) cli.Command {
 	}
 }
 
-func commandPS(action cliAction) cli.Command {
+func commandPS(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "ps",
 		ShortName: "",
@@ -200,7 +198,7 @@ func commandPS(action cliAction) cli.Command {
 	}
 }
 
-func commandInspect(action cliAction) cli.Command {
+func commandInspect(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "inspect",
 		ShortName: "",
@@ -218,7 +216,7 @@ func commandInspect(action cliAction) cli.Command {
 	}
 }
 
-func commandCommit(action cliAction) cli.Command {
+func commandCommit(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "commit",
 		ShortName: "",
@@ -233,7 +231,7 @@ func commandCommit(action cliAction) cli.Command {
 	}
 }
 
-func commandCheckout(action cliAction) cli.Command {
+func commandCheckout(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "checkout",
 		ShortName: "",
@@ -251,7 +249,7 @@ func commandCheckout(action cliAction) cli.Command {
 	}
 }
 
-func commandInstanceBins(action cliAction) cli.Command {
+func commandInstanceBins(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "bins",
 		ShortName: "",
@@ -260,7 +258,7 @@ func commandInstanceBins(action cliAction) cli.Command {
 	}
 }
 
-func commandVersion(action cliAction) cli.Command {
+func commandVersion(action cli.ActionFunc) cli.Command {
 	return cli.Command{
 		Name:      "version",
 		ShortName: "",
